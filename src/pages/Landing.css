@@ -1,0 +1,48 @@
+.landing-shell {
+  width: 100%;
+  min-height: 100svh;
+  height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.landing-link {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  padding: 18px;
+  background: radial-gradient(
+    circle at top,
+    rgba(255, 90, 90, 0.18),
+    rgba(15, 17, 20, 0.2)
+  );
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.landing-link:hover {
+  transform: scale(1.01);
+}
+
+.landing-logo {
+  width: min(640px, 80vw);
+  height: auto;
+  filter: drop-shadow(0 0 30px rgba(255, 72, 72, 0.55))
+    drop-shadow(0 0 60px rgba(255, 72, 72, 0.25));
+  animation: glow-pulse 3.6s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 26px rgba(255, 72, 72, 0.45))
+      drop-shadow(0 0 55px rgba(255, 72, 72, 0.2));
+  }
+  50% {
+    filter: drop-shadow(0 0 34px rgba(255, 88, 88, 0.7))
+      drop-shadow(0 0 75px rgba(255, 88, 88, 0.35));
+  }
+}

@@ -1,0 +1,135 @@
+.select-army {
+  gap: 28px;
+}
+
+.select-army-header {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 24px;
+  align-items: end;
+}
+
+.select-army-search {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  display: grid;
+  gap: 12px;
+}
+
+.select-army-search label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.select-army-search input {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 0.95rem;
+  transition: border 200ms ease;
+}
+
+.select-army-search input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.select-army-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.select-army-card {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 150ms ease, border 150ms ease;
+}
+
+.select-army-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(98, 255, 230, 0.4);
+}
+
+.select-army-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.select-army-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 14px;
+}
+
+.select-army-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--error);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--error) 70%, transparent);
+  flex: 0 0 auto;
+}
+
+.status-dot--red {
+  background: var(--error);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--error) 70%, transparent);
+}
+
+.status-dot--yellow {
+  background: var(--warning);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--warning) 70%, transparent);
+}
+
+.status-dot--green {
+  background: var(--success);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--success) 70%, transparent);
+}
+
+.select-army-card h2 {
+  margin: 0 0 6px;
+}
+
+.select-army-meta {
+  display: flex;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.select-army-description {
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+@media (max-width: 1100px) {
+  .select-army-header {
+    grid-template-columns: 1fr;
+  }
+
+  .select-army-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .select-army-grid {
+    grid-template-columns: 1fr;
+  }
+}

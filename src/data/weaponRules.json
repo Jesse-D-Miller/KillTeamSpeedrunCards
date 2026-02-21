@@ -1,0 +1,209 @@
+{
+  "weaponrules": [
+    {
+      "code": "ACC_",
+      "ruleName": "Accurate _",
+      "description": "You can retain up to _ Attack Dice as normal successes without rolling them."
+    },
+    {
+      "code": "ACCURATE _",
+      "ruleName": "Accurate _",
+      "description": "You can retain up to _ Attack Dice as normal successes without rolling them."
+    },
+    {
+      "code": "AP_",
+      "ruleName": "Armor Piercing _",
+      "description": "Remove _ Defence dice from target before roll. Multiple APs do not stack."
+    },
+    {
+      "code": "BAL",
+      "ruleName": "Balanced",
+      "description": "Can re-roll one Attack die."
+    },
+    {
+      "code": "BALANCED",
+      "ruleName": "Balanced",
+      "description": "Can re-roll one Attack die."
+    },
+    {
+      "code": "BARRAGE",
+      "ruleName": "Barrage",
+      "description": "Cover is measured from above."
+    },
+    {
+      "code": "BLAST_",
+      "ruleName": "Blast _",
+      "description": "The target you select is the primary target. After shooting the primary target, shoot with this weapon against each secondary target in an order of your choice (roll each sequence separately). Secondary targets are other ops visible to and within _ of the primary target (they are all valid targets, regardless of a Conceal order). Secondary targets are in cover and obscured if the primary target was."
+    },
+    {
+      "code": "BRUTAL",
+      "ruleName": "Brutal",
+      "description": "Opponent can only parry with critical hits."
+    },
+    {
+      "code": "CEASELESS",
+      "ruleName": "Ceaseless",
+      "description": "Can re-roll any or all results of one value (e.g. all results of 2)."
+    },
+    {
+      "code": "DEV_",
+      "ruleName": "Devastating _",
+      "description": "Each retained critical success immediately inflicts _ damage on the operative this weapon is being used against."
+    },
+    {
+      "code": "HOT",
+      "ruleName": "Hot",
+      "description": "After using this weapon, roll 1D6. If the result is less than the weapon's HIT stat, inflict Damage on that operative equal to the result multiplied by 2. If it is used multiple times in one action (e.g. Blast), roll only 1D6."
+    },
+    {
+      "code": "HVY",
+      "ruleName": "Heavy",
+      "description": "An operative cannot use this weapon in an activation or counteraction in which it moved, and it cannot move in an activation or counteraction in which it used this weapon."
+    },
+    {
+      "code": "HVY(DASH)",
+      "ruleName": "Heavy (Dash)",
+      "description": "An operative cannot use this weapon in an activation in which it moved, and it cannot move in an activation in which it used this weapon. This rule has no effect on preventing the Guard action.  Only the Dash action is allowed."
+    },
+    {
+      "code": "HVY(REPOS)",
+      "ruleName": "Heavy (Reposition)",
+      "description": "An operative cannot use this weapon in an activation in which it moved, and it cannot move in an activation in which it used this weapon. This rule has no effect on preventing the Guard action.  Only the Reposition action is allowed."
+    },
+    {
+      "code": "LETHAL_",
+      "ruleName": "Lethal _",
+      "description": "Inflict critical hits on _ instead of 6+."
+    },
+    {
+      "code": "LIM",
+      "ruleName": "Limited",
+      "description": "After an operative uses this weapon once, they no longer have it. If it is used multiple times in one action (e.g. Blast) treat this as one use."
+    },
+    {
+      "code": "LIM_",
+      "ruleName": "Limited _",
+      "description": "After an operative uses this weapon _ time(s), they no longer have it. If it is used multiple times in one action (e.g. Blast) treat this as one use."
+    },
+    {
+      "code": "MW_",
+      "ruleName": "Mortal Wounds _",
+      "description": "For each critical hit retained, inflict _ Mortal Wounds to target."
+    },
+    {
+      "code": "PIERCING _",
+      "ruleName": "Piercing _",
+      "description": "The defender collects _ less Defence dice."
+    },
+    {
+      "code": "PIERCING CRITS _",
+      "ruleName": "Piercing Crits _",
+      "description": "If you retain any critical successes, the defender collects _ less Defence dice."
+    },
+    {
+      "code": "PRC_",
+      "ruleName": "Piercing _",
+      "description": "The defender collects _ less Defence dice."
+    },
+    {
+      "code": "PRCCRIT_",
+      "ruleName": "Piercing Crits _",
+      "description": "If you retain any critical successes, the defender collects _ less Defence dice."
+    },
+    {
+      "code": "PUNISHING",
+      "ruleName": "Punishing",
+      "description": "If you retain any critical successes, you can retain one of your fails as a normal success instead of discarding it."
+    },
+    {
+      "code": "RELENTLESS",
+      "ruleName": "Relentless",
+      "description": "Can re-roll any or all Attack dice."
+    },
+    {
+      "code": "REND",
+      "ruleName": "Rending",
+      "description": "If you retain any critical hits, retain 1 normal hit as a critical hit instead."
+    },
+    {
+      "code": "RENDING",
+      "ruleName": "Rending",
+      "description": "If you retain any critical hits, retain 1 normal hit as a critical hit instead."
+    },
+    {
+      "code": "RLT",
+      "ruleName": "Relentless",
+      "description": "Can re-roll any or all Attack dice."
+    },
+    {
+      "code": "RND",
+      "ruleName": "Rending",
+      "description": "If you retain any critical hits, retain 1 normal hit as a critical hit instead."
+    },
+    {
+      "code": "RNG_",
+      "ruleName": "Range _",
+      "description": "Range limit of the weapon."
+    },
+    {
+      "code": "SAT",
+      "ruleName": "Saturate",
+      "description": "The defender cannot retain Cover saves."
+    },
+    {
+      "code": "SATURATE",
+      "ruleName": "Saturate",
+      "description": "The defender cannot retain Cover saves."
+    },
+    {
+      "code": "SEEK",
+      "ruleName": "Seek",
+      "description": "When selecting a valid target, operatives with a Conceal order cannot use terrain for cover. While this can allow operatives to be targeted (assuming they’re visible), it doesn’t remove their cover save (if any)."
+    },
+    {
+      "code": "SEEK LIGHT",
+      "ruleName": "Seek Light",
+      "description": "When selecting a valid target, operatives with a Conceal order cannot use Light terrain for cover. While this can allow operatives to be targeted (assuming they’re visible), it doesn’t remove their cover save (if any)."
+    },
+    {
+      "code": "SEV",
+      "ruleName": "Severe",
+      "description": "If you do not retain any critical successes, you can change one of your normal successes to a critical success. The Devastating and Piercing Crits weapon rules still take effect, but Punishing and Rending don’t."
+    },
+    {
+      "code": "SEVERE",
+      "ruleName": "Severe",
+      "description": "If you do not retain any critical successes, you can change one of your normal successes to a critical success. The Devastating and Piercing Crits weapon rules still take effect, but Punishing and Rending don’t."
+    },
+    {
+      "code": "SHOCK",
+      "ruleName": "Shock",
+      "description": "The first time you strike with a critical success in each sequence, also discard one of your opponent's unresolved normal successes (or a critical success if there are none)."
+    },
+    {
+      "code": "SIL",
+      "ruleName": "Silent",
+      "description": "Can Shoot this weapon while on a Conceal order."
+    },
+    {
+      "code": "SILENT",
+      "ruleName": "Silent",
+      "description": "Can Shoot this weapon while on a Conceal order."
+    },
+    {
+      "code": "STUN",
+      "ruleName": "Stun",
+      "description": "If you retain any critical hits, subtract 1 from APL of target until the end of its next activation."
+    },
+    {
+      "code": "TOR_",
+      "ruleName": "Torrent _",
+      "description": "Each time a friendly operative performs a Shoot action or Overwatch action and selects this weapon, after making the shooting attack against the target, it can make a shooting attack with this weapon against each other valid target within _ of the original target."
+    },
+    {
+      "code": "TORRENT_",
+      "ruleName": "Torrent _",
+      "description": "Each time a friendly operative performs a Shoot action or Overwatch action and selects this weapon, after making the shooting attack against the target, it can make a shooting attack with this weapon against each other valid target within _ of the original target."
+    }
+  ]
+}
