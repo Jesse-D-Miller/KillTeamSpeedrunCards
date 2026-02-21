@@ -15,11 +15,11 @@ const parseLeadingNumber = (value) => {
   return Number.isNaN(parsed) ? null : parsed
 }
 
-const adjustMove = (value) => {
+const adjustMoveBy = (value, delta) => {
   const numberValue = parseLeadingNumber(value)
   if (numberValue == null) return value
   const suffix = String(value).replace(String(numberValue), '')
-  return `${numberValue - 1}${suffix}`
+  return `${numberValue + delta}${suffix}`
 }
 
 const adjustHit = (value) => {
@@ -30,7 +30,56 @@ const adjustHit = (value) => {
   return `${parsed + 1}+`
 }
 
+const addWeaponRule = (wrValue, ruleLabel) => {
+  if (!ruleLabel) return wrValue
+  if (!wrValue || wrValue === '—') return ruleLabel
+  const rules = wrValue
+    .split(',')
+    .map((rule) => rule.trim())
+    .filter(Boolean)
+  if (rules.some((rule) => rule.toLowerCase() === ruleLabel.toLowerCase())) {
+    return wrValue
+  }
+  return `${wrValue}, ${ruleLabel}`
+}
+
 const STATUS_OPTIONS = statusEffectsData?.statusEffects ?? []
+const LEGIONARY_MARKS = [
+  {
+    id: 'KHORNE',
+    label: 'KHORNE',
+    dataLabel: 'Khorne',
+    className: 'mark-khorne',
+  },
+  {
+    id: 'NURGLE',
+    label: 'NURGLE',
+    dataLabel: 'Nurgle',
+    className: 'mark-nurgle',
+  },
+  {
+    id: 'SLAANESH',
+    label: 'SLAANESH',
+    dataLabel: 'Slaanesh',
+    className: 'mark-slaanesh',
+  },
+  {
+    id: 'TZEENTCH',
+    label: 'TZEENTCH',
+    dataLabel: 'Tzeentch',
+    className: 'mark-tzeentch',
+  },
+  {
+    id: 'UNDIVIDED',
+    label: 'UNDIVIDED',
+    dataLabel: 'Undivided',
+    className: 'mark-undivided',
+  },
+]
+const LEGIONARY_SELECT_MARK = {
+  label: 'Select Mark',
+  className: 'mark-unset',
+}
 
 function UnitCard({
   opType,
@@ -47,6 +96,10 @@ function UnitCard({
   onStanceChange,
   selectedStatuses = [],
   onStatusChange,
+  aplAdjustment = 0,
+  onAplAdjustChange,
+  legionaryMark,
+  onLegionaryMarkChange,
   readOnly = false,
 }) {
   const maxWounds = useMemo(() => {
@@ -56,13 +109,19 @@ function UnitCard({
   const [ruleModal, setRuleModal] = useState(null)
   const [statusModalOpen, setStatusModalOpen] = useState(false)
   const [statusDetail, setStatusDetail] = useState(null)
+  const [aplModalOpen, setAplModalOpen] = useState(false)
+  const [markModalOpen, setMarkModalOpen] = useState(false)
   const onDeadChangeRef = useRef(onDeadChange)
-  const ruleDetails = useMemo(
-    () => (ruleModal ? getRuleDescription(ruleModal) : null),
-    [ruleModal],
-  )
+  const ruleDetails = useMemo(() => {
+    if (!ruleModal) return null
+    if (typeof ruleModal === 'object') return ruleModal
+    return getRuleDescription(ruleModal)
+  }, [ruleModal])
   const ruleSuggestions = useMemo(
-    () => (ruleModal && !ruleDetails ? getRuleSuggestions(ruleModal, 3) : []),
+    () =>
+      ruleModal && typeof ruleModal === 'string' && !ruleDetails
+        ? getRuleSuggestions(ruleModal, 3)
+        : [],
     [ruleModal, ruleDetails],
   )
 
@@ -101,6 +160,7 @@ function UnitCard({
       name: profile?.profileName
         ? `${weapon.wepName} (${profile.profileName})`
         : weapon.wepName,
+      wepType: weapon.wepType,
       ATK: profile?.ATK ?? '—',
       HIT: profile?.HIT ?? '—',
       DMG: profile?.DMG ?? '—',
@@ -116,11 +176,27 @@ function UnitCard({
       .filter(Boolean)
   }
 
+  const formatCostLabel = (item) => {
+    if (!item) return null
+    if (item.AP != null) return `${item.AP}AP`
+    if (item.CP != null) return `${item.CP}CP`
+    return null
+  }
+
   const isRangeRule = (rule) => /^(Rng|Range)\b/i.test(rule)
   const abilities = (opType.abilities ?? []).filter(
     (ability) => !ability.isFactionRule,
   )
-  const adjustedMove = isCritical ? adjustMove(opType.MOVE) : opType.MOVE
+  const isSlaaneshMark = legionaryMark === 'SLAANESH'
+  const baseMoveValue = opType.MOVE
+  const baseMoveNumber = parseLeadingNumber(baseMoveValue)
+  const moveDelta = (isSlaaneshMark ? 1 : 0) + (isCritical ? -1 : 0)
+  const adjustedMove = moveDelta ? adjustMoveBy(baseMoveValue, moveDelta) : baseMoveValue
+  const adjustedMoveNumber = parseLeadingNumber(adjustedMove)
+  const isMoveBoosted =
+    baseMoveNumber != null &&
+    adjustedMoveNumber != null &&
+    adjustedMoveNumber > baseMoveNumber
   const isInjured = isCritical
   const statusEffectsById = useMemo(
     () =>
@@ -135,9 +211,10 @@ function UnitCard({
     return total + (effect?.aplDelta ?? 0)
   }, 0)
   const baseApl = Number.parseInt(opType.APL, 10)
-  const effectiveApl = Number.isNaN(baseApl)
-    ? opType.APL
-    : Math.max(0, baseApl + statusAplDelta)
+  const hasNumericApl = !Number.isNaN(baseApl)
+  const effectiveApl = hasNumericApl
+    ? Math.max(0, baseApl + statusAplDelta + aplAdjustment)
+    : opType.APL
   const isStunned = selectedStatuses.includes('stunned')
   const selectedStatusEffects = selectedStatuses
     .map((statusId) => statusEffectsById[statusId])
@@ -151,6 +228,24 @@ function UnitCard({
     : null
   const showLeftDivider = Boolean(injuredStatus)
   const showRightDivider = Boolean(injuredStatus) && selectedStatusEffects.length > 0
+  const isLegionary = /\bLEGIONARY\b/i.test(opType?.keywords ?? '')
+  const legionaryMeta = legionaryMark
+    ? LEGIONARY_MARKS.find((mark) => mark.id === legionaryMark)
+    : null
+  const legionaryDisplay = legionaryMeta ?? LEGIONARY_SELECT_MARK
+  const isKhorneMark = legionaryMark === 'KHORNE'
+  const isTzeentchMark = legionaryMark === 'TZEENTCH'
+  const legionaryOption = useMemo(() => {
+    if (!isLegionary || !legionaryMeta?.dataLabel) return null
+    const options = opType?.options ?? []
+    return (
+      options.find((option) =>
+        String(option.optionName || '')
+          .toLowerCase()
+          .startsWith(`${legionaryMeta.dataLabel.toLowerCase()} -`),
+      ) || null
+    )
+  }, [isLegionary, legionaryMeta, opType?.options])
 
   const toggleStatus = (status) => {
     if (!onStatusChange) return
@@ -161,6 +256,37 @@ function UnitCard({
   }
   const isDetailsOpen = Boolean(detailsOpen)
   const canToggleDetails = Boolean(onToggleDetails)
+  const canAdjustApl = Boolean(onAplAdjustChange) && !readOnly && hasNumericApl
+  const aplDeltaClass =
+    aplAdjustment > 0 ? ' apl-up' : aplAdjustment < 0 ? ' apl-down' : ''
+  const adjustApl = (delta) => {
+    if (!onAplAdjustChange) return
+    onAplAdjustChange(aplAdjustment + delta)
+  }
+  const openLegionaryRule = () => {
+    if (legionaryOption?.description) {
+      setRuleModal({
+        name: legionaryOption.optionName || legionaryDisplay.label,
+        description: legionaryOption.description,
+      })
+      return
+    }
+    setRuleModal(legionaryDisplay.label)
+  }
+  const handleLegionaryPillClick = (event) => {
+    if (!legionaryMeta && !readOnly) {
+      setMarkModalOpen(true)
+      return
+    }
+    if (legionaryMeta) {
+      openLegionaryRule()
+    }
+  }
+  const handleMarkSelect = (markId) => {
+    if (!onLegionaryMarkChange || legionaryMeta) return
+    onLegionaryMarkChange(markId)
+    setMarkModalOpen(false)
+  }
   return (
     <article
       className={`game-card stance-${stance}${
@@ -208,16 +334,35 @@ function UnitCard({
           <div className="game-stat-pill">
             <span className="game-stat-label">MV</span>
             <span
-              className={`game-stat-value${isCritical ? ' stat-critical' : ''}`}
+              className={`game-stat-value${
+                isMoveBoosted ? ' stat-boosted' : isCritical ? ' stat-critical' : ''
+              }`}
             >
               {adjustedMove}
             </span>
           </div>
           <div className="game-stat-pill">
             <span className="game-stat-label">APL</span>
-            <span className={`game-stat-value${isStunned ? ' stat-stunned' : ''}`}>
-              {effectiveApl}
-            </span>
+            {canAdjustApl ? (
+              <button
+                type="button"
+                className={`game-stat-value apl-button${aplDeltaClass}${
+                  isStunned ? ' stat-stunned' : ''
+                }`}
+                onClick={() => setAplModalOpen(true)}
+                aria-label="Adjust APL"
+              >
+                {effectiveApl}
+              </button>
+            ) : (
+              <span
+                className={`game-stat-value${aplDeltaClass}${
+                  isStunned ? ' stat-stunned' : ''
+                }`}
+              >
+                {effectiveApl}
+              </span>
+            )}
           </div>
           <div className="game-stat-pill">
             <span className="game-stat-label">SV</span>
@@ -277,24 +422,49 @@ function UnitCard({
                 {isCritical ? adjustHit(row.HIT) : row.HIT}
               </span>
               <span>{row.DMG}</span>
-              <span className="weapon-rules">
-                {parseRules(row.WR).map((rule, index) =>
-                  isRangeRule(rule) ? (
-                    <span className="weapon-rule" key={`${row.key}-rule-${index}`}>
-                      {rule}
-                    </span>
-                  ) : (
-                    <button
-                      key={`${row.key}-rule-${index}`}
-                      type="button"
-                      className="weapon-rule weapon-rule-button"
-                      onClick={() => setRuleModal(rule)}
-                    >
-                      {rule}
-                    </button>
-                  ),
-                )}
-              </span>
+              {(() => {
+                const effectiveWR =
+                  (isKhorneMark && row.wepType === 'M') ||
+                  (isTzeentchMark && row.wepType === 'R')
+                    ? addWeaponRule(row.WR, 'Severe')
+                    : row.WR
+                const hasSevereOriginal = parseRules(row.WR).some(
+                  (rule) => rule.toLowerCase() === 'severe',
+                )
+                return (
+                  <span className="weapon-rules">
+                    {parseRules(effectiveWR).map((rule, index) => {
+                      const isSevereRule = rule.toLowerCase() === 'severe'
+                      const isInjectedSevere = isSevereRule && !hasSevereOriginal
+                      const isKhorneInjected =
+                        isInjectedSevere && isKhorneMark && row.wepType === 'M'
+                      const isTzeentchInjected =
+                        isInjectedSevere && isTzeentchMark && row.wepType === 'R'
+                      const injectedClass = isKhorneInjected
+                        ? ' weapon-rule-khorne-added'
+                        : isTzeentchInjected
+                          ? ' weapon-rule-tzeentch-added'
+                          : ''
+                      const ruleClass = `weapon-rule${injectedClass}`
+                      const buttonClass = `weapon-rule weapon-rule-button${injectedClass}`
+                      return isRangeRule(rule) ? (
+                        <span className={ruleClass} key={`${row.key}-rule-${index}`}>
+                          {rule}
+                        </span>
+                      ) : (
+                        <button
+                          key={`${row.key}-rule-${index}`}
+                          type="button"
+                          className={buttonClass}
+                          onClick={() => setRuleModal(rule)}
+                        >
+                          {rule}
+                        </button>
+                      )
+                    })}
+                  </span>
+                )
+              })()}
             </div>
           ))}
         </div>
@@ -304,7 +474,12 @@ function UnitCard({
             abilities.map((ability) => (
               <details className="ability-row" key={ability.abilityId}>
                 <summary className="ability-name">
-                  {ability.abilityName}
+                  <span className="ability-title">{ability.abilityName}</span>
+                  {formatCostLabel(ability) ? (
+                    <span className="cost-badge">
+                      {formatCostLabel(ability)}
+                    </span>
+                  ) : null}
                 </summary>
                 <div className="ability-description">
                   {String(ability.description ?? '')
@@ -355,6 +530,25 @@ function UnitCard({
             {stance}
           </button>
         )}
+        {isLegionary ? (
+          readOnly ? (
+            <span
+              className={`legionary-pill ${legionaryDisplay.className}`}
+              aria-label={`Legionary mark ${legionaryDisplay.label}`}
+            >
+              {legionaryDisplay.label}
+            </span>
+          ) : (
+            <button
+              type="button"
+              className={`legionary-pill ${legionaryDisplay.className}`}
+              onClick={handleLegionaryPillClick}
+              aria-label={`Legionary mark ${legionaryDisplay.label}`}
+            >
+              {legionaryDisplay.label}
+            </button>
+          )
+        ) : null}
         <div className="status-pill-list">
           {showLeftDivider ? (
             <span className="status-divider" aria-hidden="true">
@@ -435,7 +629,10 @@ function UnitCard({
           />
           <div className="rule-modal-content">
             <div className="rule-modal-header">
-              <h3>{ruleDetails?.name ?? ruleModal}</h3>
+              <h3>
+                {ruleDetails?.name ??
+                  (typeof ruleModal === 'string' ? ruleModal : '')}
+              </h3>
               <button
                 type="button"
                 className="rule-modal-close"
@@ -524,6 +721,75 @@ function UnitCard({
             </div>
             <div className="status-modal-body status-detail-body">
               {statusDetail.description}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {markModalOpen ? (
+        <div className="mark-modal" role="dialog" aria-modal="true">
+          <div
+            className="mark-modal-backdrop"
+            onClick={() => setMarkModalOpen(false)}
+          />
+          <div className="mark-modal-content">
+            <div className="mark-modal-header">
+              <h3>Select Mark</h3>
+              <button
+                type="button"
+                className="mark-modal-close"
+                onClick={() => setMarkModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="mark-modal-body">
+              {LEGIONARY_MARKS.map((mark) => (
+                <button
+                  key={mark.id}
+                  type="button"
+                  className={`legionary-pill ${mark.className}`}
+                  onClick={() => handleMarkSelect(mark.id)}
+                >
+                  {mark.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {aplModalOpen ? (
+        <div className="apl-modal" role="dialog" aria-modal="true">
+          <div
+            className="apl-modal-backdrop"
+            onClick={() => setAplModalOpen(false)}
+          />
+          <div className="apl-modal-content">
+            <div className="apl-modal-header">
+              <h3>Adjust APL</h3>
+              <button
+                type="button"
+                className="apl-modal-close"
+                onClick={() => setAplModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="apl-modal-body">
+              <button
+                type="button"
+                className="apl-adjust-button"
+                onClick={() => adjustApl(-1)}
+              >
+                -1
+              </button>
+              <span className="apl-adjust-value">{aplAdjustment}</span>
+              <button
+                type="button"
+                className="apl-adjust-button"
+                onClick={() => adjustApl(1)}
+              >
+                +1
+              </button>
             </div>
           </div>
         </div>

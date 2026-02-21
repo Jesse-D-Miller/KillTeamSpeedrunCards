@@ -33,6 +33,17 @@ function SelectionProvider({ children }) {
       return {}
     }
   })
+  const [legionaryMarksByTeam, setLegionaryMarksByTeam] = useState(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (!stored) return {}
+      const parsed = JSON.parse(stored)
+      return parsed?.legionaryMarksByTeam ?? {}
+    } catch (error) {
+      console.warn('Failed to read selection storage.', error)
+      return {}
+    }
+  })
 
   const setSelectedUnits = (killteamId, nextSelection) => {
     setSelectedUnitsByTeam((prev) => ({
@@ -48,14 +59,33 @@ function SelectionProvider({ children }) {
     }))
   }
 
+  const setLegionaryMarks = (killteamId, nextMarks) => {
+    setLegionaryMarksByTeam((prev) => {
+      const current = prev[killteamId] ?? {}
+      const resolved =
+        typeof nextMarks === 'function' ? nextMarks(current) : nextMarks
+      if (resolved === current) return prev
+      return {
+        ...prev,
+        [killteamId]: resolved,
+      }
+    })
+  }
+
   const value = useMemo(
     () => ({
       selectedUnitsByTeam,
       selectedEquipmentByTeam,
       setSelectedUnits,
       setSelectedEquipment,
+      legionaryMarksByTeam,
+      setLegionaryMarks,
     }),
-    [selectedUnitsByTeam, selectedEquipmentByTeam],
+    [
+      selectedUnitsByTeam,
+      selectedEquipmentByTeam,
+      legionaryMarksByTeam,
+    ],
   )
 
   useEffect(() => {
@@ -63,12 +93,13 @@ function SelectionProvider({ children }) {
       const payload = JSON.stringify({
         selectedUnitsByTeam,
         selectedEquipmentByTeam,
+        legionaryMarksByTeam,
       })
       localStorage.setItem(STORAGE_KEY, payload)
     } catch (error) {
       console.warn('Failed to persist selection storage.', error)
     }
-  }, [selectedUnitsByTeam, selectedEquipmentByTeam])
+  }, [selectedUnitsByTeam, selectedEquipmentByTeam, legionaryMarksByTeam])
 
   return (
     <SelectionContext.Provider value={value}>

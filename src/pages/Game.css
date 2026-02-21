@@ -261,6 +261,23 @@
   gap: 10px;
 }
 
+.game-menu-ploy-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.cost-badge {
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: var(--panel-2);
+  white-space: nowrap;
+}
+
 .game-menu-ploy-name::-webkit-details-marker {
   display: none;
 }

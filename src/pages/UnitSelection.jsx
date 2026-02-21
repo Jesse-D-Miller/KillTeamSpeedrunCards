@@ -32,6 +32,9 @@ const UNIT_COUNT_OVERRIDES = {
   'VOT-HKY': {
     'VOT-HKY-WAR': 3,
   },
+  'TAU-VESP': {
+    'TAU-VESP-WAR': 5,
+  },
 }
 
 const buildUnitCounts = (killteam, operatives) => {

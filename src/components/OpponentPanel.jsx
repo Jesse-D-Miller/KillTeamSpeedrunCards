@@ -72,6 +72,15 @@ function OpponentPanel({
                         ? safeMax
                         : opponentRenderState.woundsByUnit[key]
                     const detailsOpen = Boolean(openDetailsByUnit[key])
+                    const aplAdjustment =
+                      opponentRenderState?.aplAdjustByUnit?.[key] ?? 0
+                    const isLegionary = /\bLEGIONARY\b/i.test(
+                      opType?.keywords ?? '',
+                    )
+                    const legionaryMark = isLegionary
+                      ? opponentRenderState?.legionaryMarkByUnit?.[key] ??
+                        null
+                      : null
                     return (
                       <UnitCard
                         key={`opponent-${key}`}
@@ -86,6 +95,8 @@ function OpponentPanel({
                             [key]: !prev[key],
                           }))
                         }
+                        aplAdjustment={aplAdjustment}
+                        legionaryMark={legionaryMark}
                         state={
                           opponentRenderState?.unitStates?.[key] ?? 'ready'
                         }

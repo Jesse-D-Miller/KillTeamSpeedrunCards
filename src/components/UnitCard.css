@@ -182,8 +182,27 @@
   color: var(--text);
 }
 
+.game-stat-value.apl-up {
+  color: var(--success);
+}
+
+.game-stat-value.apl-down {
+  color: var(--error);
+}
+
+.apl-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
 .stat-critical {
   color: var(--error);
+}
+
+.stat-boosted {
+  color: var(--success);
 }
 
 .stat-stunned {
@@ -230,6 +249,58 @@
   cursor: pointer;
   background: var(--panel-2);
   color: var(--text);
+}
+
+.legionary-pill {
+  border-radius: 999px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.legionary-pill.mark-khorne {
+  background: #3b0e0e;
+  border-color: #ff5c5c;
+  color: #ff9b9b;
+}
+
+.legionary-pill.mark-nurgle {
+  background: #113324;
+  border-color: #5ce39a;
+  color: #9ff0c6;
+}
+
+.legionary-pill.mark-slaanesh {
+  background: #3b2c12;
+  border-color: #f7c04a;
+  color: #ffd78a;
+}
+
+.legionary-pill.mark-tzeentch {
+  background: #2b1b4a;
+  border-color: #b68cff;
+  color: #d5b7ff;
+}
+
+.legionary-pill.mark-undivided {
+  background: #2a2d31;
+  border-color: #9aa0a6;
+  color: #c9ced6;
+}
+
+.legionary-pill.mark-unset {
+  background: #1f2329;
+  border-color: #6b727a;
+  color: #b7bdc6;
 }
 
 .stance-pill.stance-engage {
@@ -310,12 +381,123 @@
   border-color: color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
+.mark-modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 70;
+}
+
+.mark-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 8, 10, 0.7);
+}
+
+.mark-modal-content {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 92vw);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: var(--shadow-soft);
+}
+
+.mark-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.mark-modal-close {
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.mark-modal-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
 .status-modal {
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
   z-index: 60;
+}
+
+.apl-modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 60;
+}
+
+.apl-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 8, 10, 0.7);
+}
+
+.apl-modal-content {
+  position: relative;
+  z-index: 1;
+  width: min(360px, 90vw);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: var(--shadow-soft);
+}
+
+.apl-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.apl-modal-close {
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.apl-modal-body {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.apl-adjust-button {
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.apl-adjust-value {
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .status-modal-backdrop {
@@ -416,6 +598,16 @@
   display: inline-flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.weapon-rule-khorne-added,
+.weapon-rule-khorne-added.weapon-rule-button {
+  color: #ff9b9b;
+}
+
+.weapon-rule-tzeentch-added,
+.weapon-rule-tzeentch-added.weapon-rule-button {
+  color: #d5b7ff;
 }
 
 .weapon-rule {
@@ -531,6 +723,24 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-content: space-between;
+}
+
+.ability-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.cost-badge {
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: var(--panel);
+  white-space: nowrap;
 }
 
 .ability-name::-webkit-details-marker {

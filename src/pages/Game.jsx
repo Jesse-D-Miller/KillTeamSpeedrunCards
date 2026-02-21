@@ -35,6 +35,9 @@ const UNIT_COUNT_OVERRIDES = {
   'VOT-HKY': {
     'VOT-HKY-WAR': 3,
   },
+  'TAU-VESP': {
+    'TAU-VESP-WAR': 5,
+  },
 }
 
 const buildUnitCounts = (killteam, operatives) => {
@@ -115,7 +118,7 @@ const formatElapsed = (elapsedMs) => {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
-const SP_KILLTEAMS = new Set(['VOT-HKY'])
+const SP_KILLTEAMS = new Set(['VOT-HKY', 'TAU-VESP'])
 const WS_URL =
   import.meta.env.VITE_WS_URL ||
   `ws://${window.location.hostname}:8080`
@@ -175,6 +178,16 @@ const parseRules = (wrValue) => {
     .filter(Boolean)
 }
 
+const formatCostLabel = (item) => {
+  if (!item) return null
+  if (item.AP != null) return `${item.AP}AP`
+  if (item.CP != null) return `${item.CP}CP`
+  return null
+}
+
+const isLegionaryUnit = (opType) =>
+  /\bLEGIONARY\b/i.test(opType?.keywords ?? '')
+
 function Game() {
   const { killteamId } = useParams()
   const {
@@ -182,6 +195,8 @@ function Game() {
     selectedEquipmentByTeam,
     setSelectedUnits,
     setSelectedEquipment,
+    legionaryMarksByTeam,
+    setLegionaryMarks,
   } = useSelection()
   const [unitStates, setUnitStates] = useState({})
   const [deadUnits, setDeadUnits] = useState({})
@@ -189,6 +204,7 @@ function Game() {
   const [detailsOpenByUnit, setDetailsOpenByUnit] = useState({})
   const [stanceByUnit, setStanceByUnit] = useState({})
   const [statusesByUnit, setStatusesByUnit] = useState({})
+  const [aplAdjustByUnit, setAplAdjustByUnit] = useState({})
   const [timerStart, setTimerStart] = useState(null)
   const [timerNow, setTimerNow] = useState(Date.now())
   const [menuOpen, setMenuOpen] = useState(false)
@@ -209,6 +225,7 @@ function Game() {
   const socketRef = useRef(null)
   const syncStateRef = useRef(null)
   const hasHydratedRef = useRef(false)
+  const hydratedKillteamRef = useRef(null)
   const opponentStorageKey = useMemo(
     () => (roomCode && playerId ? `kt-opponent-${roomCode}-${playerId}` : null),
     [roomCode, playerId],
@@ -473,8 +490,12 @@ function Game() {
   const selectedEquipmentKeys = selectedEquipmentByTeam[killteamId] ?? []
   const selectedUnits = new Set(selectedUnitKeys)
   const selectedEquipmentIds = new Set(selectedEquipmentKeys)
-  const selectedEquipment = (killteam.equipments ?? []).filter((equipment) =>
-    selectedEquipmentIds.has(equipment.eqId),
+  const selectedEquipment = useMemo(
+    () =>
+      (killteam.equipments ?? []).filter((equipment) =>
+        selectedEquipmentIds.has(equipment.eqId),
+      ),
+    [killteam, selectedEquipmentIds],
   )
   const ploys = killteam.ploys ?? []
   const stratPloys = ploys.filter((ploy) => ploy.ployType === 'S')
@@ -507,6 +528,7 @@ function Game() {
       index,
     }))
     .filter((unit) => selectedUnits.has(unit.key))
+  const legionaryMarkByUnit = legionaryMarksByTeam[killteamId] ?? {}
   const isMultiplayer = Boolean(roomCode)
   const opponentRenderState = opponentSnapshot ?? opponentState
   const opponentKillteam = useMemo(() => {
@@ -568,9 +590,11 @@ function Game() {
 
   useEffect(() => {
     if (!storageKey || !killteamId) return
+    if (hydratedKillteamRef.current === killteamId) return
     const stored = localStorage.getItem(storageKey)
     if (!stored) {
       hasHydratedRef.current = true
+      hydratedKillteamRef.current = killteamId
       return
     }
     try {
@@ -581,6 +605,12 @@ function Game() {
       setDetailsOpenByUnit(parsed.detailsOpenByUnit ?? {})
       setStanceByUnit(parsed.stanceByUnit ?? {})
       setStatusesByUnit(parsed.statusesByUnit ?? {})
+      setAplAdjustByUnit(parsed.aplAdjustByUnit ?? {})
+      if (parsed.legionaryMarkByUnit && killteamId) {
+        setLegionaryMarks(killteamId, (current) =>
+          Object.keys(current).length ? current : parsed.legionaryMarkByUnit,
+        )
+      }
       if ((selectedUnitsByTeam[killteamId] ?? []).length === 0) {
         const storedUnits = parsed.selectedUnits ?? []
         if (storedUnits.length) {
@@ -597,14 +627,14 @@ function Game() {
       console.warn('Failed to load saved game state.', error)
     } finally {
       hasHydratedRef.current = true
+      hydratedKillteamRef.current = killteamId
     }
   }, [
     storageKey,
     killteamId,
-    selectedUnitsByTeam,
-    selectedEquipmentByTeam,
     setSelectedUnits,
     setSelectedEquipment,
+    setLegionaryMarks,
   ])
 
   useEffect(() => {
@@ -674,6 +704,33 @@ function Game() {
       })
       return hasChanges ? next : prev
     })
+
+    setAplAdjustByUnit((prev) => {
+      let hasChanges = false
+      const next = { ...prev }
+      visibleUnits.forEach((unit) => {
+        if (next[unit.key] == null) {
+          next[unit.key] = 0
+          hasChanges = true
+        }
+      })
+      return hasChanges ? next : prev
+    })
+
+    if (killteamId) {
+      setLegionaryMarks(killteamId, (current) => {
+        let hasChanges = false
+        const next = { ...current }
+        visibleUnits.forEach((unit) => {
+          if (!isLegionaryUnit(unit.opType)) return
+          if (!(unit.key in next)) {
+            next[unit.key] = null
+            hasChanges = true
+          }
+        })
+        return hasChanges ? next : current
+      })
+    }
   }, [killteamId, visibleUnits])
 
   useEffect(() => {
@@ -687,6 +744,8 @@ function Game() {
       detailsOpenByUnit,
       stanceByUnit,
       statusesByUnit,
+      aplAdjustByUnit,
+      legionaryMarkByUnit,
     }
     localStorage.setItem(storageKey, JSON.stringify(payload))
   }, [
@@ -699,6 +758,8 @@ function Game() {
     detailsOpenByUnit,
     stanceByUnit,
     statusesByUnit,
+    aplAdjustByUnit,
+    legionaryMarkByUnit,
   ])
 
   useEffect(() => {
@@ -713,6 +774,8 @@ function Game() {
       woundsByUnit,
       stanceByUnit,
       statusesByUnit,
+      aplAdjustByUnit,
+      legionaryMarkByUnit,
     }
   }, [
     playerName,
@@ -724,6 +787,8 @@ function Game() {
     woundsByUnit,
     stanceByUnit,
     statusesByUnit,
+    aplAdjustByUnit,
+    legionaryMarkByUnit,
   ])
 
   useEffect(() => {
@@ -746,6 +811,8 @@ function Game() {
         woundsByUnit,
         stanceByUnit,
         statusesByUnit,
+        aplAdjustByUnit,
+        legionaryMarkByUnit,
       },
     }
 
@@ -760,6 +827,8 @@ function Game() {
     wsReady,
     killteamId,
     selectedUnitKeys,
+    aplAdjustByUnit,
+    legionaryMarkByUnit,
     selectedEquipmentKeys,
     unitStates,
     deadUnits,
@@ -820,6 +889,20 @@ function Game() {
       })
       return next
     })
+    if (killteamId) {
+      setLegionaryMarks(killteamId, (prev) => {
+        let hasChanges = false
+        const next = { ...prev }
+        visibleUnits.forEach((unit) => {
+          if (!isLegionaryUnit(unit.opType)) return
+          if (next[unit.key] !== null) {
+            next[unit.key] = null
+            hasChanges = true
+          }
+        })
+        return hasChanges ? next : prev
+      })
+    }
   }
 
   return (
@@ -1065,7 +1148,14 @@ function Game() {
                   {stratPloys.map((ploy) => (
                     <details className="game-menu-ploy-item" key={ploy.ployId}>
                       <summary className="game-menu-ploy-name">
-                        {ploy.ployName}
+                        <span className="game-menu-ploy-title">
+                          {ploy.ployName}
+                        </span>
+                        {formatCostLabel(ploy) ? (
+                          <span className="cost-badge">
+                            {formatCostLabel(ploy)}
+                          </span>
+                        ) : null}
                       </summary>
                       <div className="game-menu-ploy-description">
                         {String(ploy.description ?? '')
@@ -1093,7 +1183,14 @@ function Game() {
                   {firefightPloys.map((ploy) => (
                     <details className="game-menu-ploy-item" key={ploy.ployId}>
                       <summary className="game-menu-ploy-name">
-                        {ploy.ployName}
+                        <span className="game-menu-ploy-title">
+                          {ploy.ployName}
+                        </span>
+                        {formatCostLabel(ploy) ? (
+                          <span className="cost-badge">
+                            {formatCostLabel(ploy)}
+                          </span>
+                        ) : null}
                       </summary>
                       <div className="game-menu-ploy-description">
                         {String(ploy.description ?? '')
@@ -1124,7 +1221,14 @@ function Game() {
                       key={rule.abilityId ?? rule.abilityName}
                     >
                       <summary className="game-menu-ploy-name">
-                        {rule.abilityName}
+                        <span className="game-menu-ploy-title">
+                          {rule.abilityName}
+                        </span>
+                        {formatCostLabel(rule) ? (
+                          <span className="cost-badge">
+                            {formatCostLabel(rule)}
+                          </span>
+                        ) : null}
                       </summary>
                       <div className="game-menu-ploy-description">
                         {String(rule.description ?? '')
@@ -1172,6 +1276,11 @@ function Game() {
                   woundsByUnit[key] == null ? safeMax : woundsByUnit[key]
                 const stance = stanceByUnit[key] ?? 'conceal'
                 const selectedStatuses = statusesByUnit[key] ?? []
+                const aplAdjustment = aplAdjustByUnit[key] ?? 0
+                const isLegionary = isLegionaryUnit(opType)
+                const legionaryMark = isLegionary
+                  ? legionaryMarkByUnit[key] ?? null
+                  : null
                 const rowStart = index - (index % 2)
                 const rowUnits = orderedUnits.slice(rowStart, rowStart + 2)
 
@@ -1203,6 +1312,23 @@ function Game() {
                         ...prev,
                         [key]: nextWounds,
                       }))
+                    }
+                    aplAdjustment={aplAdjustment}
+                    onAplAdjustChange={(nextValue) =>
+                      setAplAdjustByUnit((prev) => ({
+                        ...prev,
+                        [key]: nextValue,
+                      }))
+                    }
+                    legionaryMark={legionaryMark}
+                    onLegionaryMarkChange={
+                      isLegionary
+                        ? (nextValue) =>
+                            setLegionaryMarks(killteamId, (prev) => ({
+                              ...prev,
+                              [key]: nextValue,
+                            }))
+                        : undefined
                     }
                     stance={stance}
                     onStanceChange={(nextStance) =>
