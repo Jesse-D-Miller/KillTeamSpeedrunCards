@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getKillteamById } from '../data/ktData.js'
+import {
+  getKillteamById,
+  getRuleDescription,
+  getRuleSuggestions,
+  tokenizeWeaponRuleText,
+} from '../data/ktData.js'
 import { useSelection } from '../state/SelectionContext.jsx'
 import UnitCard from '../components/UnitCard.jsx'
 import './Game.css'
@@ -96,15 +101,142 @@ const buildUnitCounts = (killteam, operatives) => {
   return counts
 }
 
+const formatElapsed = (elapsedMs) => {
+  const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+const SP_KILLTEAMS = new Set(['VOT-HKY'])
+
+const parseEquipmentWeaponEffects = (effects) => {
+  if (!effects) return []
+  return String(effects)
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.startsWith('ADDWEP:'))
+    .map((entry, index) => {
+      const parts = entry.replace('ADDWEP:', '').split('|')
+      const [name, range, atk, hit, dmg, wr] = parts
+      return {
+        key: `${name ?? 'weapon'}-${index}`,
+        name: name?.trim() || 'Weapon',
+        range: range?.trim() || '',
+        ATK: atk?.trim() || '—',
+        HIT: hit?.trim() || '—',
+        DMG: dmg?.trim() || '—',
+        WR: wr?.trim() || '—',
+      }
+    })
+}
+
+const stripEquipmentTable = (description) => {
+  if (!description) return ''
+  const lines = String(description).split('\n')
+  let inTable = false
+  const result = []
+
+  lines.forEach((line) => {
+    if (line.includes('|**Name**|')) {
+      inTable = true
+      return
+    }
+
+    if (inTable) {
+      if (!line.trim().startsWith('|')) {
+        inTable = false
+      } else {
+        return
+      }
+    }
+
+    result.push(line)
+  })
+
+  return result.join('\n').trim()
+}
+
+const parseRules = (wrValue) => {
+  if (!wrValue || wrValue === '—') return []
+  return String(wrValue)
+    .split(',')
+    .map((rule) => rule.trim())
+    .filter(Boolean)
+}
+
 function Game() {
   const { killteamId } = useParams()
-  const { selectedUnitsByTeam } = useSelection()
+  const { selectedUnitsByTeam, selectedEquipmentByTeam } = useSelection()
   const [unitStates, setUnitStates] = useState({})
   const [deadUnits, setDeadUnits] = useState({})
+  const [woundsByUnit, setWoundsByUnit] = useState({})
+  const [detailsOpenByUnit, setDetailsOpenByUnit] = useState({})
+  const [timerStart, setTimerStart] = useState(null)
+  const [timerNow, setTimerNow] = useState(Date.now())
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [ruleModal, setRuleModal] = useState(null)
+  const [tpCount, setTpCount] = useState(1)
+  const [cpCount, setCpCount] = useState(0)
+  const [vpCount, setVpCount] = useState(0)
+  const [spCount, setSpCount] = useState(0)
+  const ruleDetails = useMemo(
+    () => (ruleModal ? getRuleDescription(ruleModal) : null),
+    [ruleModal],
+  )
+  const ruleSuggestions = useMemo(
+    () => (ruleModal && !ruleDetails ? getRuleSuggestions(ruleModal, 3) : []),
+    [ruleModal, ruleDetails],
+  )
+
+  const isRangeRule = (rule) => /^(Rng|Range)\b/i.test(rule)
+
+  const renderRuleText = (text, onRuleClick) =>
+    tokenizeWeaponRuleText(text).map((token, tokenIndex) =>
+      token.type === 'rule' && !isRangeRule(token.value) ? (
+        <button
+          key={`rule-token-${tokenIndex}`}
+          type="button"
+          className="weapon-rule weapon-rule-button"
+          onClick={() => onRuleClick(token.ruleName)}
+        >
+          {token.value}
+        </button>
+      ) : (
+        <span key={`rule-token-${tokenIndex}`}>{token.value}</span>
+      ),
+    )
   const killteam = useMemo(
     () => getKillteamById(killteamId),
     [killteamId],
   )
+  const storageKey = useMemo(
+    () => (killteamId ? `kt-game-${killteamId}` : null),
+    [killteamId],
+  )
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('kt-timer-start')
+      setTimerStart(stored ? Number.parseInt(stored, 10) : null)
+    } catch (error) {
+      console.warn('Failed to read timer start.', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!timerStart) return undefined
+    const interval = window.setInterval(() => {
+      setTimerNow(Date.now())
+    }, 1000)
+    return () => window.clearInterval(interval)
+  }, [timerStart])
 
   if (!killteam) {
     return (
@@ -133,6 +265,36 @@ function Game() {
   })
 
   const selectedUnits = new Set(selectedUnitsByTeam[killteamId] ?? [])
+  const selectedEquipmentIds = new Set(
+    selectedEquipmentByTeam[killteamId] ?? [],
+  )
+  const selectedEquipment = (killteam.equipments ?? []).filter((equipment) =>
+    selectedEquipmentIds.has(equipment.eqId),
+  )
+  const ploys = killteam.ploys ?? []
+  const stratPloys = ploys.filter((ploy) => ploy.ployType === 'S')
+  const firefightPloys = ploys.filter(
+    (ploy) => ploy.ployType === 'T' || ploy.ployType === 'F',
+  )
+  const factionRules = useMemo(() => {
+    const seen = new Set()
+    const rules = []
+    ;(killteam.opTypes ?? []).forEach((opType) => {
+      ;(opType.abilities ?? [])
+        .filter((ability) => ability.isFactionRule)
+        .forEach((ability) => {
+          const name = String(ability.abilityName ?? '').trim().toLowerCase()
+          const description = String(ability.description ?? '')
+            .trim()
+            .toLowerCase()
+          const key = `${name}::${description}`
+          if (!name || seen.has(key)) return
+          seen.add(key)
+          rules.push(ability)
+        })
+    })
+    return rules
+  }, [killteam])
   const visibleUnits = expandedUnits
     .map((unit, index) => ({
       ...unit,
@@ -142,17 +304,75 @@ function Game() {
     .filter((unit) => selectedUnits.has(unit.key))
 
   useEffect(() => {
+    if (!storageKey) return
+    const stored = localStorage.getItem(storageKey)
+    if (!stored) return
+    try {
+      const parsed = JSON.parse(stored)
+      setUnitStates(parsed.unitStates ?? {})
+      setDeadUnits(parsed.deadUnits ?? {})
+      setWoundsByUnit(parsed.woundsByUnit ?? {})
+      setDetailsOpenByUnit(parsed.detailsOpenByUnit ?? {})
+    } catch (error) {
+      console.warn('Failed to load saved game state.', error)
+    }
+  }, [storageKey])
+
+  useEffect(() => {
     if (!killteamId || visibleUnits.length === 0) return
+
     setUnitStates((prev) => {
+      let hasChanges = false
       const next = { ...prev }
       visibleUnits.forEach((unit) => {
         if (!next[unit.key]) {
           next[unit.key] = 'ready'
+          hasChanges = true
         }
       })
-      return next
+      return hasChanges ? next : prev
+    })
+
+    setWoundsByUnit((prev) => {
+      let hasChanges = false
+      const next = { ...prev }
+      visibleUnits.forEach((unit) => {
+        const maxWounds = Number.parseInt(unit.opType.WOUNDS, 10)
+        const safeMax = Number.isNaN(maxWounds) ? 0 : maxWounds
+        if (next[unit.key] == null) {
+          next[unit.key] = safeMax
+          hasChanges = true
+        } else if (next[unit.key] > safeMax) {
+          next[unit.key] = safeMax
+          hasChanges = true
+        }
+      })
+      return hasChanges ? next : prev
+    })
+
+    setDetailsOpenByUnit((prev) => {
+      let hasChanges = false
+      const next = { ...prev }
+      visibleUnits.forEach((unit) => {
+        if (next[unit.key] == null) {
+          next[unit.key] = false
+          hasChanges = true
+        }
+      })
+      return hasChanges ? next : prev
     })
   }, [killteamId, visibleUnits])
+
+  useEffect(() => {
+    if (!storageKey) return
+    const payload = {
+      unitStates,
+      deadUnits,
+      woundsByUnit,
+      detailsOpenByUnit,
+    }
+    localStorage.setItem(storageKey, JSON.stringify(payload))
+  }, [storageKey, unitStates, deadUnits, woundsByUnit, detailsOpenByUnit])
 
   const orderedUnits = useMemo(() => {
     return [...visibleUnits].sort((a, b) => {
@@ -211,37 +431,355 @@ function Game() {
   return (
     <div className="app-shell">
       <header className="game-nav">
-        <div className="game-nav-brand">
-          <div className="game-nav-title">Kill Team Speedrun</div>
-          <div className="game-nav-subtitle">{killteam.killteamName}</div>
+        <div className="game-nav-left">
+          <div className="game-nav-menu">
+            <button
+              className="game-menu-button"
+              type="button"
+              aria-label="Open game menu"
+              aria-expanded={menuOpen}
+              aria-controls="game-menu-drawer"
+              onClick={() => setMenuOpen((prev) => !prev)}
+            >
+              <span className="game-menu-bar" />
+              <span className="game-menu-bar" />
+              <span className="game-menu-bar" />
+            </button>
+          </div>
+          {timerStart ? (
+            <div className="game-nav-timer">
+              <span>{formatElapsed(timerNow - timerStart)}</span>
+            </div>
+          ) : null}
+        </div>
+        <div className="game-nav-stats">
+          <div className="game-nav-stat">
+            <div className="game-nav-stat-controls">
+              <span className="game-nav-stat-label">TP</span>
+              <button
+                type="button"
+                className="game-nav-stat-button"
+                onClick={() => setTpCount((prev) => Math.max(1, prev - 1))}
+                aria-label="Decrease turning point"
+              >
+                −
+              </button>
+              <span className="game-nav-stat-value">{tpCount}</span>
+              <button
+                type="button"
+                className="game-nav-stat-button"
+                onClick={() => setTpCount((prev) => prev + 1)}
+                aria-label="Increase turning point"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div className="game-nav-stat">
+            <div className="game-nav-stat-controls">
+              <span className="game-nav-stat-label">CP</span>
+              <button
+                type="button"
+                className="game-nav-stat-button"
+                onClick={() => setCpCount((prev) => Math.max(0, prev - 1))}
+                aria-label="Decrease command points"
+              >
+                −
+              </button>
+              <span className="game-nav-stat-value">{cpCount}</span>
+              <button
+                type="button"
+                className="game-nav-stat-button"
+                onClick={() => setCpCount((prev) => prev + 1)}
+                aria-label="Increase command points"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div className="game-nav-stat">
+            <div className="game-nav-stat-controls">
+              <span className="game-nav-stat-label">VP</span>
+              <button
+                type="button"
+                className="game-nav-stat-button"
+                onClick={() => setVpCount((prev) => Math.max(0, prev - 1))}
+                aria-label="Decrease victory points"
+              >
+                −
+              </button>
+              <span className="game-nav-stat-value">{vpCount}</span>
+              <button
+                type="button"
+                className="game-nav-stat-button"
+                onClick={() => setVpCount((prev) => prev + 1)}
+                aria-label="Increase victory points"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          {SP_KILLTEAMS.has(killteamId) ? (
+            <div className="game-nav-stat">
+              <div className="game-nav-stat-controls">
+                <span className="game-nav-stat-label">SP</span>
+                <button
+                  type="button"
+                  className="game-nav-stat-button"
+                  onClick={() => setSpCount((prev) => Math.max(0, prev - 1))}
+                  aria-label="Decrease special points"
+                >
+                  −
+                </button>
+                <span className="game-nav-stat-value">{spCount}</span>
+                <button
+                  type="button"
+                  className="game-nav-stat-button"
+                  onClick={() => setSpCount((prev) => prev + 1)}
+                  aria-label="Increase special points"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
         <nav className="game-nav-links">
-          <Link className="ghost-link" to={`/select-army/${killteamId}/units`}>
-            Edit units
-          </Link>
-          <Link className="ghost-link" to="/select-army">
-            Change army
-          </Link>
           <button className="ghost-link" type="button" onClick={resetStates}>
             Reset
           </button>
         </nav>
       </header>
+      <div
+        className={`game-menu-backdrop${menuOpen ? ' open' : ''}`}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden={!menuOpen}
+      />
+      <aside
+        id="game-menu-drawer"
+        className={`game-menu-drawer${menuOpen ? ' open' : ''}`}
+        aria-hidden={!menuOpen}
+      >
+        <div className="game-menu-panel">
+          <details className="game-menu-group">
+            <summary className="game-menu-summary">Equipment</summary>
+            <div className="game-menu-content">
+              {selectedEquipment.length ? (
+                <div className="game-menu-equipment">
+                  {selectedEquipment.map((equipment) => {
+                    const weaponRows = parseEquipmentWeaponEffects(
+                      equipment.effects,
+                    )
+                    const descriptionText = weaponRows.length
+                      ? stripEquipmentTable(equipment.description)
+                      : equipment.description
+
+                    return (
+                      <details
+                        className="game-menu-equipment-item"
+                        key={equipment.eqId}
+                      >
+                        <summary className="game-menu-equipment-name">
+                          {equipment.eqName}
+                        </summary>
+                        <div className="game-menu-equipment-rule">
+                          {weaponRows.length ? (
+                            <div className="game-weapon-table game-menu-weapon-table">
+                              <div className="game-weapon-row game-weapon-header">
+                                <span>NAME</span>
+                                <span>ATK</span>
+                                <span>HIT</span>
+                                <span>DMG</span>
+                                <span>WR</span>
+                              </div>
+                              {weaponRows.map((row) => (
+                                <div className="game-weapon-row" key={row.key}>
+                                  <span className="weapon-name">{row.name}</span>
+                                  <span>{row.ATK}</span>
+                                  <span>{row.HIT}</span>
+                                  <span>{row.DMG}</span>
+                                  <span className="weapon-rules">
+                                    {parseRules(row.WR).map((rule, index) =>
+                                      isRangeRule(rule) ? (
+                                        <span
+                                          className="weapon-rule"
+                                          key={`${row.key}-rule-${index}`}
+                                        >
+                                          {rule}
+                                        </span>
+                                      ) : (
+                                        <button
+                                          key={`${row.key}-rule-${index}`}
+                                          type="button"
+                                          className="weapon-rule weapon-rule-button"
+                                          onClick={() => setRuleModal(rule)}
+                                        >
+                                          {rule}
+                                        </button>
+                                      ),
+                                    )}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                          {descriptionText ? (
+                            <div className="game-menu-equipment-text">
+                              {descriptionText.split('\n').map((line, lineIndex, lines) => (
+                                <span key={`${equipment.eqId}-line-${lineIndex}`}>
+                                  {renderRuleText(line, setRuleModal)}
+                                  {lineIndex < lines.length - 1 ? <br /> : null}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      </details>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="game-menu-empty">No equipment selected.</div>
+              )}
+            </div>
+          </details>
+          <details className="game-menu-group">
+            <summary className="game-menu-summary">Tac Ops</summary>
+            <div className="game-menu-content">Tac Ops panel</div>
+          </details>
+          <details className="game-menu-group">
+            <summary className="game-menu-summary">Strat Ploys</summary>
+            <div className="game-menu-content">
+              {stratPloys.length ? (
+                <div className="game-menu-ploys">
+                  {stratPloys.map((ploy) => (
+                    <details className="game-menu-ploy-item" key={ploy.ployId}>
+                      <summary className="game-menu-ploy-name">
+                        {ploy.ployName}
+                      </summary>
+                      <div className="game-menu-ploy-description">
+                        {String(ploy.description ?? '')
+                          .split('\n')
+                          .map((line, lineIndex, lines) => (
+                            <span key={`${ploy.ployId}-line-${lineIndex}`}>
+                              {renderRuleText(line, setRuleModal)}
+                              {lineIndex < lines.length - 1 ? <br /> : null}
+                            </span>
+                          ))}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              ) : (
+                <div className="game-menu-empty">No strat ploys available.</div>
+              )}
+            </div>
+          </details>
+          <details className="game-menu-group">
+            <summary className="game-menu-summary">Firefight Ploys</summary>
+            <div className="game-menu-content">
+              {firefightPloys.length ? (
+                <div className="game-menu-ploys">
+                  {firefightPloys.map((ploy) => (
+                    <details className="game-menu-ploy-item" key={ploy.ployId}>
+                      <summary className="game-menu-ploy-name">
+                        {ploy.ployName}
+                      </summary>
+                      <div className="game-menu-ploy-description">
+                        {String(ploy.description ?? '')
+                          .split('\n')
+                          .map((line, lineIndex, lines) => (
+                            <span key={`${ploy.ployId}-line-${lineIndex}`}>
+                              {renderRuleText(line, setRuleModal)}
+                              {lineIndex < lines.length - 1 ? <br /> : null}
+                            </span>
+                          ))}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              ) : (
+                <div className="game-menu-empty">No firefight ploys available.</div>
+              )}
+            </div>
+          </details>
+          <details className="game-menu-group">
+            <summary className="game-menu-summary">Faction Rules</summary>
+            <div className="game-menu-content">
+              {factionRules.length ? (
+                <div className="game-menu-ploys">
+                  {factionRules.map((rule) => (
+                    <details
+                      className="game-menu-ploy-item"
+                      key={rule.abilityId ?? rule.abilityName}
+                    >
+                      <summary className="game-menu-ploy-name">
+                        {rule.abilityName}
+                      </summary>
+                      <div className="game-menu-ploy-description">
+                        {String(rule.description ?? '')
+                          .split('\n')
+                          .map((line, lineIndex, lines) => (
+                            <span key={`${rule.abilityId ?? rule.abilityName}-line-${lineIndex}`}>
+                              {renderRuleText(line, setRuleModal)}
+                              {lineIndex < lines.length - 1 ? <br /> : null}
+                            </span>
+                          ))}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              ) : (
+                <div className="game-menu-empty">No faction rules available.</div>
+              )}
+            </div>
+          </details>
+        </div>
+      </aside>
       <main className="app-content">
         <section className="page game-page">
           <div className="game-grid">
             {orderedUnits.length ? (
-              orderedUnits.map(({ opType, instance, instanceCount, key }) => (
-                <UnitCard
-                  key={key}
-                  opType={opType}
-                  instance={instance}
-                  instanceCount={instanceCount}
-                  state={unitStates[key] ?? 'ready'}
-                  onCycleState={() => cycleState(key)}
-                  onDeadChange={(isDead) => setDeadState(key, isDead)}
-                />
-              ))
+              orderedUnits.map(({ opType, instance, instanceCount, key }, index) => {
+                const maxWounds = Number.parseInt(opType.WOUNDS, 10)
+                const safeMax = Number.isNaN(maxWounds) ? 0 : maxWounds
+                const currentWounds =
+                  woundsByUnit[key] == null ? safeMax : woundsByUnit[key]
+                const rowStart = index - (index % 2)
+                const rowUnits = orderedUnits.slice(rowStart, rowStart + 2)
+
+                return (
+                  <UnitCard
+                    key={key}
+                    opType={opType}
+                    instance={instance}
+                    instanceCount={instanceCount}
+                    currentWounds={currentWounds}
+                    detailsOpen={detailsOpenByUnit[key] ?? false}
+                    state={unitStates[key] ?? 'ready'}
+                    onCycleState={() => cycleState(key)}
+                    onDeadChange={(isDead) => setDeadState(key, isDead)}
+                    onToggleDetails={() => {
+                      const nextOpen = !(detailsOpenByUnit[key] ?? false)
+                      setDetailsOpenByUnit((prev) => {
+                        const next = { ...prev }
+                        rowUnits.forEach((unit) => {
+                          if (unit?.key) {
+                            next[unit.key] = nextOpen
+                          }
+                        })
+                        return next
+                      })
+                    }}
+                    onWoundsChange={(nextWounds) =>
+                      setWoundsByUnit((prev) => ({
+                        ...prev,
+                        [key]: nextWounds,
+                      }))
+                    }
+                  />
+                )
+              })
              ) : (
                <div className="empty-state">
                  No units selected yet. Choose units to start the game.
@@ -250,6 +788,47 @@ function Game() {
            </div>
          </section>
        </main>
+      {ruleModal ? (
+        <div className="rule-modal" role="dialog" aria-modal="true">
+          <div
+            className="rule-modal-backdrop"
+            onClick={() => setRuleModal(null)}
+          />
+          <div className="rule-modal-content">
+            <div className="rule-modal-header">
+              <h3>{ruleDetails?.name ?? ruleModal}</h3>
+              <button
+                type="button"
+                className="rule-modal-close"
+                onClick={() => setRuleModal(null)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="rule-modal-body">
+              {ruleDetails?.description ? (
+                ruleDetails.description
+              ) : (
+                <>
+                  <p>Rule details were not found in the data.</p>
+                  {ruleSuggestions.length ? (
+                    <div className="rule-modal-suggestions">
+                      <div className="rule-modal-suggestions-title">
+                        Possible matches
+                      </div>
+                      <ul>
+                        {ruleSuggestions.map((name) => (
+                          <li key={name}>{name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
      </div>
    )
 }

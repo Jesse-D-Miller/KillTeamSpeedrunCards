@@ -1,0 +1,11 @@
+{
+  "statusEffects": [
+    {
+      "id": "stunned",
+      "name": "Stunned",
+      "description": "APL -1 while active.",
+      "aplDelta": -1,
+      "color": "warning"
+    }
+  ]
+}

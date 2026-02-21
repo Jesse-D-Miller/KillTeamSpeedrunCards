@@ -1,6 +1,6 @@
 .app-shell {
   min-height: 100vh;
-  padding: 20px 24px 28px;
+  padding: 0 24px 28px;
   display: flex;
   flex-direction: column;
   gap: 32px;
