@@ -5,6 +5,7 @@ import {
   tokenizeWeaponRuleText,
 } from '../data/ktData'
 import statusEffectsData from '../data/statusEffects.json'
+import './UnitCard.css'
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 const parseLeadingNumber = (value) => {
@@ -42,6 +43,11 @@ function UnitCard({
   onDeadChange,
   onToggleDetails,
   onWoundsChange,
+  stance = 'conceal',
+  onStanceChange,
+  selectedStatuses = [],
+  onStatusChange,
+  readOnly = false,
 }) {
   const maxWounds = useMemo(() => {
     const parsed = Number.parseInt(opType.WOUNDS, 10)
@@ -50,8 +56,6 @@ function UnitCard({
   const [ruleModal, setRuleModal] = useState(null)
   const [statusModalOpen, setStatusModalOpen] = useState(false)
   const [statusDetail, setStatusDetail] = useState(null)
-  const [selectedStatuses, setSelectedStatuses] = useState([])
-  const [stance, setStance] = useState('conceal')
   const onDeadChangeRef = useRef(onDeadChange)
   const ruleDetails = useMemo(
     () => (ruleModal ? getRuleDescription(ruleModal) : null),
@@ -149,12 +153,14 @@ function UnitCard({
   const showRightDivider = Boolean(injuredStatus) && selectedStatusEffects.length > 0
 
   const toggleStatus = (status) => {
-    setSelectedStatuses((prev) =>
-      prev.includes(status)
-        ? prev.filter((item) => item !== status)
-        : [...prev, status],
-    )
+    if (!onStatusChange) return
+    const next = selectedStatuses.includes(status)
+      ? selectedStatuses.filter((item) => item !== status)
+      : [...selectedStatuses, status]
+    onStatusChange(next)
   }
+  const isDetailsOpen = Boolean(detailsOpen)
+  const canToggleDetails = Boolean(onToggleDetails)
   return (
     <article
       className={`game-card stance-${stance}${
@@ -163,14 +169,18 @@ function UnitCard({
     >
       <div className="game-card-header">
         <div className="game-card-title">
-          <button
-            className="game-card-name"
-            type="button"
-            onClick={onToggleDetails}
-            aria-expanded={detailsOpen}
-          >
-            {opType.opTypeName}
-          </button>
+          {canToggleDetails ? (
+            <button
+              className="game-card-name"
+              type="button"
+              onClick={onToggleDetails}
+              aria-expanded={isDetailsOpen}
+            >
+              {opType.opTypeName}
+            </button>
+          ) : (
+            <span className="game-card-name">{opType.opTypeName}</span>
+          )}
           {instance ? (
             <span className="game-card-slot">
               {instance}/{instanceCount}
@@ -178,17 +188,23 @@ function UnitCard({
           ) : null}
         </div>
         <div className="game-card-header-stats">
-          <button
-            className={`state-pill state-${isDead ? 'dead' : state}`}
-            type="button"
-            onClick={isDead ? undefined : onCycleState}
-            aria-label={`Set ${opType.opTypeName} to ${
-              isDead ? 'dead' : state
-            }`}
-            disabled={isDead}
-          >
-            {isDead ? 'dead' : state}
-          </button>
+          {readOnly ? (
+            <span className={`state-pill state-${isDead ? 'dead' : state}`}>
+              {isDead ? 'dead' : state}
+            </span>
+          ) : (
+            <button
+              className={`state-pill state-${isDead ? 'dead' : state}`}
+              type="button"
+              onClick={isDead ? undefined : onCycleState}
+              aria-label={`Set ${opType.opTypeName} to ${
+                isDead ? 'dead' : state
+              }`}
+              disabled={isDead}
+            >
+              {isDead ? 'dead' : state}
+            </button>
+          )}
           <div className="game-stat-pill">
             <span className="game-stat-label">MV</span>
             <span
@@ -219,20 +235,24 @@ function UnitCard({
         <div
           className="health-bar"
           style={{ '--segments': Math.max(maxWounds, 1) }}
-          role="button"
-          tabIndex={0}
-          aria-label="Adjust wounds"
-          onClick={handleBarClick}
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
-              event.preventDefault()
-              setWounds(currentWounds + 1)
-            }
-            if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
-              event.preventDefault()
-              setWounds(currentWounds - 1)
-            }
-          }}
+          role={readOnly ? undefined : 'button'}
+          tabIndex={readOnly ? undefined : 0}
+          aria-label={readOnly ? undefined : 'Adjust wounds'}
+          onClick={readOnly ? undefined : handleBarClick}
+          onKeyDown={
+            readOnly
+              ? undefined
+              : (event) => {
+                  if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+                    event.preventDefault()
+                    setWounds(currentWounds + 1)
+                  }
+                  if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+                    event.preventDefault()
+                    setWounds(currentWounds - 1)
+                  }
+                }
+          }
         >
           <div
             className={`health-bar-fill${isCritical ? ' critical' : ''}`}
@@ -240,7 +260,7 @@ function UnitCard({
           />
         </div>
       </div>
-      <div className={`game-card-details${detailsOpen ? ' open' : ''}`}>
+      <div className={`game-card-details${isDetailsOpen ? ' open' : ''}`}>
         <div className="game-weapon-table">
           <div className="game-weapon-row game-weapon-header">
             <span>NAME</span>
@@ -319,16 +339,22 @@ function UnitCard({
         </div>
       </div>
       <div className="game-card-status">
-        <button
-          type="button"
-          className={`stance-pill stance-${stance}`}
-          onClick={() =>
-            setStance((prev) => (prev === 'engage' ? 'conceal' : 'engage'))
-          }
-          aria-label={`Set stance to ${stance === 'engage' ? 'conceal' : 'engage'}`}
-        >
-          {stance}
-        </button>
+        {readOnly ? (
+          <span className={`stance-pill stance-${stance}`}>{stance}</span>
+        ) : (
+          <button
+            type="button"
+            className={`stance-pill stance-${stance}`}
+            onClick={() =>
+              onStanceChange?.(stance === 'engage' ? 'conceal' : 'engage')
+            }
+            aria-label={`Set stance to ${
+              stance === 'engage' ? 'conceal' : 'engage'
+            }`}
+          >
+            {stance}
+          </button>
+        )}
         <div className="status-pill-list">
           {showLeftDivider ? (
             <span className="status-divider" aria-hidden="true">
@@ -336,15 +362,21 @@ function UnitCard({
             </span>
           ) : null}
           {injuredStatus ? (
-            <button
-              type="button"
-              className="status-pill injured"
-              key={injuredStatus.id}
-              onClick={() => setStatusDetail(injuredStatus)}
-              aria-label={`View ${injuredStatus.name} details`}
-            >
-              {injuredStatus.name}
-            </button>
+            readOnly ? (
+              <span className="status-pill injured" key={injuredStatus.id}>
+                {injuredStatus.name}
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="status-pill injured"
+                key={injuredStatus.id}
+                onClick={() => setStatusDetail(injuredStatus)}
+                aria-label={`View ${injuredStatus.name} details`}
+              >
+                {injuredStatus.name}
+              </button>
+            )
           ) : null}
           {showRightDivider ? (
             <span className="status-divider" aria-hidden="true">
@@ -352,29 +384,48 @@ function UnitCard({
             </span>
           ) : null}
           {selectedStatusEffects.map((status) => (
-            <button
-              type="button"
-              className={`status-pill${status.color === 'error'
-                ? ' status-error'
-                : status.color === 'warning'
-                  ? ' status-warning'
-                  : ''}`}
-              key={status.id}
-              onClick={() => setStatusDetail(status)}
-              aria-label={`View ${status.name} details`}
-            >
-              {status.name}
-            </button>
+            readOnly ? (
+              <span
+                className={`status-pill${
+                  status.color === 'error'
+                    ? ' status-error'
+                    : status.color === 'warning'
+                      ? ' status-warning'
+                      : ''
+                }`}
+                key={status.id}
+              >
+                {status.name}
+              </span>
+            ) : (
+              <button
+                type="button"
+                className={`status-pill${
+                  status.color === 'error'
+                    ? ' status-error'
+                    : status.color === 'warning'
+                      ? ' status-warning'
+                      : ''
+                }`}
+                key={status.id}
+                onClick={() => setStatusDetail(status)}
+                aria-label={`View ${status.name} details`}
+              >
+                {status.name}
+              </button>
+            )
           ))}
         </div>
-        <button
-          type="button"
-          className="status-add-button"
-          aria-label="Add status effect"
-          onClick={() => setStatusModalOpen(true)}
-        >
-          +
-        </button>
+        {readOnly ? null : (
+          <button
+            type="button"
+            className="status-add-button"
+            aria-label="Add status effect"
+            onClick={() => setStatusModalOpen(true)}
+          >
+            +
+          </button>
+        )}
       </div>
       {ruleModal ? (
         <div className="rule-modal" role="dialog" aria-modal="true">
@@ -417,7 +468,7 @@ function UnitCard({
           </div>
         </div>
       ) : null}
-      {statusModalOpen ? (
+      {!readOnly && statusModalOpen ? (
         <div className="status-modal" role="dialog" aria-modal="true">
           <div
             className="status-modal-backdrop"
@@ -454,7 +505,7 @@ function UnitCard({
           </div>
         </div>
       ) : null}
-      {statusDetail ? (
+      {!readOnly && statusDetail ? (
         <div className="status-modal" role="dialog" aria-modal="true">
           <div
             className="status-modal-backdrop"

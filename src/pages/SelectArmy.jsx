@@ -58,11 +58,11 @@ function SelectArmy() {
             {filteredKillteams.map((team) => {
               const statusClass =
                 team.killteamId === 'VOT-HKY'
-                  ? 'status-dot status-dot--yellow'
+                  ? 'status-dot status-dot--green'
                   : 'status-dot status-dot--red'
               const statusLabel =
                 team.killteamId === 'VOT-HKY'
-                  ? 'Army in progress'
+                  ? 'Army ready'
                   : 'Army not started'
 
               return (

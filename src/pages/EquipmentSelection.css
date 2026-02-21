@@ -132,6 +132,13 @@
   box-shadow: var(--shadow-soft);
 }
 
+.equipment-start-hint {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 @media (max-width: 1400px) {
   .equipment-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));

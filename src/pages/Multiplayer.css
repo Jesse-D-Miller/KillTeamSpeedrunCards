@@ -1,0 +1,160 @@
+.multiplayer {
+  align-items: center;
+  text-align: center;
+  padding-top: 48px;
+}
+
+.multiplayer-header {
+  max-width: 48ch;
+}
+
+.multiplayer-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.multiplayer-actions .primary-link,
+.multiplayer-actions .ghost-link {
+  min-width: 180px;
+  padding: 14px 22px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.multiplayer-actions .primary-link:disabled,
+.multiplayer-actions .ghost-link:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.multiplayer-form,
+.multiplayer-lobby {
+  width: min(520px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 20px;
+}
+
+.multiplayer-field {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.multiplayer-field label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.multiplayer-field input {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.multiplayer-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.multiplayer-room {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  display: grid;
+  gap: 6px;
+}
+
+.room-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.room-code {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.room-hint {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.multiplayer-players {
+  display: grid;
+  gap: 12px;
+}
+
+.player-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.player-host {
+  border-color: color-mix(in srgb, var(--accent) 65%, var(--border));
+}
+
+.player-name {
+  margin: 0;
+  font-weight: 600;
+}
+
+.player-role {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.player-status {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.player-status.ready {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  border-color: color-mix(in srgb, var(--success) 40%, var(--border));
+  color: var(--success);
+}
+
+.player-status.waiting {
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  border-color: color-mix(in srgb, var(--warning) 40%, var(--border));
+  color: var(--warning);
+}
+
+.room-footer {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.multiplayer-error {
+  color: var(--error);
+  margin: 0;
+}
+
+.multiplayer-status {
+  color: var(--text-muted);
+  margin: 0;
+}

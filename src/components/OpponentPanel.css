@@ -1,0 +1,100 @@
+.opponent-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 7, 9, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+  z-index: 22;
+}
+
+.opponent-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.opponent-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 100vw;
+  max-width: 100vw;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  padding: calc(20px + env(safe-area-inset-top))
+    calc(22px + env(safe-area-inset-right))
+    calc(20px + env(safe-area-inset-bottom))
+    calc(22px + env(safe-area-inset-left));
+  transform: translateX(100%);
+  transition: transform 220ms ease;
+  z-index: 23;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.opponent-panel.open {
+  transform: translateX(0);
+}
+
+.opponent-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.opponent-panel-actions {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.opponent-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.opponent-refresh-note {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.opponent-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.7rem;
+  color: var(--accent-soft);
+  margin: 0 0 6px;
+}
+
+.opponent-subtitle {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+}
+
+.opponent-panel-body {
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.opponent-grid {
+  grid-template-columns: 1fr;
+}
+
+.opponent-debug {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  background: var(--panel-2);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  display: grid;
+  gap: 4px;
+}

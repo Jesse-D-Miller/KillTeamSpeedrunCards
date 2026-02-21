@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getKillteamById } from '../data/ktData.js'
 import { useSelection } from '../state/SelectionContext.jsx'
 import './UnitSelection.css'
+
+const WS_URL =
+  import.meta.env.VITE_WS_URL ||
+  `ws://${window.location.hostname}:8080`
 
 const normalizeText = (value) =>
   value
@@ -99,6 +103,11 @@ function UnitSelection() {
   const { killteamId } = useParams()
   const { selectedUnitsByTeam, setSelectedUnits } = useSelection()
   const didInitRef = useRef(new Set())
+  const socketRef = useRef(null)
+  const [roomCode, setRoomCode] = useState('')
+  const [playerName, setPlayerName] = useState('')
+  const [playerId, setPlayerId] = useState('')
+  const [wsReady, setWsReady] = useState(false)
   const killteam = useMemo(
     () => getKillteamById(killteamId),
     [killteamId],
@@ -131,7 +140,99 @@ function UnitSelection() {
   })
 
   useEffect(() => {
+    try {
+      const storedCode =
+        sessionStorage.getItem('kt-room-code') ||
+        localStorage.getItem('kt-room-code') ||
+        ''
+      const storedName =
+        sessionStorage.getItem('kt-player-name') ||
+        localStorage.getItem('kt-player-name') ||
+        ''
+      const storedId = sessionStorage.getItem('kt-player-id') || ''
+      setRoomCode(storedCode)
+      setPlayerName(storedName)
+      setPlayerId(storedId)
+    } catch (error) {
+      console.warn('Failed to read multiplayer metadata.', error)
+    }
+  }, [])
+
+  const selectedUnits = new Set(selectedUnitsByTeam[killteamId] ?? [])
+
+  const sendSyncState = () => {
+    const socket = socketRef.current
+    if (!socket || socket.readyState !== WebSocket.OPEN) return
+    socket.send(
+      JSON.stringify({
+        type: 'sync_state',
+        code: roomCode,
+        playerId,
+        state: {
+          name: playerName || 'Player',
+          killteamId,
+          selectedUnits: Array.from(selectedUnits),
+          selectedEquipment: [],
+          unitStates: {},
+          deadUnits: {},
+          woundsByUnit: {},
+          stanceByUnit: {},
+          statusesByUnit: {},
+        },
+      }),
+    )
+  }
+
+  useEffect(() => {
+    if (!roomCode || (!playerName && !playerId)) return undefined
+    const socket = new WebSocket(WS_URL)
+    socketRef.current = socket
+    setWsReady(false)
+
+    const handleMessage = (event) => {
+      const message = JSON.parse(event.data)
+      if (message.type === 'sync_ready') {
+        setWsReady(true)
+        return
+      }
+      if (message.type === 'request_sync_state') {
+        sendSyncState()
+      }
+    }
+
+    socket.addEventListener('open', () => {
+      const syncName = playerName || 'Player'
+      socket.send(
+        JSON.stringify({
+          type: 'sync_init',
+          code: roomCode,
+          name: syncName,
+          playerId,
+        }),
+      )
+    })
+    socket.addEventListener('message', handleMessage)
+    socket.addEventListener('close', () => {
+      setWsReady(false)
+    })
+
+    return () => {
+      socket.removeEventListener('message', handleMessage)
+      socket.close()
+    }
+  }, [roomCode, playerName, playerId])
+
+  useEffect(() => {
+    if (!wsReady) return
+    sendSyncState()
+  }, [wsReady, killteamId, selectedUnitsByTeam])
+
+  useEffect(() => {
     if (!killteamId || didInitRef.current.has(killteamId)) return
+    if (selectedUnitsByTeam[killteamId]?.length) {
+      didInitRef.current.add(killteamId)
+      return
+    }
     if (killteamId === 'VOT-HKY') {
       const allUnitKeys = expandedUnits.map(
         ({ opType, instance }) => `${opType.opTypeId}-${instance ?? 0}`,
@@ -141,9 +242,7 @@ function UnitSelection() {
       setSelectedUnits(killteamId, [])
     }
     didInitRef.current.add(killteamId)
-  }, [killteamId, expandedUnits, setSelectedUnits])
-
-  const selectedUnits = new Set(selectedUnitsByTeam[killteamId] ?? [])
+  }, [killteamId, expandedUnits, setSelectedUnits, selectedUnitsByTeam])
 
   return (
     <div className="app-shell">

@@ -4,16 +4,83 @@ import { getKillteamById } from '../data/ktData.js'
 import { useSelection } from '../state/SelectionContext.jsx'
 import './EquipmentSelection.css'
 
+const WS_URL =
+  import.meta.env.VITE_WS_URL ||
+  `ws://${window.location.hostname}:8080`
+
 function EquipmentSelection() {
   const { killteamId } = useParams()
-  const { selectedEquipmentByTeam, setSelectedEquipment } = useSelection()
+  const {
+    selectedEquipmentByTeam,
+    selectedUnitsByTeam,
+    setSelectedEquipment,
+  } = useSelection()
   const [expandedEquipment, setExpandedEquipment] = useState(() => new Set())
   const didInitRef = useRef(new Set())
   const navigate = useNavigate()
+  const socketRef = useRef(null)
+  const [roomCode, setRoomCode] = useState('')
+  const [playerName, setPlayerName] = useState('')
+  const [playerId, setPlayerId] = useState('')
+  const [isMultiplayer, setIsMultiplayer] = useState(false)
   const killteam = useMemo(
     () => getKillteamById(killteamId),
     [killteamId],
   )
+
+  useEffect(() => {
+    try {
+      const storedCode =
+        sessionStorage.getItem('kt-room-code') ||
+        localStorage.getItem('kt-room-code') ||
+        ''
+      const storedName =
+        sessionStorage.getItem('kt-player-name') ||
+        localStorage.getItem('kt-player-name') ||
+        ''
+      const storedId = sessionStorage.getItem('kt-player-id') || ''
+      setRoomCode(storedCode)
+      setPlayerName(storedName)
+      setPlayerId(storedId)
+      setIsMultiplayer(Boolean(storedCode))
+    } catch (error) {
+      console.warn('Failed to read multiplayer metadata.', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!roomCode || (!playerName && !playerId)) return undefined
+    const socket = new WebSocket(WS_URL)
+    socketRef.current = socket
+
+    const handleMessage = (event) => {
+      const message = JSON.parse(event.data)
+      if (message.type === 'sync_ready') {
+        // Ready for sync; no selection lock.
+      }
+      if (message.type === 'request_sync_state') {
+        sendSyncState()
+      }
+    }
+
+    socket.addEventListener('open', () => {
+      const syncName = playerName || 'Player'
+      socket.send(
+        JSON.stringify({
+          type: 'sync_init',
+          code: roomCode,
+          name: syncName,
+          playerId,
+        }),
+      )
+    })
+    socket.addEventListener('message', handleMessage)
+
+    return () => {
+      socket.removeEventListener('message', handleMessage)
+      socket.close()
+    }
+  }, [roomCode, playerName, playerId, killteamId, navigate])
 
   if (!killteam) {
     return (
@@ -48,16 +115,26 @@ function EquipmentSelection() {
 
   useEffect(() => {
     if (!killteamId || didInitRef.current.has(killteamId)) return
+    if (selectedEquipmentByTeam[killteamId]?.length) {
+      didInitRef.current.add(killteamId)
+      return
+    }
     const defaultSelected = new Set(
       factionEquipment.map((equipment) => equipment.eqId),
     )
     setSelectedEquipment(killteamId, defaultSelected)
     didInitRef.current.add(killteamId)
-  }, [killteamId, factionEquipment, setSelectedEquipment])
+  }, [
+    killteamId,
+    factionEquipment,
+    selectedEquipmentByTeam,
+    setSelectedEquipment,
+  ])
 
   const selectedEquipment = new Set(
     selectedEquipmentByTeam[killteamId] ?? [],
   )
+  const selectedUnits = selectedUnitsByTeam[killteamId] ?? []
 
   const toggleEquipment = (eqId) => {
     const next = new Set(selectedEquipment)
@@ -79,6 +156,41 @@ function EquipmentSelection() {
       }
       return next
     })
+  }
+
+  const sendSyncState = () => {
+    const socket = socketRef.current
+    if (!socket || socket.readyState !== WebSocket.OPEN) return
+    socket.send(
+      JSON.stringify({
+        type: 'sync_state',
+        code: roomCode,
+        playerId,
+        state: {
+          name: playerName || 'Player',
+          killteamId,
+          selectedUnits,
+          selectedEquipment: Array.from(selectedEquipment),
+          unitStates: {},
+          deadUnits: {},
+          woundsByUnit: {},
+          stanceByUnit: {},
+          statusesByUnit: {},
+        },
+      }),
+    )
+  }
+
+  const handleStart = () => {
+    if (!isMultiplayer) {
+      navigate(`/game/${killteamId}`)
+      return
+    }
+    const socket = socketRef.current
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      sendSyncState()
+    }
+    navigate(`/game/${killteamId}`)
   }
 
   return (
@@ -198,10 +310,15 @@ function EquipmentSelection() {
             <button
               className="equipment-start-button"
               type="button"
-              onClick={() => navigate(`/game/${killteamId}`)}
+              onClick={handleStart}
             >
               Start Game
             </button>
+            {isMultiplayer ? (
+              <p className="equipment-start-hint">
+                Opponent syncs once both players enter the game.
+              </p>
+            ) : null}
           </div>
         </section>
       </main>

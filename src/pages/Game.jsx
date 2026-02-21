@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   getKillteamById,
@@ -8,6 +8,7 @@ import {
 } from '../data/ktData.js'
 import { useSelection } from '../state/SelectionContext.jsx'
 import UnitCard from '../components/UnitCard.jsx'
+import OpponentPanel from '../components/OpponentPanel.jsx'
 import './Game.css'
 
 const normalizeText = (value) =>
@@ -115,6 +116,9 @@ const formatElapsed = (elapsedMs) => {
 }
 
 const SP_KILLTEAMS = new Set(['VOT-HKY'])
+const WS_URL =
+  import.meta.env.VITE_WS_URL ||
+  `ws://${window.location.hostname}:8080`
 
 const parseEquipmentWeaponEffects = (effects) => {
   if (!effects) return []
@@ -173,11 +177,18 @@ const parseRules = (wrValue) => {
 
 function Game() {
   const { killteamId } = useParams()
-  const { selectedUnitsByTeam, selectedEquipmentByTeam } = useSelection()
+  const {
+    selectedUnitsByTeam,
+    selectedEquipmentByTeam,
+    setSelectedUnits,
+    setSelectedEquipment,
+  } = useSelection()
   const [unitStates, setUnitStates] = useState({})
   const [deadUnits, setDeadUnits] = useState({})
   const [woundsByUnit, setWoundsByUnit] = useState({})
   const [detailsOpenByUnit, setDetailsOpenByUnit] = useState({})
+  const [stanceByUnit, setStanceByUnit] = useState({})
+  const [statusesByUnit, setStatusesByUnit] = useState({})
   const [timerStart, setTimerStart] = useState(null)
   const [timerNow, setTimerNow] = useState(Date.now())
   const [menuOpen, setMenuOpen] = useState(false)
@@ -186,6 +197,22 @@ function Game() {
   const [cpCount, setCpCount] = useState(0)
   const [vpCount, setVpCount] = useState(0)
   const [spCount, setSpCount] = useState(0)
+  const [opponentPanelOpen, setOpponentPanelOpen] = useState(false)
+  const [opponentState, setOpponentState] = useState(null)
+  const [opponentSnapshot, setOpponentSnapshot] = useState(null)
+  const [opponentDebug, setOpponentDebug] = useState({})
+  const [roomCode, setRoomCode] = useState('')
+  const [playerName, setPlayerName] = useState('')
+  const [playerId, setPlayerId] = useState('')
+  const [wsReady, setWsReady] = useState(false)
+  const [opponentRefreshAt, setOpponentRefreshAt] = useState(null)
+  const socketRef = useRef(null)
+  const syncStateRef = useRef(null)
+  const hasHydratedRef = useRef(false)
+  const opponentStorageKey = useMemo(
+    () => (roomCode && playerId ? `kt-opponent-${roomCode}-${playerId}` : null),
+    [roomCode, playerId],
+  )
   const ruleDetails = useMemo(
     () => (ruleModal ? getRuleDescription(ruleModal) : null),
     [ruleModal],
@@ -194,6 +221,37 @@ function Game() {
     () => (ruleModal && !ruleDetails ? getRuleSuggestions(ruleModal, 3) : []),
     [ruleModal, ruleDetails],
   )
+
+  useEffect(() => {
+    setOpponentDebug((prev) => ({
+      ...prev,
+      mountedAt: Date.now(),
+    }))
+  }, [])
+
+  useEffect(() => {
+    if (!roomCode || !wsReady) return undefined
+    const interval = window.setInterval(() => {
+      const socket = socketRef.current
+      const currentState = syncStateRef.current
+      if (
+        !socket ||
+        socket.readyState !== WebSocket.OPEN ||
+        !currentState
+      ) {
+        return
+      }
+      socket.send(
+        JSON.stringify({
+          type: 'sync_state',
+          code: roomCode,
+          playerId,
+          state: currentState,
+        }),
+      )
+    }, 2000)
+    return () => window.clearInterval(interval)
+  }, [roomCode, playerId, wsReady])
 
   const isRangeRule = (rule) => /^(Rng|Range)\b/i.test(rule)
 
@@ -231,12 +289,159 @@ function Game() {
   }, [])
 
   useEffect(() => {
+    try {
+      const storedCode =
+        sessionStorage.getItem('kt-room-code') ||
+        localStorage.getItem('kt-room-code') ||
+        ''
+      const storedName =
+        sessionStorage.getItem('kt-player-name') ||
+        localStorage.getItem('kt-player-name') ||
+        ''
+      const storedId = sessionStorage.getItem('kt-player-id') || ''
+      setRoomCode(storedCode)
+      setPlayerName(storedName)
+      setPlayerId(storedId)
+    } catch (error) {
+      console.warn('Failed to read multiplayer metadata.', error)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!timerStart) return undefined
     const interval = window.setInterval(() => {
       setTimerNow(Date.now())
     }, 1000)
     return () => window.clearInterval(interval)
   }, [timerStart])
+
+  useEffect(() => {
+    if (!roomCode || (!playerName && !playerId)) return undefined
+    const socket = new WebSocket(WS_URL)
+    socketRef.current = socket
+    setWsReady(false)
+
+    const handleMessage = (event) => {
+      const message = JSON.parse(event.data)
+      if (message.type === 'error') {
+        console.warn('Multiplayer error:', message.message)
+        setOpponentDebug((prev) => ({
+          ...prev,
+          lastError: message.message || 'Unknown error',
+          lastErrorAt: Date.now(),
+        }))
+        return
+      }
+      if (message.type === 'sync_ready') {
+        setWsReady(true)
+        setOpponentDebug((prev) => ({
+          ...prev,
+          lastSyncReadyAt: Date.now(),
+        }))
+        const currentState = syncStateRef.current
+        if (currentState && socket.readyState === WebSocket.OPEN) {
+          socket.send(
+            JSON.stringify({
+              type: 'sync_state',
+              code: roomCode,
+              playerId,
+              state: currentState,
+            }),
+          )
+        }
+        return
+      }
+      if (message.type === 'opponent_state') {
+        setOpponentState(message.state)
+        setOpponentDebug((prev) => ({
+          ...prev,
+          lastOpponentAt: Date.now(),
+          lastOpponentSource: message.source || 'unknown',
+          lastOpponentSummary: message.state
+            ? {
+                name: message.state.name,
+                killteamId: message.state.killteamId,
+                selectedUnits: message.state.selectedUnits?.length || 0,
+              }
+            : null,
+        }))
+        if (message.source === 'refresh') {
+          setOpponentSnapshot(message.state)
+        }
+        if (opponentStorageKey) {
+          localStorage.setItem(
+            opponentStorageKey,
+            JSON.stringify({ state: message.state, at: Date.now() }),
+          )
+        }
+      }
+      if (message.type === 'request_sync_state') {
+        setOpponentDebug((prev) => ({
+          ...prev,
+          lastRequestSyncAt: Date.now(),
+        }))
+        const currentState = syncStateRef.current
+        if (!currentState || socket.readyState !== WebSocket.OPEN) return
+        socket.send(
+          JSON.stringify({
+            type: 'sync_state',
+            code: message.code || roomCode,
+            playerId,
+            state: currentState,
+          }),
+        )
+      }
+    }
+
+    socket.addEventListener('open', () => {
+      setOpponentDebug((prev) => ({
+        ...prev,
+        lastSocketOpenAt: Date.now(),
+      }))
+      const syncName = playerName || 'Player'
+      socket.send(
+        JSON.stringify({
+          type: 'sync_init',
+          code: roomCode,
+          name: syncName,
+          playerId,
+        }),
+      )
+    })
+    socket.addEventListener('message', handleMessage)
+    socket.addEventListener('close', () => {
+      setWsReady(false)
+      setOpponentDebug((prev) => ({
+        ...prev,
+        lastSocketCloseAt: Date.now(),
+      }))
+    })
+    socket.addEventListener('error', () => {
+      setOpponentDebug((prev) => ({
+        ...prev,
+        lastSocketErrorAt: Date.now(),
+      }))
+    })
+
+    return () => {
+      socket.removeEventListener('message', handleMessage)
+      socket.close()
+    }
+  }, [roomCode, playerName, playerId, opponentStorageKey])
+
+  useEffect(() => {
+    if (!opponentStorageKey) return
+    const stored = localStorage.getItem(opponentStorageKey)
+    if (!stored) return
+    try {
+      const parsed = JSON.parse(stored)
+      if (parsed?.state) {
+        setOpponentState(parsed.state)
+      }
+    } catch (error) {
+      console.warn('Failed to read opponent storage.', error)
+    }
+  }, [opponentStorageKey])
 
   if (!killteam) {
     return (
@@ -264,10 +469,10 @@ function Game() {
     }))
   })
 
-  const selectedUnits = new Set(selectedUnitsByTeam[killteamId] ?? [])
-  const selectedEquipmentIds = new Set(
-    selectedEquipmentByTeam[killteamId] ?? [],
-  )
+  const selectedUnitKeys = selectedUnitsByTeam[killteamId] ?? []
+  const selectedEquipmentKeys = selectedEquipmentByTeam[killteamId] ?? []
+  const selectedUnits = new Set(selectedUnitKeys)
+  const selectedEquipmentIds = new Set(selectedEquipmentKeys)
   const selectedEquipment = (killteam.equipments ?? []).filter((equipment) =>
     selectedEquipmentIds.has(equipment.eqId),
   )
@@ -302,21 +507,105 @@ function Game() {
       index,
     }))
     .filter((unit) => selectedUnits.has(unit.key))
+  const isMultiplayer = Boolean(roomCode)
+  const opponentRenderState = opponentSnapshot ?? opponentState
+  const opponentKillteam = useMemo(() => {
+    if (!opponentRenderState?.killteamId) return null
+    return getKillteamById(opponentRenderState.killteamId)
+  }, [opponentRenderState])
+  const opponentOperatives = useMemo(() => {
+    return (opponentKillteam?.opTypes ?? []).filter((opType) => opType.isOpType)
+  }, [opponentKillteam])
+  const opponentUnitCounts = useMemo(() => {
+    if (!opponentKillteam) return new Map()
+    return buildUnitCounts(opponentKillteam, opponentOperatives)
+  }, [opponentKillteam, opponentOperatives])
+  const opponentExpandedUnits = useMemo(() => {
+    if (!opponentKillteam) return []
+    return opponentOperatives.flatMap((opType) => {
+      const count = opponentUnitCounts.get(opType.opTypeName) ?? 1
+      return Array.from({ length: count }, (_, index) => ({
+        opType,
+        instance: count > 1 ? index + 1 : null,
+        instanceCount: count,
+      }))
+    })
+  }, [opponentKillteam, opponentOperatives, opponentUnitCounts])
+  const opponentAllUnits = useMemo(() => {
+    return opponentExpandedUnits.map((unit, index) => ({
+      ...unit,
+      key: `${unit.opType.opTypeId}-${unit.instance ?? 0}`,
+      index,
+    }))
+  }, [opponentExpandedUnits])
+
+  const requestOpponentState = () => {
+    const socket = socketRef.current
+    if (!socket || socket.readyState !== WebSocket.OPEN || !roomCode || !playerId) {
+      return
+    }
+    const currentState = syncStateRef.current
+    if (currentState) {
+      socket.send(
+        JSON.stringify({
+          type: 'sync_state',
+          code: roomCode,
+          playerId,
+          state: currentState,
+        }),
+      )
+    }
+    setOpponentSnapshot(null)
+    socket.send(
+      JSON.stringify({
+        type: 'request_opponent_state',
+        code: roomCode,
+        playerId,
+      }),
+    )
+    setOpponentRefreshAt(Date.now())
+  }
 
   useEffect(() => {
-    if (!storageKey) return
+    if (!storageKey || !killteamId) return
     const stored = localStorage.getItem(storageKey)
-    if (!stored) return
+    if (!stored) {
+      hasHydratedRef.current = true
+      return
+    }
     try {
       const parsed = JSON.parse(stored)
       setUnitStates(parsed.unitStates ?? {})
       setDeadUnits(parsed.deadUnits ?? {})
       setWoundsByUnit(parsed.woundsByUnit ?? {})
       setDetailsOpenByUnit(parsed.detailsOpenByUnit ?? {})
+      setStanceByUnit(parsed.stanceByUnit ?? {})
+      setStatusesByUnit(parsed.statusesByUnit ?? {})
+      if ((selectedUnitsByTeam[killteamId] ?? []).length === 0) {
+        const storedUnits = parsed.selectedUnits ?? []
+        if (storedUnits.length) {
+          setSelectedUnits(killteamId, storedUnits)
+        }
+      }
+      if ((selectedEquipmentByTeam[killteamId] ?? []).length === 0) {
+        const storedEquipment = parsed.selectedEquipment ?? []
+        if (storedEquipment.length) {
+          setSelectedEquipment(killteamId, storedEquipment)
+        }
+      }
     } catch (error) {
       console.warn('Failed to load saved game state.', error)
+    } finally {
+      hasHydratedRef.current = true
     }
-  }, [storageKey])
+  }, [
+    storageKey,
+    killteamId,
+    selectedUnitsByTeam,
+    selectedEquipmentByTeam,
+    setSelectedUnits,
+    setSelectedEquipment,
+  ])
 
   useEffect(() => {
     if (!killteamId || visibleUnits.length === 0) return
@@ -361,18 +650,123 @@ function Game() {
       })
       return hasChanges ? next : prev
     })
+
+    setStanceByUnit((prev) => {
+      let hasChanges = false
+      const next = { ...prev }
+      visibleUnits.forEach((unit) => {
+        if (!next[unit.key]) {
+          next[unit.key] = 'conceal'
+          hasChanges = true
+        }
+      })
+      return hasChanges ? next : prev
+    })
+
+    setStatusesByUnit((prev) => {
+      let hasChanges = false
+      const next = { ...prev }
+      visibleUnits.forEach((unit) => {
+        if (!Array.isArray(next[unit.key])) {
+          next[unit.key] = []
+          hasChanges = true
+        }
+      })
+      return hasChanges ? next : prev
+    })
   }, [killteamId, visibleUnits])
 
   useEffect(() => {
-    if (!storageKey) return
+    if (!storageKey || !hasHydratedRef.current) return
     const payload = {
+      selectedUnits: selectedUnitKeys,
+      selectedEquipment: selectedEquipmentKeys,
       unitStates,
       deadUnits,
       woundsByUnit,
       detailsOpenByUnit,
+      stanceByUnit,
+      statusesByUnit,
     }
     localStorage.setItem(storageKey, JSON.stringify(payload))
-  }, [storageKey, unitStates, deadUnits, woundsByUnit, detailsOpenByUnit])
+  }, [
+    storageKey,
+    selectedUnitKeys,
+    selectedEquipmentKeys,
+    unitStates,
+    deadUnits,
+    woundsByUnit,
+    detailsOpenByUnit,
+    stanceByUnit,
+    statusesByUnit,
+  ])
+
+  useEffect(() => {
+    const displayName = playerName || 'Player'
+    syncStateRef.current = {
+      name: displayName,
+      killteamId,
+      selectedUnits: selectedUnitKeys,
+      selectedEquipment: selectedEquipmentKeys,
+      unitStates,
+      deadUnits,
+      woundsByUnit,
+      stanceByUnit,
+      statusesByUnit,
+    }
+  }, [
+    playerName,
+    killteamId,
+    selectedUnitKeys,
+    selectedEquipmentKeys,
+    unitStates,
+    deadUnits,
+    woundsByUnit,
+    stanceByUnit,
+    statusesByUnit,
+  ])
+
+  useEffect(() => {
+    const displayName = playerName || 'Player'
+    if (!roomCode || !displayName || !wsReady) return
+    const socket = socketRef.current
+    if (!socket || socket.readyState !== WebSocket.OPEN) return
+
+    const payload = {
+      type: 'sync_state',
+      code: roomCode,
+      playerId,
+      state: {
+        name: displayName,
+        killteamId,
+        selectedUnits: selectedUnitKeys,
+        selectedEquipment: selectedEquipmentKeys,
+        unitStates,
+        deadUnits,
+        woundsByUnit,
+        stanceByUnit,
+        statusesByUnit,
+      },
+    }
+
+    const timeout = window.setTimeout(() => {
+      socket.send(JSON.stringify(payload))
+    }, 200)
+
+    return () => window.clearTimeout(timeout)
+  }, [
+    roomCode,
+    playerName,
+    wsReady,
+    killteamId,
+    selectedUnitKeys,
+    selectedEquipmentKeys,
+    unitStates,
+    deadUnits,
+    woundsByUnit,
+    stanceByUnit,
+    statusesByUnit,
+  ])
 
   const orderedUnits = useMemo(() => {
     return [...visibleUnits].sort((a, b) => {
@@ -450,6 +844,22 @@ function Game() {
             <div className="game-nav-timer">
               <span>{formatElapsed(timerNow - timerStart)}</span>
             </div>
+          ) : null}
+          {isMultiplayer ? (
+            <button
+              className="ghost-link opponent-toggle"
+              type="button"
+              onClick={() => {
+                setOpponentDebug((prev) => ({
+                  ...prev,
+                  lastPanelOpenAt: Date.now(),
+                }))
+                setOpponentPanelOpen(true)
+                requestOpponentState()
+              }}
+            >
+              Opponent
+            </button>
           ) : null}
         </div>
         <div className="game-nav-stats">
@@ -736,6 +1146,21 @@ function Game() {
           </details>
         </div>
       </aside>
+      {isMultiplayer ? (
+        <OpponentPanel
+          isOpen={opponentPanelOpen}
+          onClose={() => setOpponentPanelOpen(false)}
+          onRefresh={requestOpponentState}
+          wsReady={wsReady}
+          opponentRefreshAt={opponentRefreshAt}
+          opponentRenderState={opponentRenderState}
+          opponentKillteam={opponentKillteam}
+          opponentAllUnits={opponentAllUnits}
+          debugInfo={opponentDebug}
+          roomCode={roomCode}
+          playerId={playerId}
+        />
+      ) : null}
       <main className="app-content">
         <section className="page game-page">
           <div className="game-grid">
@@ -745,6 +1170,8 @@ function Game() {
                 const safeMax = Number.isNaN(maxWounds) ? 0 : maxWounds
                 const currentWounds =
                   woundsByUnit[key] == null ? safeMax : woundsByUnit[key]
+                const stance = stanceByUnit[key] ?? 'conceal'
+                const selectedStatuses = statusesByUnit[key] ?? []
                 const rowStart = index - (index % 2)
                 const rowUnits = orderedUnits.slice(rowStart, rowStart + 2)
 
@@ -775,6 +1202,20 @@ function Game() {
                       setWoundsByUnit((prev) => ({
                         ...prev,
                         [key]: nextWounds,
+                      }))
+                    }
+                    stance={stance}
+                    onStanceChange={(nextStance) =>
+                      setStanceByUnit((prev) => ({
+                        ...prev,
+                        [key]: nextStance,
+                      }))
+                    }
+                    selectedStatuses={selectedStatuses}
+                    onStatusChange={(nextStatuses) =>
+                      setStatusesByUnit((prev) => ({
+                        ...prev,
+                        [key]: nextStatuses,
                       }))
                     }
                   />

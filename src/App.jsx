@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import './App.css'
 import Landing from './pages/Landing.jsx'
+import Multiplayer from './pages/Multiplayer.jsx'
 import SelectArmy from './pages/SelectArmy.jsx'
 import UnitSelection from './pages/UnitSelection.jsx'
 import EquipmentSelection from './pages/EquipmentSelection.jsx'
@@ -12,6 +13,7 @@ function App() {
     <SelectionProvider>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/multiplayer" element={<Multiplayer />} />
         <Route path="/select-army" element={<SelectArmy />} />
         <Route
           path="/select-army/:killteamId/units"
