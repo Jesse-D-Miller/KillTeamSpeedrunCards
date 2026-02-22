@@ -597,7 +597,7 @@
   color: var(--text-muted);
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 6px; 
 }
 
 .weapon-rule-khorne-added,
