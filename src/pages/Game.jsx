@@ -889,20 +889,6 @@ function Game() {
       })
       return next
     })
-    if (killteamId) {
-      setLegionaryMarks(killteamId, (prev) => {
-        let hasChanges = false
-        const next = { ...prev }
-        visibleUnits.forEach((unit) => {
-          if (!isLegionaryUnit(unit.opType)) return
-          if (next[unit.key] !== null) {
-            next[unit.key] = null
-            hasChanges = true
-          }
-        })
-        return hasChanges ? next : prev
-      })
-    }
   }
 
   return (
