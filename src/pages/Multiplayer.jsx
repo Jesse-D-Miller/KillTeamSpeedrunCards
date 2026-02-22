@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { persistMultiplayerIdentity } from '../state/multiplayerStorage.js'
+import { resolveWsUrl } from '../state/wsUrl.js'
 import './Multiplayer.css'
 
-const WS_URL =
-  import.meta.env.VITE_WS_URL ||
-  `ws://${window.location.hostname}:8080`
+const WS_URL = resolveWsUrl()
 
 const normalizeCode = (value) => value.replace(/\s+/g, '').toUpperCase()
 

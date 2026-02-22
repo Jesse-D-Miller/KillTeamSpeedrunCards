@@ -133,8 +133,10 @@ function UnitCard({
 
   const handleBarClick = (event) => {
     const rect = event.currentTarget.getBoundingClientRect()
-    const isRight = event.clientX - rect.left > rect.width / 2
-    setWounds(currentWounds + (isRight ? 1 : -1))
+    const clickOffset = event.clientX - rect.left
+    const clickPercent = rect.width ? (clickOffset / rect.width) * 100 : 0
+    const isFilled = clickPercent <= healthPercent
+    setWounds(currentWounds + (isFilled ? -1 : 1))
   }
 
   const healthPercent = maxWounds

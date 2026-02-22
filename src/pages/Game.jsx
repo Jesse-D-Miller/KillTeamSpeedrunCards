@@ -7,6 +7,7 @@ import {
   tokenizeWeaponRuleText,
 } from '../data/ktData.js'
 import { useSelection } from '../state/SelectionContext.jsx'
+import { resolveWsUrl } from '../state/wsUrl.js'
 import UnitCard from '../components/UnitCard.jsx'
 import OpponentPanel from '../components/OpponentPanel.jsx'
 import './Game.css'
@@ -119,9 +120,7 @@ const formatElapsed = (elapsedMs) => {
 }
 
 const SP_KILLTEAMS = new Set(['VOT-HKY', 'TAU-VESP'])
-const WS_URL =
-  import.meta.env.VITE_WS_URL ||
-  `ws://${window.location.hostname}:8080`
+const WS_URL = resolveWsUrl()
 
 const parseEquipmentWeaponEffects = (effects) => {
   if (!effects) return []

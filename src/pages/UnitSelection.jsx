@@ -2,11 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getKillteamById } from '../data/ktData.js'
 import { useSelection } from '../state/SelectionContext.jsx'
+import { resolveWsUrl } from '../state/wsUrl.js'
 import './UnitSelection.css'
 
-const WS_URL =
-  import.meta.env.VITE_WS_URL ||
-  `ws://${window.location.hostname}:8080`
+const WS_URL = resolveWsUrl()
 
 const normalizeText = (value) =>
   value
