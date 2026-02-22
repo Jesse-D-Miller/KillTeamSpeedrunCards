@@ -116,7 +116,7 @@
       "description": "If you retain any critical successes, you can retain one of your fails as a normal success instead of discarding it."
     },
     {
-      "code": "RELENTLESS",
+      "code": "kNTLESS",
       "ruleName": "Relentless",
       "description": "Can re-roll any or all Attack dice."
     },

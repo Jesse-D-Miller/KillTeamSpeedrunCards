@@ -182,6 +182,12 @@ function EquipmentSelection() {
   }
 
   const handleStart = () => {
+    try {
+      const gameId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      localStorage.setItem('kt-game-id', gameId)
+    } catch (error) {
+      console.warn('Failed to store game id.', error)
+    }
     if (!isMultiplayer) {
       navigate(`/game/${killteamId}`)
       return

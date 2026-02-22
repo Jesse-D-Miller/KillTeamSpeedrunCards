@@ -638,6 +638,17 @@ function Game() {
   ])
 
   useEffect(() => {
+    if (!killteamId) return
+    const currentGameId = localStorage.getItem('kt-game-id') || ''
+    if (!currentGameId) return
+    const marksGameKey = `kt-legionary-marks-game-${killteamId}`
+    const marksGameId = localStorage.getItem(marksGameKey) || ''
+    if (marksGameId === currentGameId) return
+    setLegionaryMarks(killteamId, {})
+    localStorage.setItem(marksGameKey, currentGameId)
+  }, [killteamId, setLegionaryMarks])
+
+  useEffect(() => {
     if (!killteamId || visibleUnits.length === 0) return
 
     setUnitStates((prev) => {

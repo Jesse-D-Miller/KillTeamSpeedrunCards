@@ -84,6 +84,7 @@ function Multiplayer() {
       const startTime = message.startTime || Date.now()
       try {
         localStorage.setItem('kt-timer-start', String(startTime))
+        localStorage.setItem('kt-game-id', String(startTime))
         const resolvedCode = message.code || roomCode
         const resolvedName = name?.trim()
         if (resolvedCode) {
