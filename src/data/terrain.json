@@ -20,7 +20,7 @@
       "name": "Arrangement 01",
       "mapId": "map_01",
       "objectives": [
-        { "id": "obj_01a", "x": 15, "y": 11, "radius": 0.5 },
+        { "id": "obj_01a", "x": 14.5, "y": 11, "radius": 0.5 },
         { "id": "obj_01b", "x": 7, "y": 14, "radius": 0.5 },
         { "id": "obj_01c", "x": 23, "y": 8, "radius": 0.5 }
       ],
@@ -53,37 +53,47 @@
         {
           "id": "arr_01_volkus_E",
           "pieceId": "volkus_E",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 22.5, "y": 16 }
         },
         {
           "id": "arr_01_volkus_F",
           "pieceId": "volkus_F",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 4, "y": 3 }
         },
         {
           "id": "arr_01_volkus_H",
           "pieceId": "volkus_H",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 15, "y": 10.5 }
         },
         {
           "id": "arr_01_volkus_I",
           "pieceId": "volkus_I",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 16, "y": 5.5 }
         },
         {
           "id": "arr_01_volkus_J",
           "pieceId": "volkus_J",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 25.5, "y": 3 }
         },
         {
           "id": "arr_01_volkus_K",
           "pieceId": "volkus_K",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 28, "y": 10.5 }
         },
         {
           "id": "arr_01_volkus_L",
           "pieceId": "volkus_L",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 2, "y": 11 }
+        },
+        {
+          "id": "arr_01_volkus_M",
+          "pieceId": "volkus_M",
+          "placement": { "x": 24, "y": 6 }
+        },
+        {
+          "id": "arr_01_volkus_N",
+          "pieceId": "volkus_N",
+          "placement": { "x": 8.5, "y": 12.5 }
         }
       ],
       "links": [

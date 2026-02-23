@@ -111,6 +111,9 @@ function Board() {
     return `board-wall board-wall-${normalized}`
   }
 
+  const getSegmentType = (segment) =>
+    Array.isArray(segment?.[0]) ? 'heavy' : segment?.type || 'heavy'
+
   return (
     <div className="board-view">
       <div className="board-toolbar">
@@ -206,8 +209,8 @@ function Board() {
                 const placement = entry.placement
                 const label = getPieceLabel(piece)
                 const labelPosition = {
-                  x: (placement?.x || 0) + 0.5,
-                  y: (placement?.y || 0) + 0.5,
+                  x: (placement?.x || 0) + 0.1,
+                  y: (placement?.y || 0) + 0.45,
                 }
                 return (
                   <g className="board-terrain" key={entry.id || piece.id}>
@@ -223,29 +226,10 @@ function Board() {
                           )}
                         />
                       ))}
-                    {(piece.walls?.segments ?? []).map((segment, index) => {
-                      const segmentEntry = Array.isArray(segment?.[0])
-                        ? { segment, type: 'heavy' }
-                        : segment || { segment: [], type: 'heavy' }
-                      const segmentPoints = segmentEntry.segment
-                      const [[x1, y1], [x2, y2]] = segmentPoints
-                      const offsetX = placement?.x || 0
-                      const offsetY = placement?.y || 0
-                      return (
-                        <line
-                          key={`${entry.id || piece.id}-wall-${index}`}
-                          className={getWallClassName(segmentEntry.type)}
-                          x1={x1 + offsetX}
-                          y1={y1 + offsetY}
-                          x2={x2 + offsetX}
-                          y2={y2 + offsetY}
-                        />
-                      )
-                    })}
                     {label ? (
                       <text
                         className="board-terrain-label"
-                        fontSize={0.75}
+                        fontSize={0.375}
                         x={labelPosition.x}
                         y={-labelPosition.y}
                         transform="scale(1,-1)"
@@ -256,6 +240,36 @@ function Board() {
                   </g>
                 )
               })}
+              {['light', 'heavy', 'door'].map((wallType) =>
+                (activeArrangement?.terrain ?? []).map((entry) => {
+                  const piece = resolveTerrainPiece(entry)
+                  if (!piece) return null
+                  const placement = entry.placement
+                  return (piece.walls?.segments ?? []).map(
+                    (segment, index) => {
+                      const segmentType = getSegmentType(segment)
+                      if (segmentType !== wallType) return null
+                      const segmentPoints = Array.isArray(segment?.[0])
+                        ? segment
+                        : segment?.segment
+                      if (!Array.isArray(segmentPoints)) return null
+                      const [[x1, y1], [x2, y2]] = segmentPoints
+                      const offsetX = placement?.x || 0
+                      const offsetY = placement?.y || 0
+                      return (
+                        <line
+                          key={`${entry.id || piece.id}-wall-${wallType}-${index}`}
+                          className={getWallClassName(segmentType)}
+                          x1={x1 + offsetX}
+                          y1={y1 + offsetY}
+                          x2={x2 + offsetX}
+                          y2={y2 + offsetY}
+                        />
+                      )
+                    },
+                  )
+                }),
+              )}
             </g>
           </svg>
         </div>
