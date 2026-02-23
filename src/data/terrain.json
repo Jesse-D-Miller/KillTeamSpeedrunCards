@@ -36,6 +36,11 @@
           "placement": { "x": 2, "y": 7 }
         },
         {
+          "id": "t01_ruin_L3",
+          "pieceId": "volkus_C",
+          "placement": { "x": 12, "y": 15 }
+        },
+        {
           "id": "t01_ruin_L2",
           "pieceId": "volkus_G",
           "placement": { "x": 5, "y": 18 }
