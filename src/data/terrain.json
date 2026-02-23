@@ -1,0 +1,166 @@
+{
+  "meta": {
+    "units": "in",
+    "board": { "width": 30, "height": 22 },
+    "origin": "bottom-left",
+    "objective": { "defaultRadius": 0.5 }
+  },
+  "schemaNotes": {
+    "terrainPiece": {
+      "area": "polygon points in local space (clockwise or counter-clockwise is fine, just be consistent)",
+      "walls": "array of wall segments in local space; each segment is [[x1,y1],[x2,y2]]",
+      "placement": "piece is positioned by {x,y} (translation only for MVP). Add rotation later if you need it."
+    },
+    "terrainInstance": "each terrain entry references a reusable pieceId and adds placement",
+    "objectives": "independent markers: each has x,y and radius (0.5 = 1 inch diameter)"
+  },
+  "arrangements": [
+    {
+      "id": "arr_01",
+      "name": "Arrangement 01",
+      "mapId": "map_01",
+      "objectives": [
+        { "id": "obj_01a", "x": 15, "y": 11, "radius": 0.5 },
+        { "id": "obj_01b", "x": 7, "y": 14, "radius": 0.5 },
+        { "id": "obj_01c", "x": 23, "y": 8, "radius": 0.5 }
+      ],
+      "terrain": [
+        {
+          "id": "t01_ruin_L",
+          "pieceId": "volkus_A",
+          "placement": { "x": 5, "y": 14 }
+        },
+        {
+          "id": "t01_ruin_rect",
+          "pieceId": "volkus_B",
+          "placement": { "x": 18, "y": 5 }
+        }
+      ],
+      "links": [
+        { "objectiveId": "obj_01b", "terrainId": "t01_ruin_rect", "note": "Optional association only" }
+      ]
+    },
+
+    {
+      "id": "arr_02",
+      "name": "Arrangement 02",
+      "mapId": "map_01",
+      "objectives": [
+        { "id": "obj_02a", "x": 15, "y": 11, "radius": 0.5 },
+        { "id": "obj_02b", "x": 6, "y": 14, "radius": 0.5 },
+        { "id": "obj_02c", "x": 24, "y": 8, "radius": 0.5 }
+      ],
+      "terrain": [
+        {
+          "id": "t02_chev",
+          "pieceId": "volkus_C",
+          "placement": { "x": 10, "y": 9 }
+        },
+        {
+          "id": "t02_long",
+          "pieceId": "volkus_D",
+          "placement": { "x": 4, "y": 4 }
+        }
+      ],
+      "links": []
+    },
+
+    {
+      "id": "arr_03",
+      "name": "Arrangement 03",
+      "mapId": "map_01",
+      "objectives": [
+        { "id": "obj_03a", "x": 7, "y": 11, "radius": 0.5 },
+        { "id": "obj_03b", "x": 25, "y": 14, "radius": 0.5 },
+        { "id": "obj_03c", "x": 16, "y": 8, "radius": 0.5 }
+      ],
+      "terrain": [
+        {
+          "id": "t03_oct",
+          "pieceId": "volkus_E",
+          "placement": { "x": 13, "y": 14 }
+        },
+        {
+          "id": "t03_L2",
+          "pieceId": "volkus_F",
+          "placement": { "x": 3, "y": 12 }
+        }
+      ],
+      "links": []
+    },
+
+    {
+      "id": "arr_04",
+      "name": "Arrangement 04",
+      "mapId": "map_02",
+      "objectives": [
+        { "id": "obj_04a", "x": 15, "y": 6, "radius": 0.5 },
+        { "id": "obj_04b", "x": 11, "y": 15, "radius": 0.5 },
+        { "id": "obj_04c", "x": 19, "y": 13, "radius": 0.5 }
+      ],
+      "terrain": [
+        {
+          "id": "t04_U",
+          "pieceId": "volkus_G",
+          "placement": { "x": 7, "y": 6 }
+        },
+        {
+          "id": "t04_rect",
+          "pieceId": "volkus_H",
+          "placement": { "x": 20, "y": 14 }
+        }
+      ],
+      "links": []
+    },
+
+    {
+      "id": "arr_05",
+      "name": "Arrangement 05",
+      "mapId": "map_02",
+      "objectives": [
+        { "id": "obj_05a", "x": 15, "y": 11, "radius": 0.5 },
+        { "id": "obj_05b", "x": 12, "y": 4, "radius": 0.5 },
+        { "id": "obj_05c", "x": 18, "y": 18, "radius": 0.5 }
+      ],
+      "terrain": [
+        {
+          "id": "t05_diag",
+          "pieceId": "volkus_I",
+          "placement": { "x": 9, "y": 13 }
+        },
+        {
+          "id": "t05_long2",
+          "pieceId": "volkus_J",
+          "placement": { "x": 3, "y": 18 }
+        }
+      ],
+      "links": []
+    },
+
+    {
+      "id": "arr_06",
+      "name": "Arrangement 06",
+      "mapId": "map_02",
+      "objectives": [
+        { "id": "obj_06a", "x": 15, "y": 11, "radius": 0.5 },
+        { "id": "obj_06b", "x": 19, "y": 4, "radius": 0.5 },
+        { "id": "obj_06c", "x": 11, "y": 18, "radius": 0.5 }
+      ],
+      "terrain": [
+        {
+          "id": "t06_corridor",
+          "pieceId": "volkus_K",
+          "placement": { "x": 10, "y": 6 }
+        },
+        {
+          "id": "t06_L3",
+          "pieceId": "volkus_L",
+          "placement": { "x": 4, "y": 4 }
+        }
+      ],
+      "links": [
+        { "objectiveId": "obj_06a", "terrainId": "t06_corridor", "note": "Optional anchor idea if you want it later" }
+      ]
+    }
+  ]
+}

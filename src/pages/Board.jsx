@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import mapsData from '../data/killzoneMaps.json'
+import terrainData from '../data/terrain.json'
+import terrainPiecesData from '../data/terrainPieces.json'
 import './Board.css'
 
 function Board() {
@@ -11,9 +13,24 @@ function Board() {
   )
   const board = mapsData?.meta?.board || { width: 30, height: 22 }
   const grid = mapsData?.renderDefaults?.grid || { enabled: false, cell: 1 }
+  const arrangements = terrainData?.arrangements ?? []
+  const terrainPieces = terrainPiecesData?.pieces ?? []
+  const objectiveDefaultRadius =
+    terrainData?.meta?.objective?.defaultRadius ?? 0.5
+  const mapArrangements = useMemo(
+    () => arrangements.filter((arr) => arr.mapId === activeMap?.id),
+    [arrangements, activeMap?.id],
+  )
+  const [arrangementIndex, setArrangementIndex] = useState(0)
+  const activeArrangement = mapArrangements[arrangementIndex] || null
+  const hasRandomizedMapRef = useRef(false)
   const shouldRotateZones = activeMap?.id === 'map_02'
   const sourceWidth = shouldRotateZones ? board.height : board.width
   const sourceHeight = shouldRotateZones ? board.width : board.height
+  const terrainPieceById = useMemo(
+    () => new Map(terrainPieces.map((piece) => [piece.id, piece])),
+    [terrainPieces],
+  )
 
   const toPercent = (value, max) => `${(value / max) * 100}%`
 
@@ -40,6 +57,41 @@ function Board() {
     )
   }
 
+  useEffect(() => {
+    if (!maps.length || hasRandomizedMapRef.current) return
+    const randomMap = maps[Math.floor(Math.random() * maps.length)]
+    setSelectedMapId(randomMap.id)
+    hasRandomizedMapRef.current = true
+  }, [maps])
+
+  useEffect(() => {
+    if (!mapArrangements.length) {
+      setArrangementIndex(0)
+      return
+    }
+    const randomIndex = Math.floor(
+      Math.random() * mapArrangements.length,
+    )
+    setArrangementIndex(randomIndex)
+  }, [activeMap?.id, mapArrangements.length])
+
+  const advanceArrangement = () => {
+    if (!mapArrangements.length) return
+    setArrangementIndex((prev) => (prev + 1) % mapArrangements.length)
+  }
+
+  const renderPoints = (points, placement) => {
+    const [offsetX, offsetY] = placement
+      ? [placement.x || 0, placement.y || 0]
+      : [0, 0]
+    return points
+      .map(([x, y]) => `${x + offsetX},${y + offsetY}`)
+      .join(' ')
+  }
+
+  const resolveTerrainPiece = (entry) =>
+    entry?.pieceId ? terrainPieceById.get(entry.pieceId) : entry
+
   return (
     <div className="board-view">
       <div className="board-toolbar">
@@ -57,6 +109,16 @@ function Board() {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          className="board-arrangement-button"
+          onClick={advanceArrangement}
+          disabled={!mapArrangements.length}
+        >
+          {activeArrangement
+            ? `${activeArrangement.name}`
+            : 'No arrangements'}
+        </button>
       </div>
       <div
         className="board-surface"
@@ -77,6 +139,83 @@ function Board() {
               {renderZone(activeMap.zones?.playerB?.dropZone, 'zone-b-drop')}
             </>
           ) : null}
+          <svg
+            className="board-overlay"
+            viewBox={`0 0 ${board.width} ${board.height}`}
+            preserveAspectRatio="none"
+          >
+            <g transform={`scale(1,-1) translate(0, -${board.height})`}>
+              <line
+                className="board-centerline"
+                x1={board.width / 2}
+                y1={0}
+                x2={board.width / 2}
+                y2={board.height}
+              />
+              <line
+                className="board-centerline"
+                x1={0}
+                y1={board.height / 2}
+                x2={board.width}
+                y2={board.height / 2}
+              />
+              {(activeArrangement?.objectives ?? []).map((objective) => {
+                const radius = objective.radius ?? objectiveDefaultRadius
+                return (
+                  <g key={objective.id} className="board-objective">
+                    <circle cx={objective.x} cy={objective.y} r={radius} />
+                    <line
+                      className="board-objective-slice"
+                      x1={objective.x - radius}
+                      y1={objective.y}
+                      x2={objective.x + radius}
+                      y2={objective.y}
+                    />
+                    <line
+                      className="board-objective-slice"
+                      x1={objective.x}
+                      y1={objective.y - radius}
+                      x2={objective.x}
+                      y2={objective.y + radius}
+                    />
+                  </g>
+                )
+              })}
+              {(activeArrangement?.terrain ?? []).map((entry) => {
+                const piece = resolveTerrainPiece(entry)
+                if (!piece) return null
+                const placement = entry.placement
+                return (
+                  <g className="board-terrain" key={entry.id || piece.id}>
+                    {piece.area?.points?.length ? (
+                      <polygon
+                        className="board-terrain-fill"
+                        points={renderPoints(
+                          piece.area.points,
+                          placement,
+                        )}
+                      />
+                    ) : null}
+                    {(piece.walls?.segments ?? []).map((segment, index) => {
+                      const [[x1, y1], [x2, y2]] = segment
+                      const offsetX = placement?.x || 0
+                      const offsetY = placement?.y || 0
+                      return (
+                        <line
+                          key={`${entry.id || piece.id}-wall-${index}`}
+                          className="board-wall"
+                          x1={x1 + offsetX}
+                          y1={y1 + offsetY}
+                          x2={x2 + offsetX}
+                          y2={y2 + offsetY}
+                        />
+                      )
+                    })}
+                  </g>
+                )
+              })}
+            </g>
+          </svg>
         </div>
       </div>
     </div>

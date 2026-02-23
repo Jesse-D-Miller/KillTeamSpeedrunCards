@@ -14,11 +14,11 @@
       "zones": {
         "playerA": {
           "dropZone": { "shape": "rect", "x": 0, "y": 0, "w": 30, "h": 3 },
-          "territory": { "shape": "rect", "x": 0, "y": 0, "w": 30, "h": 11 }
+          "territory": { "shape": "rect", "x": 0, "y": 3, "w": 30, "h": 8 }
         },
         "playerB": {
           "dropZone": { "shape": "rect", "x": 0, "y": 19, "w": 30, "h": 3 },
-          "territory": { "shape": "rect", "x": 0, "y": 11, "w": 30, "h": 11 }
+          "territory": { "shape": "rect", "x": 0, "y": 11, "w": 30, "h": 8 }
         }
       }
     },
