@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { persistMultiplayerIdentity } from '../state/multiplayerStorage.js'
 import { resolveWsUrl } from '../state/wsUrl.js'
 import './Multiplayer.css'
@@ -173,6 +173,9 @@ function Multiplayer() {
     <div className="app-shell">
       <main className="app-content">
         <section className="page multiplayer">
+          <Link className="ghost-link multiplayer-board-link" to="/board">
+            Board
+          </Link>
           <div className="multiplayer-header">
             <p className="eyebrow">Multiplayer</p>
             <h1>Host or join a match.</h1>

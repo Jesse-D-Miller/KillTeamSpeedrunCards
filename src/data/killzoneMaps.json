@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "units": "in",
+    "board": { "width": 30, "height": 22 },
+    "origin": "bottom-left"
+  },
+  "renderDefaults": {
+    "grid": { "enabled": true, "cell": 1 }
+  },
+  "maps": [
+    {
+      "id": "map_01",
+      "name": "Map 1",
+      "zones": {
+        "playerA": {
+          "dropZone": { "shape": "rect", "x": 0, "y": 0, "w": 30, "h": 3 },
+          "territory": { "shape": "rect", "x": 0, "y": 0, "w": 30, "h": 11 }
+        },
+        "playerB": {
+          "dropZone": { "shape": "rect", "x": 0, "y": 19, "w": 30, "h": 3 },
+          "territory": { "shape": "rect", "x": 0, "y": 11, "w": 30, "h": 11 }
+        }
+      }
+    },
+    {
+      "id": "map_02",
+      "name": "Map 2",
+      "zones": {
+        "playerA": {
+          "dropZone": { "shape": "rect", "x": 0, "y": 0, "w": 22, "h": 6 },
+          "territory": { "shape": "rect", "x": 0, "y": 6, "w": 22, "h": 9 }
+        },
+        "playerB": {
+          "dropZone": { "shape": "rect", "x": 0, "y": 24, "w": 22, "h": 6 },
+          "territory": { "shape": "rect", "x": 0, "y": 15, "w": 22, "h": 9 }
+        }
+      }
+    }
+  ]
+}

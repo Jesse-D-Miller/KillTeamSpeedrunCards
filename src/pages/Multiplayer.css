@@ -1,7 +1,14 @@
 .multiplayer {
+  position: relative;
   align-items: center;
   text-align: center;
   padding-top: 48px;
+}
+
+.multiplayer-board-link {
+  position: absolute;
+  top: 18px;
+  right: 18px;
 }
 
 .multiplayer-header {

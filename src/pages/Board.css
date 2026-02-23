@@ -1,0 +1,102 @@
+.board-view {
+  --inch-scale: 1.333;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #141820 0%, #0f1114 52%);
+  color: var(--text);
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.board-toolbar {
+  padding: 16px 18px 0;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.board-toggle {
+  background: rgba(15, 18, 23, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.board-toggle-button {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.board-toggle-button.is-active {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.board-surface {
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  overflow: auto;
+}
+
+.board-frame {
+  position: relative;
+  width: calc(var(--board-width) * 1in * var(--inch-scale));
+  height: calc(var(--board-height) * 1in * var(--inch-scale));
+  border: 1px solid var(--border);
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.05), transparent);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.board-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(
+      to right,
+      rgba(0, 0, 0, 0.7) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.7) 1px,
+      transparent 1px
+    );
+  background-size:
+    calc(100% / var(--board-width) * var(--grid-cell))
+      calc(100% / var(--board-height) * var(--grid-cell));
+  pointer-events: none;
+}
+
+.board-zone {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.zone-a-territory {
+  background: rgba(98, 255, 230, 0.08);
+  border-color: rgba(98, 255, 230, 0.35);
+}
+
+.zone-b-territory {
+  background: rgba(255, 122, 58, 0.08);
+  border-color: rgba(255, 122, 58, 0.35);
+}
+
+.zone-a-drop {
+  background: rgba(98, 255, 230, 0.18);
+  border-color: rgba(98, 255, 230, 0.6);
+}
+
+.zone-b-drop {
+  background: rgba(255, 122, 58, 0.18);
+  border-color: rgba(255, 122, 58, 0.6);
+}
