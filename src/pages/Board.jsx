@@ -95,8 +95,9 @@ function Board() {
   }
 
   const getPieceLabel = (piece) => {
-    if (!piece?.id) return null
-    const match = piece.id.match(/volkus_([A-Za-z])$/)
+    const source = piece?.name || piece?.id
+    if (!source) return null
+    const match = source.match(/volkus_([A-Za-z])$/)
     return match ? match[1].toUpperCase() : null
   }
 

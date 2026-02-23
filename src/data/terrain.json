@@ -41,9 +41,49 @@
           "placement": { "x": 12, "y": 15 }
         },
         {
+          "id": "t01_ruin_L4",
+          "pieceId": "volkus_D",
+          "placement": { "x": 13, "y": 3 }
+        },
+        {
           "id": "t01_ruin_L2",
           "pieceId": "volkus_G",
           "placement": { "x": 5, "y": 18 }
+        },
+        {
+          "id": "arr_01_volkus_E",
+          "pieceId": "volkus_E",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_01_volkus_F",
+          "pieceId": "volkus_F",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_01_volkus_H",
+          "pieceId": "volkus_H",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_01_volkus_I",
+          "pieceId": "volkus_I",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_01_volkus_J",
+          "pieceId": "volkus_J",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_01_volkus_K",
+          "pieceId": "volkus_K",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_01_volkus_L",
+          "pieceId": "volkus_L",
+          "placement": { "x": 0, "y": 0 }
         }
       ],
       "links": [
@@ -70,6 +110,56 @@
           "id": "t02_long",
           "pieceId": "volkus_D",
           "placement": { "x": 4, "y": 4 }
+        },
+        {
+          "id": "arr_02_volkus_A",
+          "pieceId": "volkus_A",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_02_volkus_B",
+          "pieceId": "volkus_B",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_02_volkus_E",
+          "pieceId": "volkus_E",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_02_volkus_F",
+          "pieceId": "volkus_F",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_02_volkus_G",
+          "pieceId": "volkus_G",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_02_volkus_H",
+          "pieceId": "volkus_H",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_02_volkus_I",
+          "pieceId": "volkus_I",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_02_volkus_J",
+          "pieceId": "volkus_J",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_02_volkus_K",
+          "pieceId": "volkus_K",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_02_volkus_L",
+          "pieceId": "volkus_L",
+          "placement": { "x": 0, "y": 0 }
         }
       ],
       "links": []
@@ -94,6 +184,56 @@
           "id": "t03_L2",
           "pieceId": "volkus_F",
           "placement": { "x": 3, "y": 12 }
+        },
+        {
+          "id": "arr_03_volkus_A",
+          "pieceId": "volkus_A",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_03_volkus_B",
+          "pieceId": "volkus_B",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_03_volkus_C",
+          "pieceId": "volkus_C",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_03_volkus_D",
+          "pieceId": "volkus_D",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_03_volkus_G",
+          "pieceId": "volkus_G",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_03_volkus_H",
+          "pieceId": "volkus_H",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_03_volkus_I",
+          "pieceId": "volkus_I",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_03_volkus_J",
+          "pieceId": "volkus_J",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_03_volkus_K",
+          "pieceId": "volkus_K",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_03_volkus_L",
+          "pieceId": "volkus_L",
+          "placement": { "x": 0, "y": 0 }
         }
       ],
       "links": []
@@ -118,6 +258,56 @@
           "id": "t04_rect",
           "pieceId": "volkus_H",
           "placement": { "x": 20, "y": 14 }
+        },
+        {
+          "id": "arr_04_volkus_A",
+          "pieceId": "volkus_A",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_04_volkus_B",
+          "pieceId": "volkus_B",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_04_volkus_C",
+          "pieceId": "volkus_C",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_04_volkus_D",
+          "pieceId": "volkus_D",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_04_volkus_E",
+          "pieceId": "volkus_E",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_04_volkus_F",
+          "pieceId": "volkus_F",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_04_volkus_I",
+          "pieceId": "volkus_I",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_04_volkus_J",
+          "pieceId": "volkus_J",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_04_volkus_K",
+          "pieceId": "volkus_K",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_04_volkus_L",
+          "pieceId": "volkus_L",
+          "placement": { "x": 0, "y": 0 }
         }
       ],
       "links": []
@@ -142,6 +332,56 @@
           "id": "t05_long2",
           "pieceId": "volkus_J",
           "placement": { "x": 3, "y": 18 }
+        },
+        {
+          "id": "arr_05_volkus_A",
+          "pieceId": "volkus_A",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_05_volkus_B",
+          "pieceId": "volkus_B",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_05_volkus_C",
+          "pieceId": "volkus_C",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_05_volkus_D",
+          "pieceId": "volkus_D",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_05_volkus_E",
+          "pieceId": "volkus_E",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_05_volkus_F",
+          "pieceId": "volkus_F",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_05_volkus_G",
+          "pieceId": "volkus_G",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_05_volkus_H",
+          "pieceId": "volkus_H",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_05_volkus_K",
+          "pieceId": "volkus_K",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_05_volkus_L",
+          "pieceId": "volkus_L",
+          "placement": { "x": 0, "y": 0 }
         }
       ],
       "links": []
@@ -166,6 +406,56 @@
           "id": "t06_L3",
           "pieceId": "volkus_L",
           "placement": { "x": 4, "y": 4 }
+        },
+        {
+          "id": "arr_06_volkus_A",
+          "pieceId": "volkus_A",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_06_volkus_B",
+          "pieceId": "volkus_B",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_06_volkus_C",
+          "pieceId": "volkus_C",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_06_volkus_D",
+          "pieceId": "volkus_D",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_06_volkus_E",
+          "pieceId": "volkus_E",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_06_volkus_F",
+          "pieceId": "volkus_F",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_06_volkus_G",
+          "pieceId": "volkus_G",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_06_volkus_H",
+          "pieceId": "volkus_H",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_06_volkus_I",
+          "pieceId": "volkus_I",
+          "placement": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "arr_06_volkus_J",
+          "pieceId": "volkus_J",
+          "placement": { "x": 0, "y": 0 }
         }
       ],
       "links": [
