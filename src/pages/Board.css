@@ -100,8 +100,27 @@
 }
 
 .board-wall {
-  stroke: rgba(0, 0, 0, 0.9);
   stroke-width: 0.12;
+}
+
+.board-wall-heavy {
+  stroke: rgba(0, 0, 0, 0.9);
+}
+
+.board-wall-light {
+  stroke: rgba(160, 160, 160, 0.9);
+}
+
+.board-wall-door {
+  stroke: rgba(255, 255, 255, 0.95);
+}
+
+.board-terrain-label {
+  fill: rgba(170, 170, 170, 0.85);
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
 }
 
 .board-centerline {

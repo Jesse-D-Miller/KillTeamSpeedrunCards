@@ -28,12 +28,17 @@
         {
           "id": "t01_ruin_L",
           "pieceId": "volkus_A",
-          "placement": { "x": 5, "y": 14 }
+          "placement": { "x": 21, "y": 6 }
         },
         {
           "id": "t01_ruin_rect",
           "pieceId": "volkus_B",
-          "placement": { "x": 18, "y": 5 }
+          "placement": { "x": 2, "y": 7 }
+        },
+        {
+          "id": "t01_ruin_L2",
+          "pieceId": "volkus_G",
+          "placement": { "x": 5, "y": 18 }
         }
       ],
       "links": [

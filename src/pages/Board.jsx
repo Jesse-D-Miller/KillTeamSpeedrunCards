@@ -89,8 +89,26 @@ function Board() {
       .join(' ')
   }
 
+  const getPieceAreas = (piece) => {
+    if (piece?.areas?.length) return piece.areas
+    return piece?.area ? [piece.area] : []
+  }
+
+  const getPieceLabel = (piece) => {
+    if (!piece?.id) return null
+    const match = piece.id.match(/volkus_([A-Za-z])$/)
+    return match ? match[1].toUpperCase() : null
+  }
+
   const resolveTerrainPiece = (entry) =>
     entry?.pieceId ? terrainPieceById.get(entry.pieceId) : entry
+
+  const getWallClassName = (type) => {
+    const normalized = ['heavy', 'light', 'door'].includes(type)
+      ? type
+      : 'heavy'
+    return `board-wall board-wall-${normalized}`
+  }
 
   return (
     <div className="board-view">
@@ -185,25 +203,37 @@ function Board() {
                 const piece = resolveTerrainPiece(entry)
                 if (!piece) return null
                 const placement = entry.placement
+                const label = getPieceLabel(piece)
+                const labelPosition = {
+                  x: (placement?.x || 0) + 0.5,
+                  y: (placement?.y || 0) + 0.5,
+                }
                 return (
                   <g className="board-terrain" key={entry.id || piece.id}>
-                    {piece.area?.points?.length ? (
-                      <polygon
-                        className="board-terrain-fill"
-                        points={renderPoints(
-                          piece.area.points,
-                          placement,
-                        )}
-                      />
-                    ) : null}
+                    {getPieceAreas(piece)
+                      .filter((area) => area?.points?.length)
+                      .map((area, areaIndex) => (
+                        <polygon
+                          key={`${entry.id || piece.id}-area-${areaIndex}`}
+                          className="board-terrain-fill"
+                          points={renderPoints(
+                            area.points,
+                            placement,
+                          )}
+                        />
+                      ))}
                     {(piece.walls?.segments ?? []).map((segment, index) => {
-                      const [[x1, y1], [x2, y2]] = segment
+                      const segmentEntry = Array.isArray(segment?.[0])
+                        ? { segment, type: 'heavy' }
+                        : segment || { segment: [], type: 'heavy' }
+                      const segmentPoints = segmentEntry.segment
+                      const [[x1, y1], [x2, y2]] = segmentPoints
                       const offsetX = placement?.x || 0
                       const offsetY = placement?.y || 0
                       return (
                         <line
                           key={`${entry.id || piece.id}-wall-${index}`}
-                          className="board-wall"
+                          className={getWallClassName(segmentEntry.type)}
                           x1={x1 + offsetX}
                           y1={y1 + offsetY}
                           x2={x2 + offsetX}
@@ -211,6 +241,17 @@ function Board() {
                         />
                       )
                     })}
+                    {label ? (
+                      <text
+                        className="board-terrain-label"
+                        fontSize={0.75}
+                        x={labelPosition.x}
+                        y={-labelPosition.y}
+                        transform="scale(1,-1)"
+                      >
+                        {label}
+                      </text>
+                    ) : null}
                   </g>
                 )
               })}
