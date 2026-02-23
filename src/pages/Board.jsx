@@ -80,14 +80,26 @@ function Board() {
     setArrangementIndex((prev) => (prev + 1) % mapArrangements.length)
   }
 
-  const renderPoints = (points, placement) => {
-    const [offsetX, offsetY] = placement
-      ? [placement.x || 0, placement.y || 0]
-      : [0, 0]
-    return points
-      .map(([x, y]) => `${x + offsetX},${y + offsetY}`)
-      .join(' ')
+  const transformPoint = ([x, y], placement) => {
+    const offsetX = placement?.x || 0
+    const offsetY = placement?.y || 0
+    const rotation = placement?.rotation || 0
+    if (!rotation) return [x + offsetX, y + offsetY]
+    const radians = (rotation * Math.PI) / 180
+    const cos = Math.cos(radians)
+    const sin = Math.sin(radians)
+    const rotatedX = x * cos - y * sin
+    const rotatedY = x * sin + y * cos
+    return [rotatedX + offsetX, rotatedY + offsetY]
   }
+
+  const renderPoints = (points, placement) =>
+    points
+      .map((point) => {
+        const [x, y] = transformPoint(point, placement)
+        return `${x},${y}`
+      })
+      .join(' ')
 
   const getPieceAreas = (piece) => {
     if (piece?.areas?.length) return piece.areas
@@ -253,17 +265,17 @@ function Board() {
                         ? segment
                         : segment?.segment
                       if (!Array.isArray(segmentPoints)) return null
-                      const [[x1, y1], [x2, y2]] = segmentPoints
-                      const offsetX = placement?.x || 0
-                      const offsetY = placement?.y || 0
+                      const [start, end] = segmentPoints
+                      const [x1, y1] = transformPoint(start, placement)
+                      const [x2, y2] = transformPoint(end, placement)
                       return (
                         <line
                           key={`${entry.id || piece.id}-wall-${wallType}-${index}`}
                           className={getWallClassName(segmentType)}
-                          x1={x1 + offsetX}
-                          y1={y1 + offsetY}
-                          x2={x2 + offsetX}
-                          y2={y2 + offsetY}
+                          x1={x1}
+                          y1={y1}
+                          x2={x2}
+                          y2={y2}
                         />
                       )
                     },
