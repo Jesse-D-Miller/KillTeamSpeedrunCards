@@ -364,74 +364,74 @@
       ],
       "terrain": [
         {
-          "id": "t05_diag",
+          "id": "arr_05_volkus_I",
           "pieceId": "volkus_I",
-          "placement": { "x": 9, "y": 13 }
+          "placement": { "x": 14, "y": 17, "rotation": 90 }
         },
         {
-          "id": "t05_long2",
+          "id": "arr_05_volkus_J",
           "pieceId": "volkus_J",
-          "placement": { "x": 3, "y": 18 }
+          "placement": { "x": 9.75, "y": 7.5, "rotation": 90 }
         },
         {
           "id": "arr_05_volkus_A",
           "pieceId": "volkus_A",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 12, "y": 7 }
         },
         {
           "id": "arr_05_volkus_B",
           "pieceId": "volkus_B",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 8, "y": 12, "rotation": 90 }
         },
         {
           "id": "arr_05_volkus_C",
           "pieceId": "volkus_C",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 24, "y": 19, "rotation": 270 }
         },
         {
           "id": "arr_05_volkus_D",
           "pieceId": "volkus_D",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 24, "y": 8, "rotation": 270 }
         },
         {
           "id": "arr_05_volkus_E",
           "pieceId": "volkus_E",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 3, "y": 8, "rotation": 270 }
         },
         {
           "id": "arr_05_volkus_F",
           "pieceId": "volkus_F",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 19, "y": 4.5, "rotation": 270 }
         },
         {
           "id": "arr_05_volkus_G",
           "pieceId": "volkus_G",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 17, "y": 19, "rotation": 90 }
         },
         {
           "id": "arr_05_volkus_H",
           "pieceId": "volkus_H",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 14, "y": 2, "rotation": 90 }
         },
         {
           "id": "arr_05_volkus_K",
           "pieceId": "volkus_K",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 21, "y": 10, "rotation": 90 }
         },
         {
           "id": "arr_05_volkus_L",
           "pieceId": "volkus_L",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 4, "y": 12, "rotation": 90 }
         },
         {
           "id": "arr_05_volkus_M",
           "pieceId": "volkus_M",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 15, "y": 7 }
         },
         {
           "id": "arr_05_volkus_N",
           "pieceId": "volkus_N",
-          "placement": { "x": 0, "y": 0 }
+          "placement": { "x": 2.5, "y": 18.5, "rotation": 90 }
         }
       ],
       "links": []
