@@ -1,0 +1,309 @@
+.critops-card {
+  position: relative;
+  width: 100%;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f4f1e6;
+  color: #2e2a24;
+  font-family: "Arial Narrow", "Helvetica Neue Condensed", "Helvetica Neue", sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-shadow: none;
+  border: 1px solid rgba(170, 170, 170, 0.6);
+}
+
+
+.critops-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 25% 20%, rgba(255, 255, 255, 0.45), transparent 50%),
+    radial-gradient(circle at 70% 70%, rgba(0, 0, 0, 0.05), transparent 55%),
+    repeating-linear-gradient(
+      115deg,
+      rgba(0, 0, 0, 0.02) 0px,
+      rgba(0, 0, 0, 0.02) 1px,
+      transparent 1px,
+      transparent 6px
+    );
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+.critops-card__header {
+  display: grid;
+  gap: 2px;
+}
+
+.critops-card__title {
+  margin: 0;
+  padding: 4px 8px 3px;
+  background: #0b0b0b;
+  color: #ffffff;
+  font-size: clamp(0.55rem, 1.25vw, 0.75rem);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  text-align: center;
+}
+
+.critops-card__body {
+  padding: 1.5% 3% 2.5%;
+  display: grid;
+  gap: 1.5%;
+  grid-template-rows: auto 1fr auto;
+  min-height: 0;
+}
+
+.critops-card--two-column .critops-card__body {
+  display: block;
+  column-count: 2;
+  column-width: auto;
+  column-gap: 0.15rem;
+  column-fill: balance;
+  flex: 1 1 auto;
+}
+
+.critops-card--two-column .critops-card__body {
+  padding-left: 2.25%;
+  padding-right: 2.25%;
+}
+
+.critops-card--two-column .critops-card__header,
+.critops-card--two-column .critops-card__section {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.critops-card__name {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0.05rem 0.2rem;
+  background: #a61e1e;
+  color: #ffffff;
+  font-size: clamp(0.52rem, 1.05vw, 0.72rem);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.critops-card__number {
+  font-size: 1em;
+}
+
+.critops-card__opname {
+  font-size: 1.15em;
+}
+
+.critops-card__section {
+  display: grid;
+  gap: 1px;
+}
+
+.critops-card__section-box {
+  display: grid;
+  gap: 2px;
+}
+
+.critops-card__section-box--mission {
+  --mission-box-padding: 3px;
+  border: 1px solid #a61e1e;
+  padding: var(--mission-box-padding);
+}
+
+.critops-card__section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.critops-card__section-title {
+  margin: 0;
+  font-size: clamp(0.5rem, 1vw, 0.68rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #a61e1e;
+  line-height: 1.05;
+}
+
+.critops-card__cost {
+  font-size: clamp(0.55rem, 1.1vw, 0.72rem);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(241, 231, 214, 0.7);
+  line-height: 1.05;
+}
+
+.critops-card__subtitle {
+  margin: 0;
+  display: inline-block;
+  width: fit-content;
+  padding: 0.1rem 0.3rem;
+  background: #a61e1e;
+  color: #ffffff;
+  font-size: clamp(0.55rem, 1.1vw, 0.72rem);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+}
+
+
+.critops-card__subtitle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+  width: 100%;
+}
+
+.critops-card__section-box--mission .critops-card__subtitle-row {
+  width: calc(100% + (var(--mission-box-padding) * 2));
+  margin: calc(-1 * var(--mission-box-padding))
+    calc(-1 * var(--mission-box-padding))
+    var(--mission-box-padding);
+  padding: 0.1rem 0.3rem;
+  background: #a61e1e;
+  box-sizing: border-box;
+}
+
+.critops-card__section-box--mission .critops-card__subtitle {
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.critops-card__section-box--mission .critops-card__cost {
+  margin: 0;
+  padding: 0;
+  color: #ffffff;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.critops-card__text {
+  margin: 0;
+  font-size: clamp(0.52rem, 1vw, 0.7rem);
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.critops-card__bullets {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+}
+
+.critops-card__bullets--plain .critops-card__bullet-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0;
+  letter-spacing: 0;
+}
+
+.critops-card__bullets--plain .critops-card__bullet-label::before {
+  content: '';
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: #111111;
+  display: inline-block;
+}
+
+.critops-card__bullets--plain .critops-card__bullet::before {
+  content: '';
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: #111111;
+  display: inline-block;
+  margin-top: 0.15rem;
+}
+
+.critops-card__bullets--plain .critops-card__bullet-text {
+  font-size: clamp(0.52rem, 1vw, 0.7rem);
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  line-height: 0.9;
+}
+
+.critops-card__bullet {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.critops-card__bullet--action .critops-card__bullet-label {
+  color: #f2c94c;
+}
+
+.critops-card__bullet--restriction .critops-card__bullet-label {
+  color: #ef4444;
+}
+
+.critops-card__bullet-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: clamp(0.5rem, 1vw, 0.65rem);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: rgba(241, 231, 214, 0.65);
+}
+
+.critops-card__bullet-text {
+  flex: 1 1 auto;
+  font-size: clamp(0.75rem, 1.6vw, 0.95rem);
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.critops-card__section-box--mission .critops-card__bullet-text {
+  font-size: clamp(0.52rem, 1vw, 0.7rem);
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.critops-card__bullet--action .critops-card__bullet-label,
+.critops-card__bullet--restriction .critops-card__bullet-label {
+  font-size: 0;
+  letter-spacing: 0;
+}
+
+.critops-card__bullet--action .critops-card__bullet-label::before {
+  content: '';
+  width: 0;
+  height: 0;
+  border-top: 0.28rem solid transparent;
+  border-bottom: 0.28rem solid transparent;
+  border-left: 0.45rem solid #1f9d55;
+}
+
+.critops-card__bullet--restriction .critops-card__bullet-label::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  background: #a61e1e;
+  transform: rotate(45deg);
+  display: inline-block;
+}
+

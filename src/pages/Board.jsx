@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import mapsData from '../data/killzoneMaps.json'
 import terrainData from '../data/terrain.json'
 import terrainPiecesData from '../data/terrainPieces.json'
+import critOpsCardsData from '../data/critOpsCards.json'
+import CritOpsCard from '../components/CritOpsCard'
 import './Board.css'
 
 function Board() {
@@ -21,11 +23,13 @@ function Board() {
     () => arrangements.filter((arr) => arr.mapId === activeMap?.id),
     [arrangements, activeMap?.id],
   )
+  const critOpsCards = critOpsCardsData?.cards ?? []
   const [arrangementIndex, setArrangementIndex] = useState(0)
   const activeArrangement = mapArrangements[arrangementIndex] || null
   const hasRandomizedMapRef = useRef(false)
   const boardSurfaceRef = useRef(null)
   const boardFrameRef = useRef(null)
+  const [selectedCardIndex, setSelectedCardIndex] = useState(0)
   const shouldRotateZones = activeMap?.id === 'map_02'
   const sourceWidth = shouldRotateZones ? board.height : board.width
   const sourceHeight = shouldRotateZones ? board.width : board.height
@@ -76,6 +80,12 @@ function Board() {
     )
     setArrangementIndex(randomIndex)
   }, [activeMap?.id, mapArrangements.length])
+
+  useEffect(() => {
+    if (!critOpsCards.length) return
+    const randomIndex = Math.floor(Math.random() * critOpsCards.length)
+    setSelectedCardIndex(randomIndex)
+  }, [critOpsCards.length])
 
   useLayoutEffect(() => {
     const surface = boardSurfaceRef.current
@@ -179,34 +189,43 @@ function Board() {
   const getSegmentType = (segment) =>
     Array.isArray(segment?.[0]) ? 'heavy' : segment?.type || 'heavy'
 
+  const selectedCritOpsCard = critOpsCards[selectedCardIndex] || null
+  const map1OpClass =
+    selectedCritOpsCard?.opNumber === 4
+      ? ' is-op-04'
+      : selectedCritOpsCard?.opNumber === 5
+        ? ' is-op-05'
+        : selectedCritOpsCard?.opNumber === 6
+          ? ' is-op-06'
+          : selectedCritOpsCard?.opNumber === 7
+            ? ' is-op-07'
+            : selectedCritOpsCard?.opNumber === 8
+              ? ' is-op-08'
+              : selectedCritOpsCard?.opNumber === 9
+                ? ' is-op-09'
+                : ''
+  const map2OpClass =
+    selectedCritOpsCard?.opNumber === 1
+      ? ' is-op-01'
+      : selectedCritOpsCard?.opNumber === 2
+        ? ' is-op-02'
+        : selectedCritOpsCard?.opNumber === 3
+          ? ' is-op-03'
+          : selectedCritOpsCard?.opNumber === 4
+            ? ' is-op-04'
+            : selectedCritOpsCard?.opNumber === 5
+              ? ' is-op-05'
+              : selectedCritOpsCard?.opNumber === 6
+                ? ' is-op-06'
+                : selectedCritOpsCard?.opNumber === 7
+                  ? ' is-op-07'
+                  : selectedCritOpsCard?.opNumber === 9
+                    ? ' is-op-09'
+                    : ''
+
   return (
     <div className="board-view">
-      <div className="board-toolbar">
-        <div className="board-toggle">
-          {maps.map((map) => (
-            <button
-              key={map.id}
-              type="button"
-              className={`board-toggle-button${
-                map.id === activeMap?.id ? ' is-active' : ''
-              }`}
-              onClick={() => setSelectedMapId(map.id)}
-            >
-              {map.name}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          className="board-arrangement-button"
-          onClick={advanceArrangement}
-          disabled={!mapArrangements.length}
-        >
-          {activeArrangement
-            ? `${activeArrangement.name}`
-            : 'No arrangements'}
-        </button>
-      </div>
+      <div className="board-toolbar" />
       <div
         ref={boardSurfaceRef}
         className="board-surface"
@@ -338,7 +357,34 @@ function Board() {
               )}
             </g>
           </svg>
-        </div>
+          {activeMap?.id === 'map_01' && selectedCritOpsCard ? (
+            <>
+              <div
+                className={`board-card-overlay is-bottom-left is-map-01${map1OpClass}`}
+              >
+                <CritOpsCard card={selectedCritOpsCard} />
+              </div>
+              <div
+                className={`board-card-overlay is-top-right is-map-01${map1OpClass}`}
+              >
+                <CritOpsCard card={selectedCritOpsCard} />
+              </div>
+            </>
+          ) : activeMap?.id === 'map_02' && selectedCritOpsCard ? (
+            <>
+              <div
+                className={`board-card-overlay is-top-left is-map-02${map2OpClass}`}
+              >
+                <CritOpsCard card={selectedCritOpsCard} isTwoColumn />
+              </div>
+              <div
+                className={`board-card-overlay is-bottom-right is-map-02${map2OpClass}`}
+              >
+                <CritOpsCard card={selectedCritOpsCard} isTwoColumn />
+              </div>
+            </>
+          ) : null}
+          </div>
       </div>
     </div>
   )
