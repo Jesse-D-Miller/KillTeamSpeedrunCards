@@ -1,5 +1,5 @@
 .board-view {
-  --inch-scale: 0.8421;
+  --inch-scale: 0.4812;
   min-height: 100vh;
   background: radial-gradient(circle at top, #141820 0%, #0f1114 52%);
   color: var(--text);
@@ -59,7 +59,7 @@
 .board-surface {
   display: grid;
   place-items: center;
-  padding: 18px;
+  padding: 18px 18px 120px;
   overflow: auto;
 }
 
