@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import mapsData from '../data/killzoneMaps.json'
 import terrainData from '../data/terrain.json'
 import terrainPiecesData from '../data/terrainPieces.json'
@@ -24,6 +24,8 @@ function Board() {
   const [arrangementIndex, setArrangementIndex] = useState(0)
   const activeArrangement = mapArrangements[arrangementIndex] || null
   const hasRandomizedMapRef = useRef(false)
+  const boardSurfaceRef = useRef(null)
+  const boardFrameRef = useRef(null)
   const shouldRotateZones = activeMap?.id === 'map_02'
   const sourceWidth = shouldRotateZones ? board.height : board.width
   const sourceHeight = shouldRotateZones ? board.width : board.height
@@ -74,6 +76,57 @@ function Board() {
     )
     setArrangementIndex(randomIndex)
   }, [activeMap?.id, mapArrangements.length])
+
+  useLayoutEffect(() => {
+    const surface = boardSurfaceRef.current
+    const frame = boardFrameRef.current
+    if (!surface || !frame) return
+
+    const centerBoard = () => {
+      const canScrollSurface =
+        surface.scrollHeight > surface.clientHeight + 1 ||
+        surface.scrollWidth > surface.clientWidth + 1
+      if (canScrollSurface) {
+        const scrollLeft = Math.max(
+          0,
+          (surface.scrollWidth - surface.clientWidth) / 2,
+        )
+        const scrollTop = Math.max(
+          0,
+          (surface.scrollHeight - surface.clientHeight) / 2,
+        )
+        surface.scrollTo({
+          left: scrollLeft,
+          top: scrollTop,
+          behavior: 'auto',
+        })
+        return
+      }
+
+      const rect = frame.getBoundingClientRect()
+      const targetLeft =
+        rect.left + window.scrollX + rect.width / 2 - window.innerWidth / 2
+      const targetTop =
+        rect.top + window.scrollY + rect.height / 2 - window.innerHeight / 2
+      window.scrollTo({ left: targetLeft, top: targetTop, behavior: 'auto' })
+    }
+
+    const rafId = requestAnimationFrame(() =>
+      requestAnimationFrame(centerBoard),
+    )
+    const timeoutIds = [
+      window.setTimeout(centerBoard, 0),
+      window.setTimeout(centerBoard, 150),
+      window.setTimeout(centerBoard, 500),
+    ]
+    const handleResize = () => centerBoard()
+    window.addEventListener('resize', handleResize)
+    return () => {
+      cancelAnimationFrame(rafId)
+      timeoutIds.forEach((id) => window.clearTimeout(id))
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [activeMap?.id, arrangementIndex])
 
   const advanceArrangement = () => {
     if (!mapArrangements.length) return
@@ -155,10 +208,11 @@ function Board() {
         </button>
       </div>
       <div
+        ref={boardSurfaceRef}
         className="board-surface"
         style={{ '--board-width': board.width, '--board-height': board.height }}
       >
-        <div className="board-frame">
+        <div ref={boardFrameRef} className="board-frame">
           {grid.enabled ? (
             <div
               className="board-grid"
