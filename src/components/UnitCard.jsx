@@ -100,6 +100,8 @@ function UnitCard({
   onAplAdjustChange,
   legionaryMark,
   onLegionaryMarkChange,
+  weaponSelection,
+  onWeaponSelectionChange,
   readOnly = false,
 }) {
   const maxWounds = useMemo(() => {
@@ -155,10 +157,13 @@ function UnitCard({
     }
   }, [isDead])
 
-  const weaponRows = (opType.weapons ?? []).flatMap((weapon) => {
+  const weaponRows = (opType.weapons ?? []).flatMap((weapon, weaponIndex) => {
     const profiles = weapon.profiles?.length ? weapon.profiles : [null]
+    const weaponKey =
+      weapon.wepId ?? `${weapon.wepName ?? 'weapon'}-${weaponIndex}`
     return profiles.map((profile, index) => ({
       key: `${weapon.wepId}-${profile?.wepprofileId ?? index}`,
+      weaponKey,
       name: profile?.profileName
         ? `${weapon.wepName} (${profile.profileName})`
         : weapon.wepName,
@@ -258,6 +263,11 @@ function UnitCard({
   }
   const isDetailsOpen = Boolean(detailsOpen)
   const canToggleDetails = Boolean(onToggleDetails)
+  const weaponChecklistEnabled =
+    Array.isArray(weaponSelection) && typeof onWeaponSelectionChange === 'function'
+  const selectedWeaponSet = weaponChecklistEnabled
+    ? new Set(weaponSelection)
+    : new Set()
   const canAdjustApl = Boolean(onAplAdjustChange) && !readOnly && hasNumericApl
   const aplDeltaClass =
     aplAdjustment > 0 ? ' apl-up' : aplAdjustment < 0 ? ' apl-down' : ''
@@ -409,7 +419,12 @@ function UnitCard({
       </div>
       <div className={`game-card-details${isDetailsOpen ? ' open' : ''}`}>
         <div className="game-weapon-table">
-          <div className="game-weapon-row game-weapon-header">
+          <div
+            className={`game-weapon-row game-weapon-header${
+              weaponChecklistEnabled ? ' game-weapon-row--checklist' : ''
+            }`}
+          >
+            {weaponChecklistEnabled ? <span /> : null}
             <span>NAME</span>
             <span>ATK</span>
             <span>HIT</span>
@@ -417,7 +432,31 @@ function UnitCard({
             <span>WR</span>
           </div>
           {weaponRows.map((row) => (
-            <div className="game-weapon-row" key={row.key}>
+            <div
+              className={`game-weapon-row${
+                weaponChecklistEnabled ? ' game-weapon-row--checklist' : ''
+              }`}
+              key={row.key}
+            >
+              {weaponChecklistEnabled ? (
+                <label className="weapon-check">
+                  <input
+                    type="checkbox"
+                    checked={selectedWeaponSet.has(row.weaponKey)}
+                    onClick={(event) => event.stopPropagation()}
+                    onChange={(event) => {
+                      event.stopPropagation()
+                      const next = new Set(selectedWeaponSet)
+                      if (next.has(row.weaponKey)) {
+                        next.delete(row.weaponKey)
+                      } else {
+                        next.add(row.weaponKey)
+                      }
+                      onWeaponSelectionChange(Array.from(next))
+                    }}
+                  />
+                </label>
+              ) : null}
               <span className="weapon-name">{row.name}</span>
               <span>{row.ATK}</span>
               <span className={isCritical ? 'hit-critical' : ''}>

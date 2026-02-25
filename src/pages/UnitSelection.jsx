@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { getKillteamById } from '../data/ktData.js'
 import { useSelection } from '../state/SelectionContext.jsx'
 import { resolveWsUrl } from '../state/wsUrl.js'
+import UnitCard from '../components/UnitCard.jsx'
 import './UnitSelection.css'
 
 const WS_URL = resolveWsUrl()
@@ -33,6 +34,9 @@ const UNIT_COUNT_OVERRIDES = {
   },
   'TAU-VESP': {
     'TAU-VESP-WAR': 5,
+  },
+  'ORK-KOM': {
+    'ORK-KOM-BOY': 3,
   },
 }
 
@@ -103,7 +107,12 @@ const buildUnitCounts = (killteam, operatives) => {
 
 function UnitSelection() {
   const { killteamId } = useParams()
-  const { selectedUnitsByTeam, setSelectedUnits } = useSelection()
+  const {
+    selectedUnitsByTeam,
+    setSelectedUnits,
+    selectedWeaponsByTeam,
+    setSelectedWeapons,
+  } = useSelection()
   const didInitRef = useRef(new Set())
   const socketRef = useRef(null)
   const [roomCode, setRoomCode] = useState('')
@@ -265,11 +274,22 @@ function UnitSelection() {
 
           <div className="unit-grid">
             {expandedUnits.map(({ opType, instance, instanceCount }) => {
-              const keywords = opType.keywords
-                ? opType.keywords.split(',').slice(0, 5).join(' · ')
-                : '—'
               const unitKey = `${opType.opTypeId}-${instance ?? 0}`
+              const weapons = opType.weapons ?? []
+              const weaponKeys = weapons.map(
+                (weapon, index) =>
+                  weapon.wepId ?? `${weapon.wepName ?? 'weapon'}-${index}`,
+              )
+              const storedWeapons =
+                selectedWeaponsByTeam[killteamId]?.[unitKey]
+              const activeWeapons = new Set(
+                Array.isArray(storedWeapons) ? storedWeapons : weaponKeys,
+              )
               const isSelected = selectedUnits.has(unitKey)
+              const parsedWounds = Number.parseInt(opType.WOUNDS, 10)
+              const currentWounds = Number.isNaN(parsedWounds)
+                ? 0
+                : parsedWounds
 
               const handleToggle = () => {
                 const next = new Set(selectedUnits)
@@ -282,47 +302,37 @@ function UnitSelection() {
               }
 
               return (
-              <article
-                className={`unit-card${isSelected ? ' selected' : ''}`}
-                key={unitKey}
-                role="button"
-                tabIndex={0}
-                aria-pressed={isSelected}
-                onClick={handleToggle}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    handleToggle()
-                  }
-                }}
-              >
-                <div className="unit-card-header">
-                  <h2>{opType.opTypeName}</h2>
-                  <div className="unit-card-badges">
-                    <span className="unit-role">APL {opType.APL}</span>
-                    {instance ? (
-                      <span className="unit-instance">
-                        Slot {instance}/{instanceCount}
-                      </span>
-                    ) : null}
-                  </div>
+                <div
+                  className={`unit-selection-card${
+                    isSelected ? ' is-selected' : ''
+                  }`}
+                  key={unitKey}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isSelected}
+                  onClick={handleToggle}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      handleToggle()
+                    }
+                  }}
+                >
+                  <UnitCard
+                    opType={opType}
+                    instance={instance}
+                    instanceCount={instanceCount}
+                    currentWounds={currentWounds}
+                    detailsOpen
+                    state="ready"
+                    stance="conceal"
+                    readOnly
+                    weaponSelection={Array.from(activeWeapons)}
+                    onWeaponSelectionChange={(nextSelection) =>
+                      setSelectedWeapons(killteamId, unitKey, nextSelection)
+                    }
+                  />
                 </div>
-                <div className="unit-stats">
-                  <div>
-                    <span className="unit-stat-label">MOVE</span>
-                    <span className="unit-stat-value">{opType.MOVE}</span>
-                  </div>
-                  <div>
-                    <span className="unit-stat-label">SAVE</span>
-                    <span className="unit-stat-value">{opType.SAVE}</span>
-                  </div>
-                  <div>
-                    <span className="unit-stat-label">WOUNDS</span>
-                    <span className="unit-stat-value">{opType.WOUNDS}</span>
-                  </div>
-                </div>
-                <p className="unit-keywords">{keywords}</p>
-              </article>
               )
             })}
           </div>

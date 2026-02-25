@@ -578,6 +578,22 @@
   background: var(--panel-2);
 }
 
+.game-weapon-row--checklist {
+  grid-template-columns: 22px 1.9fr repeat(3, minmax(0, 0.35fr)) 1.1fr;
+}
+
+.weapon-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.weapon-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
 .game-weapon-header {
   font-size: 0.7rem;
   text-transform: uppercase;

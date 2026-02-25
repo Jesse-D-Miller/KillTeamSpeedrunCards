@@ -157,6 +157,12 @@ function EquipmentSelection() {
     })
   }
 
+  const handleToggleExpanded = (eqId) => {
+    toggleExpanded(eqId)
+    if (selectedEquipment.has(eqId)) return
+    setSelectedEquipment(killteamId, new Set(selectedEquipment).add(eqId))
+  }
+
   const sendSyncState = () => {
     const socket = socketRef.current
     if (!socket || socket.readyState !== WebSocket.OPEN) return
@@ -181,21 +187,13 @@ function EquipmentSelection() {
   }
 
   const handleStart = () => {
-    try {
-      const gameId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-      localStorage.setItem('kt-game-id', gameId)
-    } catch (error) {
-      console.warn('Failed to store game id.', error)
+    if (isMultiplayer) {
+      const socket = socketRef.current
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        sendSyncState()
+      }
     }
-    if (!isMultiplayer) {
-      navigate(`/game/${killteamId}`)
-      return
-    }
-    const socket = socketRef.current
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      sendSyncState()
-    }
-    navigate(`/game/${killteamId}`)
+    navigate('/select-tac-ops', { state: { killteamId } })
   }
 
   return (
@@ -240,19 +238,19 @@ function EquipmentSelection() {
                   }}
                 >
                   <div className="equipment-card-header">
-                    <h3>{equipment.eqName}</h3>
                     <button
                       className="equipment-toggle"
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation()
-                        toggleExpanded(equipment.eqId)
+                        handleToggleExpanded(equipment.eqId)
                       }}
                       aria-expanded={expandedEquipment.has(equipment.eqId)}
                       aria-label={`Toggle ${equipment.eqName} details`}
                     >
-                      v
+                      &gt;
                     </button>
+                    <h3>{equipment.eqName}</h3>
                   </div>
                   <p className="equipment-description">
                     {equipment.description}
@@ -289,19 +287,19 @@ function EquipmentSelection() {
                   }}
                 >
                   <div className="equipment-card-header">
-                    <h3>{equipment.eqName}</h3>
                     <button
                       className="equipment-toggle"
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation()
-                        toggleExpanded(equipment.eqId)
+                        handleToggleExpanded(equipment.eqId)
                       }}
                       aria-expanded={expandedEquipment.has(equipment.eqId)}
                       aria-label={`Toggle ${equipment.eqName} details`}
                     >
-                      v
+                      &gt;
                     </button>
+                    <h3>{equipment.eqName}</h3>
                   </div>
                   <p className="equipment-description">
                     {equipment.description}
@@ -317,13 +315,8 @@ function EquipmentSelection() {
               type="button"
               onClick={handleStart}
             >
-              Start Game
+              Next: Select Tac Ops
             </button>
-            {isMultiplayer ? (
-              <p className="equipment-start-hint">
-                Opponent syncs once both players enter the game.
-              </p>
-            ) : null}
           </div>
         </section>
       </main>

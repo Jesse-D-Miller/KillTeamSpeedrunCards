@@ -63,6 +63,8 @@ function SelectArmy() {
                     ? 'status-dot status-dot--green'
                     : team.killteamId === 'CHAOS-LEG'
                       ? 'status-dot status-dot--yellow'
+                      : team.killteamId === 'ORK-KOM'
+                        ? 'status-dot status-dot--yellow'
                     : 'status-dot status-dot--red'
               const statusLabel =
                 team.killteamId === 'VOT-HKY'
@@ -71,6 +73,8 @@ function SelectArmy() {
                     ? 'Army ready'
                     : team.killteamId === 'CHAOS-LEG'
                       ? 'Army in progress'
+                      : team.killteamId === 'ORK-KOM'
+                        ? 'Army in progress'
                     : 'Army not started'
 
               return (

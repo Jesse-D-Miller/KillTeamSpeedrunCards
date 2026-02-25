@@ -33,6 +33,17 @@ function SelectionProvider({ children }) {
       return {}
     }
   })
+  const [selectedWeaponsByTeam, setSelectedWeaponsByTeam] = useState(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (!stored) return {}
+      const parsed = JSON.parse(stored)
+      return parsed?.selectedWeaponsByTeam ?? {}
+    } catch (error) {
+      console.warn('Failed to read selection storage.', error)
+      return {}
+    }
+  })
   const [legionaryMarksByTeam, setLegionaryMarksByTeam] = useState(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
@@ -59,6 +70,19 @@ function SelectionProvider({ children }) {
     }))
   }
 
+  const setSelectedWeapons = (killteamId, unitKey, nextSelection) => {
+    setSelectedWeaponsByTeam((prev) => {
+      const currentTeam = prev[killteamId] ?? {}
+      return {
+        ...prev,
+        [killteamId]: {
+          ...currentTeam,
+          [unitKey]: normalizeSelection(nextSelection),
+        },
+      }
+    })
+  }
+
   const setLegionaryMarks = (killteamId, nextMarks) => {
     setLegionaryMarksByTeam((prev) => {
       const current = prev[killteamId] ?? {}
@@ -76,14 +100,17 @@ function SelectionProvider({ children }) {
     () => ({
       selectedUnitsByTeam,
       selectedEquipmentByTeam,
+      selectedWeaponsByTeam,
       setSelectedUnits,
       setSelectedEquipment,
+      setSelectedWeapons,
       legionaryMarksByTeam,
       setLegionaryMarks,
     }),
     [
       selectedUnitsByTeam,
       selectedEquipmentByTeam,
+      selectedWeaponsByTeam,
       legionaryMarksByTeam,
     ],
   )
@@ -93,13 +120,19 @@ function SelectionProvider({ children }) {
       const payload = JSON.stringify({
         selectedUnitsByTeam,
         selectedEquipmentByTeam,
+        selectedWeaponsByTeam,
         legionaryMarksByTeam,
       })
       localStorage.setItem(STORAGE_KEY, payload)
     } catch (error) {
       console.warn('Failed to persist selection storage.', error)
     }
-  }, [selectedUnitsByTeam, selectedEquipmentByTeam, legionaryMarksByTeam])
+  }, [
+    selectedUnitsByTeam,
+    selectedEquipmentByTeam,
+    selectedWeaponsByTeam,
+    legionaryMarksByTeam,
+  ])
 
   return (
     <SelectionContext.Provider value={value}>

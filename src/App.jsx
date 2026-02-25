@@ -7,6 +7,7 @@ import SelectArmy from './pages/SelectArmy.jsx'
 import SetUpBattle from './pages/SetUpBattle.jsx'
 import UnitSelection from './pages/UnitSelection.jsx'
 import EquipmentSelection from './pages/EquipmentSelection.jsx'
+import SelectTacOps from './pages/SelectTacOps.jsx'
 import Game from './pages/Game.jsx'
 import { SelectionProvider } from './state/SelectionContext.jsx'
 
@@ -27,6 +28,7 @@ function App() {
           path="/select-army/:killteamId/equipment"
           element={<EquipmentSelection />}
         />
+        <Route path="/select-tac-ops" element={<SelectTacOps />} />
         <Route path="/game/:killteamId" element={<Game />} />
       </Routes>
     </SelectionProvider>

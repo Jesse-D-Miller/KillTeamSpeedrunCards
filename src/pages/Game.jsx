@@ -39,6 +39,9 @@ const UNIT_COUNT_OVERRIDES = {
   'TAU-VESP': {
     'TAU-VESP-WAR': 5,
   },
+  'ORK-KOM': {
+    'ORK-KOM-BOY': 3,
+  },
 }
 
 const buildUnitCounts = (killteam, operatives) => {
@@ -192,6 +195,7 @@ function Game() {
   const {
     selectedUnitsByTeam,
     selectedEquipmentByTeam,
+    selectedWeaponsByTeam,
     setSelectedUnits,
     setSelectedEquipment,
     legionaryMarksByTeam,
@@ -487,6 +491,7 @@ function Game() {
 
   const selectedUnitKeys = selectedUnitsByTeam[killteamId] ?? []
   const selectedEquipmentKeys = selectedEquipmentByTeam[killteamId] ?? []
+  const selectedWeaponsByUnit = selectedWeaponsByTeam[killteamId] ?? {}
   const selectedUnits = new Set(selectedUnitKeys)
   const selectedEquipmentIds = new Set(selectedEquipmentKeys)
   const selectedEquipment = useMemo(
@@ -527,6 +532,24 @@ function Game() {
       index,
     }))
     .filter((unit) => selectedUnits.has(unit.key))
+    .map((unit) => {
+      const selection = selectedWeaponsByUnit[unit.key]
+      if (!Array.isArray(selection)) return unit
+      const selectedSet = new Set(selection)
+      const filteredWeapons = (unit.opType.weapons ?? []).filter(
+        (weapon, weaponIndex) =>
+          selectedSet.has(
+            weapon.wepId ?? `${weapon.wepName ?? 'weapon'}-${weaponIndex}`,
+          ),
+      )
+      return {
+        ...unit,
+        opType: {
+          ...unit.opType,
+          weapons: filteredWeapons,
+        },
+      }
+    })
   const legionaryMarkByUnit = legionaryMarksByTeam[killteamId] ?? {}
   const isMultiplayer = Boolean(roomCode)
   const opponentRenderState = opponentSnapshot ?? opponentState

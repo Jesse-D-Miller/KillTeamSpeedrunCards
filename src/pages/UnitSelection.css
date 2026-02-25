@@ -11,8 +11,29 @@
 
 .unit-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
+}
+
+.unit-selection-card {
+  cursor: pointer;
+  border-radius: 18px;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.unit-selection-card:hover {
+  transform: translateY(-2px);
+}
+
+.unit-selection-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.unit-selection-card.is-selected .game-card {
+  border-color: color-mix(in srgb, var(--success) 80%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--success) 40%, transparent),
+    0 18px 45px rgba(0, 0, 0, 0.35);
 }
 
 .unit-card {
@@ -98,6 +119,30 @@
   font-size: 0.85rem;
 }
 
+.unit-weapon-list {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.unit-weapon-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.unit-weapon-item input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
 .unit-lock-button {
   width: 100%;
   padding: 16px 20px;
@@ -125,10 +170,6 @@
   .unit-selection-header {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .unit-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

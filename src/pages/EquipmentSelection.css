@@ -34,8 +34,8 @@
 }
 
 .equipment-card {
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: #f4f1e6;
+  border: 1px solid #ffffff;
   border-radius: 16px;
   padding: 14px;
   box-shadow: var(--shadow-soft);
@@ -45,6 +45,7 @@
   overflow: hidden;
   cursor: pointer;
   transition: border 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  height: fit-content;
 }
 
 .equipment-card:hover {
@@ -57,14 +58,24 @@
 }
 
 .equipment-card.selected {
-  border-color: color-mix(in srgb, var(--success) 80%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--success) 40%, transparent),
+  border-color: #1f7a3a;
+  box-shadow: 0 0 0 1px rgba(31, 122, 58, 0.6),
     0 18px 45px rgba(0, 0, 0, 0.35);
+  background: #f4f1e6;
+}
+
+.equipment-card.selected h2,
+.equipment-card.selected h3 {
+  color: #1f7a3a;
 }
 
 .equipment-card h2,
 .equipment-card h3 {
   margin: 0 0 6px;
+  color: #ffffff;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
 }
 
 .equipment-card-header {
@@ -72,12 +83,21 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  padding: 4px 2px 3px;
+  background: #0b0b0b;
+  border-radius: 16px 16px 10px 10px;
+  margin: -14px -14px 10px;
+}
+
+.equipment-card-header h3 {
+  flex: 1;
+  text-align: left;
 }
 
 .equipment-toggle {
-  border: 1px solid var(--border);
-  background: var(--panel-2);
-  color: var(--text);
+  border: none;
+  background: #0b0b0b;
+  color: #ffffff;
   border-radius: 10px;
   width: 28px;
   height: 28px;
@@ -85,10 +105,11 @@
   display: grid;
   place-items: center;
   padding: 0;
+  margin: 0;
 }
 
 .equipment-card.expanded .equipment-toggle {
-  transform: rotate(180deg);
+  transform: none;
 }
 
 .equipment-description {
@@ -106,13 +127,13 @@
 }
 
 .equipment-card.expanded .equipment-description {
-  background: linear-gradient(135deg, #f2efe7, #e6e0d2);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 12px;
-  margin-top: 6px;
-  max-height: 240px;
-  overflow: auto;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  background: #f4f1e6;
+  border: none;
+  padding: 6px 8px;
+  margin-top: 4px;
+  max-height: none;
+  overflow: visible;
+  box-shadow: none;
 }
 
 .equipment-footer {
