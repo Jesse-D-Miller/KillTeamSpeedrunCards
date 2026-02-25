@@ -86,9 +86,10 @@ function SelectTacOps() {
               ) : (
                 <Link
                   className="select-tac-ops-next"
-                  to={`/game/${killteamId}`}
+                  to="/set-up-operatives"
+                  state={{ killteamId }}
                 >
-                  Next: Start game
+                  Next: Set up operatives
                 </Link>
               )
             ) : (

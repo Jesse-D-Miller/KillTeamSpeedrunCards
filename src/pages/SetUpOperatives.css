@@ -1,0 +1,89 @@
+.setup-operatives {
+  min-height: calc(100vh - 120px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.setup-operatives-card {
+  width: min(560px, 92vw);
+  background: rgba(15, 18, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+.setup-operatives-card h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.6rem, 2.4vw, 2.1rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.setup-operatives-lede {
+  margin: 0 0 20px;
+  color: rgba(241, 231, 214, 0.7);
+}
+
+.setup-operatives-list {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.setup-operatives-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  align-items: start;
+  justify-items: start;
+  padding: 10px 14px;
+  background: rgba(8, 9, 12, 0.6);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: left;
+}
+
+.setup-operatives-item input {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: #f0d38a;
+}
+
+.setup-operatives-text {
+  display: grid;
+  gap: 4px;
+}
+
+.setup-operatives-title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.setup-operatives-subtext {
+  color: rgba(241, 231, 214, 0.65);
+  font-size: 0.95rem;
+}
+
+.setup-operatives-next {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: #f0d38a;
+  color: #1a1b1d;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.setup-operatives-next:hover {
+  filter: brightness(1.05);
+}
