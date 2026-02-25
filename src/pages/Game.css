@@ -121,10 +121,10 @@
   top: 0;
   left: 0;
   height: 100vh;
-  width: min(34vw, 420px);
-  max-width: 85vw;
+  width: 100vw;
+  max-width: none;
   background: var(--panel);
-  border-right: 1px solid var(--border);
+  border-right: 0;
   padding: 18px 16px;
   transform: translateX(-100%);
   transition: transform 220ms ease;
@@ -133,6 +133,29 @@
   align-content: start;
   gap: 12px;
   overflow-y: auto;
+}
+
+.game-menu-close {
+  position: sticky;
+  top: 2px;
+  margin-left: auto;
+  margin-right: 2px;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 1.2rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.game-menu-close:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .game-menu-drawer.open {
@@ -184,6 +207,30 @@
   border-top: 1px solid var(--border);
   color: var(--text-muted);
   font-size: 0.85rem;
+}
+
+.game-menu-tacop-grid {
+  display: inline-flex;
+  gap: 1em;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.game-menu-tacop {
+  border-radius: 8px;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  width: 100%;
+  max-width: 162.5px;
+}
+
+.game-menu-tacop img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform: scale(1.06);
+  transform-origin: center;
 }
 
 .game-menu-equipment {

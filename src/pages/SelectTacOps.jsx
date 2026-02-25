@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import kt24Data from '../data/kt24_v4.json'
+import { useSelection } from '../state/SelectionContext.jsx'
 import './SelectTacOps.css'
 
 const archetypeToSlug = (name) => {
@@ -22,6 +23,8 @@ function SelectTacOps() {
   const location = useLocation()
   const killteamId = location.state?.killteamId
   const [selectedCardIndex, setSelectedCardIndex] = useState(null)
+  const { selectedTacOpsByTeam, setSelectedTacOp } = useSelection()
+  const selectedTacOp = killteamId ? selectedTacOpsByTeam[killteamId] : null
   const killteam = kt24Data.find((team) => team.killteamId === killteamId)
   const archetypes = killteam?.archetypes
     ? killteam.archetypes
@@ -39,6 +42,16 @@ function SelectTacOps() {
       index,
     }))
   })
+
+  useEffect(() => {
+    if (!selectedTacOp?.src) return
+    const matchIndex = tacOpsCards.findIndex(
+      (card) => card.src === selectedTacOp.src,
+    )
+    if (matchIndex >= 0) {
+      setSelectedCardIndex(matchIndex)
+    }
+  }, [selectedTacOp, tacOpsCards])
 
   return (
     <div className="app-shell">
@@ -61,7 +74,10 @@ function SelectTacOps() {
                       }`}
                       key={`${card.src}-${idx}`}
                       type="button"
-                      onClick={() => setSelectedCardIndex(idx)}
+                      onClick={() => {
+                        setSelectedCardIndex(idx)
+                        if (killteamId) setSelectedTacOp(killteamId, card)
+                      }}
                       aria-pressed={isSelected}
                     >
                       <img

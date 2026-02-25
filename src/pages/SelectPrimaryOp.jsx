@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSelection } from '../state/SelectionContext.jsx'
 import './SelectPrimaryOp.css'
 
 const primaryOpCards = [1, 2, 3].map((index) => ({
@@ -11,6 +12,20 @@ function SelectPrimaryOp() {
   const location = useLocation()
   const killteamId = location.state?.killteamId
   const [selectedIndex, setSelectedIndex] = useState(null)
+  const { selectedPrimaryOpsByTeam, setSelectedPrimaryOp } = useSelection()
+  const selectedPrimaryOp = killteamId
+    ? selectedPrimaryOpsByTeam[killteamId]
+    : null
+
+  useEffect(() => {
+    if (!selectedPrimaryOp?.src) return
+    const matchIndex = primaryOpCards.findIndex(
+      (card) => card.src === selectedPrimaryOp.src,
+    )
+    if (matchIndex >= 0) {
+      setSelectedIndex(matchIndex)
+    }
+  }, [selectedPrimaryOp])
 
   return (
     <div className="app-shell">
@@ -30,7 +45,10 @@ function SelectPrimaryOp() {
                     }`}
                     key={card.src}
                     type="button"
-                    onClick={() => setSelectedIndex(index)}
+                    onClick={() => {
+                      setSelectedIndex(index)
+                      if (killteamId) setSelectedPrimaryOp(killteamId, card)
+                    }}
                     aria-pressed={isSelected}
                   >
                     <img src={card.src} alt={card.label} loading="lazy" />

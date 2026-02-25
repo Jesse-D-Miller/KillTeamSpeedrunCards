@@ -44,6 +44,28 @@ function SelectionProvider({ children }) {
       return {}
     }
   })
+  const [selectedTacOpsByTeam, setSelectedTacOpsByTeam] = useState(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (!stored) return {}
+      const parsed = JSON.parse(stored)
+      return parsed?.selectedTacOpsByTeam ?? {}
+    } catch (error) {
+      console.warn('Failed to read selection storage.', error)
+      return {}
+    }
+  })
+  const [selectedPrimaryOpsByTeam, setSelectedPrimaryOpsByTeam] = useState(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (!stored) return {}
+      const parsed = JSON.parse(stored)
+      return parsed?.selectedPrimaryOpsByTeam ?? {}
+    } catch (error) {
+      console.warn('Failed to read selection storage.', error)
+      return {}
+    }
+  })
   const [legionaryMarksByTeam, setLegionaryMarksByTeam] = useState(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
@@ -83,6 +105,20 @@ function SelectionProvider({ children }) {
     })
   }
 
+  const setSelectedTacOp = (killteamId, nextSelection) => {
+    setSelectedTacOpsByTeam((prev) => ({
+      ...prev,
+      [killteamId]: nextSelection ?? null,
+    }))
+  }
+
+  const setSelectedPrimaryOp = (killteamId, nextSelection) => {
+    setSelectedPrimaryOpsByTeam((prev) => ({
+      ...prev,
+      [killteamId]: nextSelection ?? null,
+    }))
+  }
+
   const setLegionaryMarks = (killteamId, nextMarks) => {
     setLegionaryMarksByTeam((prev) => {
       const current = prev[killteamId] ?? {}
@@ -101,9 +137,13 @@ function SelectionProvider({ children }) {
       selectedUnitsByTeam,
       selectedEquipmentByTeam,
       selectedWeaponsByTeam,
+      selectedTacOpsByTeam,
+      selectedPrimaryOpsByTeam,
       setSelectedUnits,
       setSelectedEquipment,
       setSelectedWeapons,
+      setSelectedTacOp,
+      setSelectedPrimaryOp,
       legionaryMarksByTeam,
       setLegionaryMarks,
     }),
@@ -111,6 +151,8 @@ function SelectionProvider({ children }) {
       selectedUnitsByTeam,
       selectedEquipmentByTeam,
       selectedWeaponsByTeam,
+      selectedTacOpsByTeam,
+      selectedPrimaryOpsByTeam,
       legionaryMarksByTeam,
     ],
   )
@@ -121,6 +163,8 @@ function SelectionProvider({ children }) {
         selectedUnitsByTeam,
         selectedEquipmentByTeam,
         selectedWeaponsByTeam,
+        selectedTacOpsByTeam,
+        selectedPrimaryOpsByTeam,
         legionaryMarksByTeam,
       })
       localStorage.setItem(STORAGE_KEY, payload)
@@ -131,6 +175,8 @@ function SelectionProvider({ children }) {
     selectedUnitsByTeam,
     selectedEquipmentByTeam,
     selectedWeaponsByTeam,
+    selectedTacOpsByTeam,
+    selectedPrimaryOpsByTeam,
     legionaryMarksByTeam,
   ])
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   getKillteamById,
   getRuleDescription,
@@ -191,11 +191,14 @@ const isLegionaryUnit = (opType) =>
   /\bLEGIONARY\b/i.test(opType?.keywords ?? '')
 
 function Game() {
+  const navigate = useNavigate()
   const { killteamId } = useParams()
   const {
     selectedUnitsByTeam,
     selectedEquipmentByTeam,
     selectedWeaponsByTeam,
+    selectedTacOpsByTeam,
+    selectedPrimaryOpsByTeam,
     setSelectedUnits,
     setSelectedEquipment,
     legionaryMarksByTeam,
@@ -233,6 +236,10 @@ function Game() {
     () => (roomCode && playerId ? `kt-opponent-${roomCode}-${playerId}` : null),
     [roomCode, playerId],
   )
+  const selectedTacOp = killteamId ? selectedTacOpsByTeam[killteamId] : null
+  const selectedPrimaryOp = killteamId
+    ? selectedPrimaryOpsByTeam[killteamId]
+    : null
   const ruleDetails = useMemo(
     () => (ruleModal ? getRuleDescription(ruleModal) : null),
     [ruleModal],
@@ -241,6 +248,7 @@ function Game() {
     () => (ruleModal && !ruleDetails ? getRuleSuggestions(ruleModal, 3) : []),
     [ruleModal, ruleDetails],
   )
+  const menuDrawerRef = useRef(null)
 
   useEffect(() => {
     setOpponentDebug((prev) => ({
@@ -272,6 +280,14 @@ function Game() {
     }, 2000)
     return () => window.clearInterval(interval)
   }, [roomCode, playerId, wsReady])
+  useEffect(() => {
+    if (menuOpen || !menuDrawerRef.current) return
+    menuDrawerRef.current
+      .querySelectorAll('details[open]')
+      .forEach((element) => {
+        element.open = false
+      })
+  }, [menuOpen])
 
   const isRangeRule = (rule) => /^(Rng|Range)\b/i.test(rule)
 
@@ -924,6 +940,30 @@ function Game() {
     })
   }
 
+  const handleNextTp = () => {
+    resetStates()
+    setTpCount((prev) => prev + 1)
+  }
+
+  const handleNextAction = () => {
+    if (tpCount >= 4) {
+      navigate('/game-end')
+      return
+    }
+    handleNextTp()
+  }
+
+  const closeMenu = () => {
+    if (menuDrawerRef.current) {
+      menuDrawerRef.current
+        .querySelectorAll('details[open]')
+        .forEach((element) => {
+          element.open = false
+        })
+    }
+    setMenuOpen(false)
+  }
+
   return (
     <div className="app-shell">
       <header className="game-nav">
@@ -1057,21 +1097,34 @@ function Game() {
           ) : null}
         </div>
         <nav className="game-nav-links">
-          <button className="ghost-link" type="button" onClick={resetStates}>
-            Reset
+          <button
+            className="ghost-link"
+            type="button"
+            onClick={handleNextAction}
+          >
+            {tpCount >= 4 ? 'END GAME' : 'Next TP'}
           </button>
         </nav>
       </header>
       <div
         className={`game-menu-backdrop${menuOpen ? ' open' : ''}`}
-        onClick={() => setMenuOpen(false)}
+        onClick={closeMenu}
         aria-hidden={!menuOpen}
       />
       <aside
         id="game-menu-drawer"
         className={`game-menu-drawer${menuOpen ? ' open' : ''}`}
         aria-hidden={!menuOpen}
+        ref={menuDrawerRef}
       >
+        <button
+          className="game-menu-close"
+          type="button"
+          aria-label="Close game menu"
+          onClick={closeMenu}
+        >
+          ×
+        </button>
         <div className="game-menu-panel">
           <details className="game-menu-group">
             <summary className="game-menu-summary">Equipment</summary>
@@ -1156,8 +1209,35 @@ function Game() {
             </div>
           </details>
           <details className="game-menu-group">
-            <summary className="game-menu-summary">Tac Ops</summary>
-            <div className="game-menu-content">Tac Ops panel</div>
+            <summary className="game-menu-summary">Tac Op / Primary Op</summary>
+            <div className="game-menu-content">
+              {selectedTacOp?.src || selectedPrimaryOp?.src ? (
+                <div className="game-menu-tacop-grid">
+                  {selectedTacOp?.src ? (
+                    <div className="game-menu-tacop">
+                      <img
+                        src={selectedTacOp.src}
+                        alt={selectedTacOp.label || 'Selected Tac Op'}
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : null}
+                  {selectedPrimaryOp?.src ? (
+                    <div className="game-menu-tacop">
+                      <img
+                        src={selectedPrimaryOp.src}
+                        alt={selectedPrimaryOp.label || 'Selected Primary Op'}
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="game-menu-empty">
+                  No Tac Op or Primary Op selected yet.
+                </div>
+              )}
+            </div>
           </details>
           <details className="game-menu-group">
             <summary className="game-menu-summary">Strat Ploys</summary>
