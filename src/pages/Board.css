@@ -184,6 +184,14 @@
 }
 
 .board-op-group.is-map-01.is-left .board-side__slot--card {
+  translate: 1px 0;
+}
+
+.board-op-group.is-map-01.is-left .board-side__slot--killop {
+  translate: 1px 0;
+}
+
+.board-op-group.is-map-01.is-left .board-side__slot--card {
   translate: 0px 0;
 }
 
@@ -195,6 +203,10 @@
   right: 0.1in;
   top: 0.1in;
   justify-content: flex-end;
+}
+
+.board-op-group.is-map-01.is-right .board-side__slot--card {
+  translate: 1px 0;
 }
 
 .board-op-group.is-map-01.is-right .board-side__slot--card {

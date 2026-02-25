@@ -77,7 +77,8 @@ function SelectArmy() {
               <Link
                 className="select-army-card"
                 key={team.killteamId}
-                to={`/select-army/${team.killteamId}/units`}
+                to="/set-up-the-battle"
+                state={{ killteamId: team.killteamId }}
                 aria-label={`Select ${team.killteamName}`}
               >
                 <div className="select-army-card-header">

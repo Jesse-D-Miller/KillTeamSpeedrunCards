@@ -4,6 +4,7 @@ import Landing from './pages/Landing.jsx'
 import Multiplayer from './pages/Multiplayer.jsx'
 import Board from './pages/Board.jsx'
 import SelectArmy from './pages/SelectArmy.jsx'
+import SetUpBattle from './pages/SetUpBattle.jsx'
 import UnitSelection from './pages/UnitSelection.jsx'
 import EquipmentSelection from './pages/EquipmentSelection.jsx'
 import Game from './pages/Game.jsx'
@@ -17,6 +18,7 @@ function App() {
         <Route path="/multiplayer" element={<Multiplayer />} />
         <Route path="/board" element={<Board />} />
         <Route path="/select-army" element={<SelectArmy />} />
+        <Route path="/set-up-the-battle" element={<SetUpBattle />} />
         <Route
           path="/select-army/:killteamId/units"
           element={<UnitSelection />}
