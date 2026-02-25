@@ -4,6 +4,8 @@ import terrainData from '../data/terrain.json'
 import terrainPiecesData from '../data/terrainPieces.json'
 import critOpsCardsData from '../data/critOpsCards.json'
 import CritOpsCard from '../components/CritOpsCard'
+import KillOp from '../components/KillOp'
+import BoardSide from '../components/BoardSide'
 import './Board.css'
 
 function Board() {
@@ -359,29 +361,49 @@ function Board() {
           </svg>
           {activeMap?.id === 'map_01' && selectedCritOpsCard ? (
             <>
-              <div
-                className={`board-card-overlay is-bottom-left is-map-01${map1OpClass}`}
-              >
-                <CritOpsCard card={selectedCritOpsCard} />
-              </div>
-              <div
-                className={`board-card-overlay is-top-right is-map-01${map1OpClass}`}
-              >
-                <CritOpsCard card={selectedCritOpsCard} />
-              </div>
+              <BoardSide
+                mapClass="is-map-01"
+                side="is-left"
+                cardClassName={`board-card-overlay is-bottom-left is-map-01${map1OpClass}`}
+                killOpClassName="board-killop-overlay is-map-01 is-left"
+                cardContent={<CritOpsCard card={selectedCritOpsCard} />}
+                killOpContent={<KillOp />}
+                killOpFirst
+              />
+              <BoardSide
+                mapClass="is-map-01"
+                side="is-right"
+                cardClassName={`board-card-overlay is-top-right is-map-01${map1OpClass}`}
+                killOpClassName="board-killop-overlay is-map-01 is-right"
+                cardContent={<CritOpsCard card={selectedCritOpsCard} />}
+                killOpContent={<KillOp />}
+                killOpFirst
+              />
             </>
           ) : activeMap?.id === 'map_02' && selectedCritOpsCard ? (
             <>
-              <div
-                className={`board-card-overlay is-top-left is-map-02${map2OpClass}`}
-              >
-                <CritOpsCard card={selectedCritOpsCard} isTwoColumn />
-              </div>
-              <div
-                className={`board-card-overlay is-bottom-right is-map-02${map2OpClass}`}
-              >
-                <CritOpsCard card={selectedCritOpsCard} isTwoColumn />
-              </div>
+              <BoardSide
+                mapClass="is-map-02"
+                side="is-left"
+                cardClassName={`board-card-overlay is-top-left is-map-02${map2OpClass}`}
+                killOpClassName={`board-killop-overlay is-map-02 is-left${map2OpClass}`}
+                cardContent={
+                  <CritOpsCard card={selectedCritOpsCard} isTwoColumn />
+                }
+                killOpContent={<KillOp />}
+                killOpFirst
+              />
+              <BoardSide
+                mapClass="is-map-02"
+                side="is-right"
+                cardClassName={`board-card-overlay is-bottom-right is-map-02${map2OpClass}`}
+                killOpClassName={`board-killop-overlay is-map-02 is-right${map2OpClass}`}
+                cardContent={
+                  <CritOpsCard card={selectedCritOpsCard} isTwoColumn />
+                }
+                killOpContent={<KillOp />}
+                killOpFirst
+              />
             </>
           ) : null}
           </div>

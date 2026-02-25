@@ -77,6 +77,223 @@
   overflow: hidden;
 }
 
+.board-op-group {
+  position: fixed;
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  gap: 1em;
+  pointer-events: none;
+  z-index: 6;
+  height: calc(var(--board-height) * 1in * var(--inch-scale));
+}
+
+.board-op-group.is-map-02 {
+  grid-auto-flow: row;
+  height: fit-content;
+  align-content: start;
+}
+
+.board-op-group .board-side__slot--primary {
+  grid-row: 1;
+}
+
+.board-op-group .board-side__placeholder--tac {
+  grid-row: 2;
+}
+
+.board-op-group .board-side__placeholder--cat {
+  grid-row: 3;
+}
+
+.board-op-group .board-side__slot--secondary {
+  grid-row: 4;
+}
+
+.board-op-group .board-side__slot--killop {
+  width: fit-content;
+  height: fit-content;
+  display: grid;
+  justify-items: start;
+  align-items: center;
+  justify-self: start;
+  align-self: center;
+}
+
+.board-op-group.is-map-02 .board-side__slot--killop {
+  height: fit-content;
+}
+
+.board-op-group.is-map-02.is-right .board-side__slot--killop {
+  justify-self: end;
+  justify-items: end;
+  align-self: end;
+  margin-left: 0;
+  width: calc(var(--killop-size) + 0.05in);
+}
+
+.board-op-group .board-side__slot--killop .board-killop-overlay {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  margin: 0;
+}
+
+.board-op-group.is-map-02 .board-side__placeholder--cat {
+  grid-row: 1;
+}
+
+.board-op-group.is-map-02 .board-side__slot--primary {
+  grid-row: 3;
+}
+
+.board-op-group.is-map-02.is-left .board-side__slot--primary {
+  grid-row: 2;
+}
+
+.board-op-group.is-map-02.is-left .board-side__placeholder--tac {
+  grid-row: 3;
+}
+
+.board-op-group.is-map-02.is-left .board-side__placeholder--cat {
+  grid-row: 4;
+}
+
+.board-op-group.is-map-02.is-left .board-side__slot--secondary {
+  grid-row: 1;
+}
+
+.board-op-group.is-map-01.is-left {
+  left: 0.1in;
+  bottom: 0.1in;
+}
+
+.board-op-group.is-map-01.is-right {
+  right: 0.1in;
+  top: 0.1in;
+  justify-content: flex-end;
+}
+
+.board-op-group.is-map-01 .board-killop-overlay {
+  height: var(--map1-card-height);
+}
+
+.board-op-group.is-map-02.is-left {
+  left: 0.1in;
+  top: 0.1in;
+  align-items: flex-start;
+}
+
+.board-op-group.is-map-02.is-right {
+  right: 0.1in;
+  bottom: 0.1in;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.board-op-group.is-map-02 .board-side__placeholder {
+  width: var(--killop-size);
+  height: var(--killop-size);
+  align-self: center;
+  justify-self: center;
+  transform-origin: center;
+}
+
+.board-op-group.is-map-02.is-left .board-side__placeholder {
+  transform: rotate(90deg);
+}
+
+.board-op-group.is-map-02.is-right .board-side__placeholder {
+  transform: rotate(-90deg);
+}
+
+
+.board-killop-overlay {
+  position: fixed;
+  --killop-size: calc(60mm * var(--inch-scale) * 1.95);
+  --killop-gap: 0.1in;
+  width: var(--killop-size);
+  height: var(--killop-size);
+  display: block;
+  pointer-events: none;
+  z-index: 6;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.board-killop-overlay.is-map-02 {
+  --map2-killop-height: clamp(
+    calc(70mm * var(--inch-scale) * 3.2),
+    calc(100vw - 0.1in),
+    calc(70mm * var(--inch-scale) * 4.8)
+  );
+  height: var(--map2-killop-height);
+  max-height: none;
+}
+
+.board-killop-overlay.is-map-02.is-op-01 {
+  --map2-killop-height: clamp(
+    calc(70mm * var(--inch-scale) * 1.9),
+    calc(100vw - 0.1in),
+    calc(70mm * var(--inch-scale) * 2.5)
+  );
+}
+
+.board-killop-overlay.is-map-02.is-op-02 {
+  --map2-killop-height: clamp(
+    calc(70mm * var(--inch-scale) * 1.8),
+    calc(100vw - 0.1in),
+    calc(70mm * var(--inch-scale) * 2.4)
+  );
+}
+
+.board-killop-overlay.is-map-02.is-op-03 {
+  --map2-killop-height: clamp(
+    calc(70mm * var(--inch-scale) * 1.7),
+    calc(100vw - 0.1in),
+    calc(70mm * var(--inch-scale) * 2.2)
+  );
+}
+
+.board-killop-overlay.is-map-02.is-op-04 {
+  --map2-killop-height: clamp(
+    calc(70mm * var(--inch-scale) * 3.0),
+    calc(100vw - 0.1in),
+    calc(70mm * var(--inch-scale) * 4.4)
+  );
+}
+
+.board-killop-overlay.is-map-02.is-op-05 {
+  --map2-killop-height: clamp(
+    calc(70mm * var(--inch-scale) * 2.3),
+    calc(100vw - 0.1in),
+    calc(70mm * var(--inch-scale) * 3.1)
+  );
+}
+
+.board-killop-overlay.is-map-02.is-op-06 {
+  --map2-killop-height: clamp(
+    calc(70mm * var(--inch-scale) * 2.8),
+    calc(100vw - 0.1in),
+    calc(70mm * var(--inch-scale) * 4.05)
+  );
+}
+
+.board-killop-overlay.is-map-02.is-op-07 {
+  --map2-killop-height: clamp(
+    calc(70mm * var(--inch-scale) * 2.2),
+    calc(100vw - 0.1in),
+    calc(70mm * var(--inch-scale) * 3.1)
+  );
+}
+
+.board-killop-overlay.is-map-02.is-op-09 {
+  --map2-killop-height: clamp(
+    calc(70mm * var(--inch-scale) * 2.4),
+    calc(100vw - 0.1in),
+    calc(70mm * var(--inch-scale) * 3.4)
+  );
+}
+
 .board-card-overlay.is-bottom-left {
   left: 0.1in;
   bottom: 0.1in;
@@ -105,8 +322,9 @@
     calc(100vw - 0.1in),
     calc(70mm * var(--inch-scale) * 4.8)
   );
-  height: var(--card-height);
-  max-height: var(--card-height);
+  width: var(--card-height);
+  height: var(--card-width);
+  max-height: none;
   overflow: hidden;
 }
 
@@ -176,7 +394,7 @@
 
 .board-card-overlay.is-map-02 .critops-card {
   height: 100%;
-  max-height: 100%;
+  max-height: none;
   overflow: hidden;
 }
 
@@ -186,6 +404,7 @@
 }
 
 .board-card-overlay.is-map-01 {
+  --map1-card-height: calc(var(--card-height) + 0.85in);
   --card-width: clamp(
     calc(70mm * var(--inch-scale) * 1.2),
     calc(
@@ -193,8 +412,8 @@
     ),
     calc(70mm * var(--inch-scale) * 2.4)
   );
-  height: calc(var(--card-height) + 0.85in);
-  min-height: calc(var(--card-height) + 0.85in);
+  height: var(--map1-card-height);
+  min-height: var(--map1-card-height);
   max-height: none;
   overflow: hidden;
 }
@@ -213,18 +432,15 @@
 }
 
 .board-card-overlay.is-map-01.is-op-04 {
-  height: calc(var(--card-height) + 1.95in);
-  min-height: calc(var(--card-height) + 1.95in);
+  --map1-card-height: calc(var(--card-height) + 1.95in);
 }
 
 .board-card-overlay.is-map-01.is-op-05 {
-  height: calc(var(--card-height) + 1.55in);
-  min-height: calc(var(--card-height) + 1.55in);
+  --map1-card-height: calc(var(--card-height) + 1.55in);
 }
 
 .board-card-overlay.is-map-01.is-op-06 {
-  height: calc(var(--card-height) + 2.66in);
-  min-height: calc(var(--card-height) + 2.66in);
+  --map1-card-height: calc(var(--card-height) + 2.66in);
 }
 
 .board-card-overlay.is-map-01.is-op-06 .critops-card__body {
@@ -232,31 +448,122 @@
 }
 
 .board-card-overlay.is-map-01.is-op-07 {
-  height: calc(var(--card-height) + 1.65in);
-  min-height: calc(var(--card-height) + 1.65in);
+  --map1-card-height: calc(var(--card-height) + 1.65in);
 }
 
 .board-card-overlay.is-map-01.is-op-09 {
-  height: calc(var(--card-height) + 1.55in);
-  min-height: calc(var(--card-height) + 1.55in);
+  --map1-card-height: calc(var(--card-height) + 1.55in);
 }
 
 .board-card-overlay.is-map-01.is-op-08 {
-  height: calc(var(--card-height) + 2.35in);
-  min-height: calc(var(--card-height) + 2.35in);
+  --map1-card-height: calc(var(--card-height) + 2.35in);
+}
+
+.board-killop-overlay.is-map-01.is-left {
+  left: 0.1in;
+  bottom: calc(0.1in + var(--map1-card-height) + var(--killop-gap));
+}
+
+.board-killop-overlay.is-map-01.is-right {
+  right: 0.1in;
+  top: calc(0.1in + var(--map1-card-height) + var(--killop-gap));
+  transform: rotate(180deg);
+}
+
+.board-killop-overlay.is-map-02.is-left {
+  left: 0.1in;
+  top: calc(0.1in + var(--card-height) + var(--killop-gap));
+}
+
+.board-killop-overlay.is-map-02.is-right {
+  margin-bottom: 0;
+}
+
+.board-op-group.is-map-02.is-left .board-killop-overlay,
+.board-op-group.is-map-02.is-right .board-killop-overlay {
+  translate: 0 0;
+}
+
+
+.board-op-group .board-card-overlay,
+.board-op-group .board-killop-overlay {
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
 }
 
 .board-card-overlay.is-map-02.is-top-left {
+  transform: none;
+  transform-origin: initial;
+  translate: 0 0;
+}
+
+.board-card-overlay.is-map-02.is-bottom-right {
+  transform: none;
+  transform-origin: initial;
+  translate: 0 0;
+}
+
+.board-side__inner {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.board-side__inner--card.is-left {
+  width: var(--card-width);
+  height: var(--card-height);
   transform: rotate(90deg);
   transform-origin: top left;
   translate: var(--card-height) 0;
 }
 
-.board-card-overlay.is-map-02.is-bottom-right {
+.board-side__inner--card.is-right {
+  width: var(--card-width);
+  height: var(--card-height);
   transform: rotate(-90deg);
-  transform-origin: bottom right;
-  translate: 0 calc(-1 * var(--card-width));
+  transform-origin: top left;
+  translate: 0 var(--card-width);
 }
+
+.board-side__inner--killop.is-left {
+  width: var(--killop-size);
+  height: var(--killop-size);
+  transform: rotate(90deg);
+  transform-origin: top left;
+  translate: var(--killop-size) 0;
+}
+
+.board-op-group.is-map-02.is-left .board-side__slot--killop {
+  width: calc(var(--killop-size) + 0.05in);
+  margin-left: -8px;
+}
+
+.board-op-group.is-map-02.is-left .board-side__inner--killop.is-left {
+  width: calc(var(--killop-size) + 0.05in);
+  height: calc(var(--killop-size) + 0.05in);
+  translate: calc(var(--killop-size) + 0.05in) 0;
+}
+
+.board-side__inner--killop.is-right {
+  width: var(--killop-size);
+  height: var(--killop-size);
+  transform: rotate(-90deg);
+  transform-origin: top left;
+  translate: 0 var(--killop-size);
+}
+
+.board-op-group.is-map-02.is-right .board-side__inner--killop.is-right {
+  width: calc(var(--killop-size) + 0.05in);
+  height: calc(var(--killop-size) + 0.05in);
+  translate: 0 calc(var(--killop-size) + 0.05in);
+}
+
+
+
 
 
 .board-frame {
