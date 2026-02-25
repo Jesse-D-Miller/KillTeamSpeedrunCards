@@ -12,7 +12,7 @@
   border-radius: 16px;
   padding: 28px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
-  text-align: center;
+  text-align: left;
 }
 
 .game-end-card h1 {
@@ -25,6 +25,109 @@
 .game-end-lede {
   margin: 0 0 20px;
   color: rgba(241, 231, 214, 0.7);
+}
+
+.game-end-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.game-end-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(8, 9, 12, 0.6);
+}
+
+.game-end-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.game-end-controls--computed {
+  justify-content: flex-end;
+  min-width: 80px;
+  opacity: 0.85;
+}
+
+.game-end-preview-inline {
+  width: 100%;
+  max-width: 200px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.game-end-preview-inline img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.game-end-preview-killop {
+  aspect-ratio: 5 / 7;
+}
+
+.game-end-preview-killop .killop {
+  width: 100%;
+  height: 100%;
+}
+
+.game-end-preview-empty {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  color: rgba(241, 231, 214, 0.6);
+  text-align: center;
+  font-size: 0.85rem;
+  background: rgba(12, 14, 18, 0.6);
+}
+
+.game-end-step {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 18, 23, 0.85);
+  color: #f0d38a;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.game-end-step:hover {
+  border-color: rgba(240, 211, 138, 0.5);
+}
+
+.game-end-value {
+  min-width: 24px;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-end-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(240, 211, 138, 0.12);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.game-end-total-value {
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .game-end-next {

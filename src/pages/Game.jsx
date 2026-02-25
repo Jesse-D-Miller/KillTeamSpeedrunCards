@@ -251,6 +251,15 @@ function Game() {
   const menuDrawerRef = useRef(null)
 
   useEffect(() => {
+    if (!killteamId) return
+    try {
+      localStorage.setItem('kt-last-killteam', killteamId)
+    } catch (error) {
+      console.warn('Failed to store last killteam.', error)
+    }
+  }, [killteamId])
+
+  useEffect(() => {
     setOpponentDebug((prev) => ({
       ...prev,
       mountedAt: Date.now(),

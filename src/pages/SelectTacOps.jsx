@@ -76,7 +76,21 @@ function SelectTacOps() {
                       type="button"
                       onClick={() => {
                         setSelectedCardIndex(idx)
-                        if (killteamId) setSelectedTacOp(killteamId, card)
+                        if (killteamId) {
+                          setSelectedTacOp(killteamId, card)
+                          try {
+                            localStorage.setItem(
+                              'kt-selected-tacop',
+                              JSON.stringify({
+                                ...card,
+                                killteamId,
+                              }),
+                            )
+                            localStorage.setItem('kt-last-killteam', killteamId)
+                          } catch (error) {
+                            console.warn('Failed to store tac op.', error)
+                          }
+                        }
                       }}
                       aria-pressed={isSelected}
                     >

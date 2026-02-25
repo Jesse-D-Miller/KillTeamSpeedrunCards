@@ -29,6 +29,16 @@ const serializeRoom = (room) => ({
   players: Array.from(room.players.values()),
 })
 
+const isMapName = (name) => String(name || '').trim().toUpperCase() === 'MAP'
+
+const getNonMapPlayers = (room) =>
+  Array.from(room.players.values()).filter(
+    (player) => !isMapName(player.name),
+  )
+
+const hasMapPlayer = (room) =>
+  Array.from(room.players.values()).some((player) => isMapName(player.name))
+
 const broadcastRoom = (room) => {
   const payload = JSON.stringify({
     type: 'room_update',
@@ -125,7 +135,12 @@ wss.on('connection', (socket) => {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
         return
       }
-      if (room.players.size >= MAX_PLAYERS) {
+      const isMap = isMapName(name)
+      if (isMap && hasMapPlayer(room)) {
+        sendMessage(socket, { type: 'error', message: 'Map already joined.' })
+        return
+      }
+      if (!isMap && getNonMapPlayers(room).length >= MAX_PLAYERS) {
         sendMessage(socket, { type: 'error', message: 'Room is full.' })
         return
       }
@@ -177,7 +192,11 @@ wss.on('connection', (socket) => {
       }
       let player = room.players.get(playerId) || null
       if (!player) {
-        if (room.started || room.players.size >= MAX_PLAYERS) {
+        if (room.started) {
+          sendMessage(socket, { type: 'error', message: 'Room is full.' })
+          return
+        }
+        if (!isMapName(name) && getNonMapPlayers(room).length >= MAX_PLAYERS) {
           sendMessage(socket, { type: 'error', message: 'Room is full.' })
           return
         }
@@ -203,13 +222,13 @@ wss.on('connection', (socket) => {
         ...serializeRoom(room),
       })
 
-      const readyCount = Array.from(room.players.values()).filter((candidate) =>
+      const readyCount = getNonMapPlayers(room).filter((candidate) =>
         room.selectionReadyByPlayerId.get(candidate.id),
       ).length
       sendMessage(socket, {
         type: 'selection_status',
         readyCount,
-        total: room.players.size,
+        total: getNonMapPlayers(room).length,
       })
 
       const opponentEntry = Array.from(room.stateByPlayerId.entries()).find(
@@ -241,9 +260,10 @@ wss.on('connection', (socket) => {
       player.ready = Boolean(message.ready)
       broadcastRoom(room)
 
+      const nonMapPlayers = getNonMapPlayers(room)
       if (
-        room.players.size === MAX_PLAYERS &&
-        Array.from(room.players.values()).every((candidate) => candidate.ready)
+        nonMapPlayers.length === MAX_PLAYERS &&
+        nonMapPlayers.every((candidate) => candidate.ready)
       ) {
         room.started = true
         const startTime = Date.now()
@@ -273,19 +293,20 @@ wss.on('connection', (socket) => {
       }
       player.socket = socket
       room.selectionReadyByPlayerId.set(player.id, true)
-      const readyCount = Array.from(room.players.values()).filter((candidate) =>
+      const readyCount = getNonMapPlayers(room).filter((candidate) =>
         room.selectionReadyByPlayerId.get(candidate.id),
       ).length
       room.players.forEach((candidate) => {
         sendMessage(candidate.socket, {
           type: 'selection_status',
           readyCount,
-          total: room.players.size,
+          total: getNonMapPlayers(room).length,
         })
       })
+      const nonMapPlayers = getNonMapPlayers(room)
       const bothReady =
-        room.players.size === MAX_PLAYERS &&
-        Array.from(room.players.values()).every((candidate) =>
+        nonMapPlayers.length === MAX_PLAYERS &&
+        nonMapPlayers.every((candidate) =>
           room.selectionReadyByPlayerId.get(candidate.id),
         )
       if (bothReady) {

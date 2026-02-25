@@ -192,6 +192,16 @@ function Board() {
     Array.isArray(segment?.[0]) ? 'heavy' : segment?.type || 'heavy'
 
   const selectedCritOpsCard = critOpsCards[selectedCardIndex] || null
+  useEffect(() => {
+    if (!selectedCritOpsCard?.opNumber) return
+    const padded = String(selectedCritOpsCard.opNumber).padStart(2, '0')
+    try {
+      localStorage.setItem('kt-crit-op-src', `/images/critOps/critops_${padded}.png`)
+      localStorage.setItem('kt-crit-op-label', `Crit Op ${selectedCritOpsCard.opNumber}`)
+    } catch (error) {
+      console.warn('Failed to store crit op selection.', error)
+    }
+  }, [selectedCritOpsCard])
   const map1OpClass =
     selectedCritOpsCard?.opNumber === 4
       ? ' is-op-04'

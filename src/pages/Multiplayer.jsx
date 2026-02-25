@@ -7,6 +7,7 @@ import './Multiplayer.css'
 const WS_URL = resolveWsUrl()
 
 const normalizeCode = (value) => value.replace(/\s+/g, '').toUpperCase()
+const normalizeName = (value) => (value || '').trim().toUpperCase()
 
 function Multiplayer() {
   const navigate = useNavigate()
@@ -14,11 +15,13 @@ function Multiplayer() {
   const [mode, setMode] = useState('choice')
   const [name, setName] = useState('')
   const [roomCode, setRoomCode] = useState('')
+  const [mapCode, setMapCode] = useState('')
   const [players, setPlayers] = useState([])
   const [playerId, setPlayerId] = useState('')
   const [hostId, setHostId] = useState('')
   const [status, setStatus] = useState('disconnected')
   const [error, setError] = useState('')
+  const [isMapUser, setIsMapUser] = useState(false)
 
   const localPlayer = useMemo(
     () => players.find((player) => player.id === playerId),
@@ -26,6 +29,13 @@ function Multiplayer() {
   )
   const isReady = Boolean(localPlayer?.ready)
   const hasTwoPlayers = players.length === 2
+  const readyNonMapPlayers = useMemo(
+    () =>
+      players.filter(
+        (player) => normalizeName(player.name) !== 'MAP' && player.ready,
+      ).length,
+    [players],
+  )
 
   useEffect(() => {
     return () => {
@@ -136,6 +146,7 @@ function Multiplayer() {
       setError('Enter a username to create a room.')
       return
     }
+    setIsMapUser(false)
     connectAndSend({ type: 'create_room', name: trimmedName })
   }
 
@@ -146,7 +157,20 @@ function Multiplayer() {
       setError('Enter a username and room code to join.')
       return
     }
+    setIsMapUser(false)
     connectAndSend({ type: 'join_room', name: trimmedName, code: normalized })
+  }
+
+  const handleMapJoin = () => {
+    const normalized = normalizeCode(mapCode)
+    if (!normalized) {
+      setError('Enter a game code to join as map.')
+      return
+    }
+    setError('')
+    setName('MAP')
+    setIsMapUser(true)
+    connectAndSend({ type: 'join_room', name: 'MAP', code: normalized })
   }
 
   const handleReady = () => {
@@ -158,8 +182,10 @@ function Multiplayer() {
   const handleBack = () => {
     setMode('choice')
     setError('')
+    setIsMapUser(false)
     setPlayers([])
     setRoomCode('')
+    setMapCode('')
     setPlayerId('')
     setHostId('')
     setStatus('disconnected')
@@ -168,6 +194,13 @@ function Multiplayer() {
       socketRef.current = null
     }
   }
+
+  useEffect(() => {
+    if (!isMapUser) return
+    if (readyNonMapPlayers >= 2) {
+      navigate('/board')
+    }
+  }, [isMapUser, readyNonMapPlayers, navigate])
 
   return (
     <div className="app-shell">
@@ -199,6 +232,13 @@ function Multiplayer() {
                 onClick={() => setMode('join')}
               >
                 Join
+              </button>
+              <button
+                className="ghost-link"
+                type="button"
+                onClick={() => setMode('map')}
+              >
+                Map
               </button>
             </div>
           )}
@@ -249,6 +289,39 @@ function Multiplayer() {
             </div>
           )}
 
+          {mode === 'map' && (
+            <div className="multiplayer-form">
+              <div className="multiplayer-field">
+                <label htmlFor="mp-map-code">Game code</label>
+                <input
+                  id="mp-map-code"
+                  type="text"
+                  placeholder="ABC123"
+                  value={mapCode}
+                  onChange={(event) =>
+                    setMapCode(normalizeCode(event.target.value))
+                  }
+                />
+              </div>
+              <div className="multiplayer-actions">
+                <button
+                  className="primary-link"
+                  type="button"
+                  onClick={handleMapJoin}
+                >
+                  Join as Map
+                </button>
+                <button
+                  className="ghost-link"
+                  type="button"
+                  onClick={handleBack}
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+          )}
+
           {mode === 'lobby' && (
             <div className="multiplayer-lobby">
               <div className="multiplayer-room">
@@ -281,14 +354,20 @@ function Multiplayer() {
                 ))}
               </div>
               <div className="multiplayer-actions">
-                <button
-                  className="primary-link"
-                  type="button"
-                  onClick={handleReady}
-                  disabled={isReady}
-                >
-                  {isReady ? 'Ready' : 'Start Game'}
-                </button>
+                {!isMapUser ? (
+                  <button
+                    className="primary-link"
+                    type="button"
+                    onClick={handleReady}
+                    disabled={isReady}
+                  >
+                    {isReady ? 'Ready' : 'Start Game'}
+                  </button>
+                ) : (
+                  <div className="multiplayer-status">
+                    Waiting for both players to ready up.
+                  </div>
+                )}
                 <button
                   className="ghost-link"
                   type="button"

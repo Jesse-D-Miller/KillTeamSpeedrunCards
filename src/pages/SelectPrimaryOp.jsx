@@ -47,7 +47,21 @@ function SelectPrimaryOp() {
                     type="button"
                     onClick={() => {
                       setSelectedIndex(index)
-                      if (killteamId) setSelectedPrimaryOp(killteamId, card)
+                      if (killteamId) {
+                        setSelectedPrimaryOp(killteamId, card)
+                        try {
+                          localStorage.setItem(
+                            'kt-selected-primaryop',
+                            JSON.stringify({
+                              ...card,
+                              killteamId,
+                            }),
+                          )
+                          localStorage.setItem('kt-last-killteam', killteamId)
+                        } catch (error) {
+                          console.warn('Failed to store primary op.', error)
+                        }
+                      }
                     }}
                     aria-pressed={isSelected}
                   >
