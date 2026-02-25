@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import './Scouting.css'
 
@@ -8,6 +8,8 @@ const scoutingCards = [1, 2, 3].map((index) => ({
 }))
 
 function Scouting() {
+  const location = useLocation()
+  const killteamId = location.state?.killteamId
   const [selectedIndex, setSelectedIndex] = useState(null)
   const [isLocked, setIsLocked] = useState(false)
 
@@ -43,7 +45,11 @@ function Scouting() {
             </div>
             <div className="scouting-actions">
               {isLocked ? (
-                <Link className="scouting-next" to="/select-primary-op">
+                <Link
+                  className="scouting-next"
+                  to="/select-primary-op"
+                  state={{ killteamId }}
+                >
                   Next: Select primary op
                 </Link>
               ) : (

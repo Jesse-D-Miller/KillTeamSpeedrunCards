@@ -6,7 +6,7 @@ const checklistItems = [
   'Determine killzone, set up terrain, specify terrain types',
   'Determine Crit Op',
   'Roll off - winner decides initiative',
-  'Play with initiative selects Drop Zone',
+  'Player with initiative selects Drop Zone',
 ]
 
 function SetUpBattle() {

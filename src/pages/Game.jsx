@@ -213,7 +213,7 @@ function Game() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [ruleModal, setRuleModal] = useState(null)
   const [tpCount, setTpCount] = useState(1)
-  const [cpCount, setCpCount] = useState(0)
+  const [cpCount, setCpCount] = useState(2)
   const [vpCount, setVpCount] = useState(0)
   const [spCount, setSpCount] = useState(0)
   const [opponentPanelOpen, setOpponentPanelOpen] = useState(false)
