@@ -135,7 +135,8 @@ wss.on('connection', (socket) => {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
         return
       }
-      const isMap = isMapName(name)
+      const isMap = isMapName(name) || message.isMap === true
+      const resolvedName = isMap ? 'MAP' : name
       if (isMap && hasMapPlayer(room)) {
         sendMessage(socket, { type: 'error', message: 'Map already joined.' })
         return
@@ -151,7 +152,7 @@ wss.on('connection', (socket) => {
       const playerId = randomUUID()
       room.players.set(playerId, {
         id: playerId,
-        name,
+        name: resolvedName,
         ready: false,
         socket,
       })
@@ -176,6 +177,8 @@ wss.on('connection', (socket) => {
         })
       }
       const name = String(message.name || '').trim()
+      const isMap = isMapName(name) || message.isMap === true
+      const resolvedName = isMap ? 'MAP' : name
       const code = String(message.code || '').toUpperCase()
       const playerId = String(message.playerId || '').trim()
       if (!code || !playerId) {
@@ -196,13 +199,13 @@ wss.on('connection', (socket) => {
           sendMessage(socket, { type: 'error', message: 'Room is full.' })
           return
         }
-        if (!isMapName(name) && getNonMapPlayers(room).length >= MAX_PLAYERS) {
+        if (!isMap && getNonMapPlayers(room).length >= MAX_PLAYERS) {
           sendMessage(socket, { type: 'error', message: 'Room is full.' })
           return
         }
         player = {
           id: playerId,
-          name: name || 'Player',
+          name: resolvedName || 'Player',
           ready: false,
           socket,
         }
@@ -211,7 +214,7 @@ wss.on('connection', (socket) => {
       } else {
         player.socket = socket
         if (name) {
-          player.name = name
+          player.name = resolvedName
         }
       }
       socket.playerId = playerId

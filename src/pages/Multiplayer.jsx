@@ -170,7 +170,12 @@ function Multiplayer() {
     setError('')
     setName('MAP')
     setIsMapUser(true)
-    connectAndSend({ type: 'join_room', name: 'MAP', code: normalized })
+    connectAndSend({
+      type: 'join_room',
+      name: 'MAP',
+      code: normalized,
+      isMap: true,
+    })
   }
 
   const handleReady = () => {

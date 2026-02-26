@@ -180,7 +180,8 @@ wss.on('connection', (socket) => {
         sendJson(socket, { type: 'error', message: 'Room not found.' })
         return
       }
-      const isMap = isMapName(name)
+      const isMap = isMapName(name) || message.isMap === true
+      const resolvedName = isMap ? 'MAP' : name
       if (isMap && hasMapPlayer(room)) {
         sendJson(socket, { type: 'error', message: 'Map already joined.' })
         return
@@ -192,7 +193,7 @@ wss.on('connection', (socket) => {
       const playerId = randomId()
       socket.roomCode = code
       socket.playerId = playerId
-      registerPlayer(room, { id: playerId, name, ws: socket })
+      registerPlayer(room, { id: playerId, name: resolvedName, ws: socket })
       sendJson(socket, {
         type: 'room_joined',
         code,
