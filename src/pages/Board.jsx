@@ -943,7 +943,7 @@ function Board() {
     const randomRange = (min, max) => min + Math.random() * (max - min)
 
     const buildEffectState = () => {
-      const streakCount = style.sand ? 120 : 18
+      const streakCount = style.sand ? 84 : 18
       const lengthBase = style.sand ? 160 : 80
       const lengthRange = style.sand ? 260 : 160
       const speedBase = style.sand ? 10 : 6
@@ -956,7 +956,7 @@ function Board() {
         const curl = style.sand ? 1.6 + Math.random() * 2.2 : 0.8 + Math.random() * 1.2
         const phaseA = Math.random() * Math.PI * 2
         const phaseB = Math.random() * Math.PI * 2
-        const grainCount = style.sand ? 12 + Math.floor(Math.random() * 8) : 0
+        const grainCount = style.sand ? 6 + Math.floor(Math.random() * 6) : 0
         return {
           length: lengthBase + Math.random() * lengthRange,
           speed: speedBase + Math.random() * speedRange,
@@ -1203,6 +1203,30 @@ function Board() {
       const sandGrain = 'rgba(225, 205, 160, 0.32)'
       ctx.fillStyle = sandGrain
       const speedFactor = style.sand ? 0.65 : 1
+      const isSand = style.sand
+      const buildWindPoints = (streak, startT, tipT, segments) => {
+        const points = []
+        const span = tipT - startT
+        for (let i = 0; i <= segments; i += 1) {
+          const t = startT + (span * i) / segments
+          points.push(getWindPoint(streak, t))
+        }
+        return points
+      }
+      const drawWindCurve = (points) => {
+        if (points.length < 2) return
+        ctx.beginPath()
+        ctx.moveTo(points[0].x, points[0].y)
+        for (let i = 1; i < points.length; i += 1) {
+          const prev = points[i - 1]
+          const current = points[i]
+          const midX = (prev.x + current.x) / 2
+          const midY = (prev.y + current.y) / 2
+          ctx.quadraticCurveTo(prev.x, prev.y, midX, midY)
+        }
+        const last = points[points.length - 1]
+        ctx.lineTo(last.x, last.y)
+      }
       effectState.streaks.forEach((streak) => {
         const progressDelta =
           (streak.speed * speedFactor * deltaSeconds) / (width * 0.55)
@@ -1221,8 +1245,8 @@ function Board() {
           streak.curl = curl
           streak.phaseA = phaseA
           streak.phaseB = phaseB
-          if (style.sand) {
-            const grainCount = 12 + Math.floor(Math.random() * 8)
+          if (isSand) {
+            const grainCount = 6 + Math.floor(Math.random() * 6)
             streak.grainOffsets = Array.from({ length: grainCount }).map(() => ({
               tOffset: Math.random(),
               jitterX: -12 + Math.random() * 24,
@@ -1231,59 +1255,41 @@ function Board() {
             }))
           }
         }
-        ctx.lineWidth = style.sand ? streak.thickness * 7.2 : streak.thickness
+        ctx.lineWidth = isSand ? streak.thickness * 7.2 : streak.thickness
         const tipT = Math.max(0, Math.min(1, streak.progress))
         const trailSpan = Math.max(
           0.05,
           Math.min(0.6, streak.length / (width * 1.6) + 0.25),
         )
         const startT = Math.max(0, tipT - trailSpan)
-        const segments = Math.max(60, Math.round(streak.length / 1.6))
-        ctx.beginPath()
-        const startPoint = getWindPoint(streak, startT)
-        ctx.moveTo(startPoint.x, startPoint.y)
-        for (let i = 1; i <= segments; i += 1) {
-          const t = startT + ((tipT - startT) * i) / segments
-          const prev = getWindPoint(streak, t - (tipT - startT) / segments)
-          const current = getWindPoint(streak, t)
-          const midX = (prev.x + current.x) / 2
-          const midY = (prev.y + current.y) / 2
-          ctx.quadraticCurveTo(prev.x, prev.y, midX, midY)
-        }
-        const tip = getWindPoint(streak, tipT)
-        ctx.lineTo(tip.x, tip.y)
+        const segments = isSand
+          ? Math.max(36, Math.round(streak.length / 3))
+          : Math.max(60, Math.round(streak.length / 1.6))
+        const points = buildWindPoints(streak, startT, tipT, segments)
+        const startPoint = points[0]
+        const tip = points[points.length - 1]
+        drawWindCurve(points)
         ctx.stroke()
 
-        if (style.sand) {
+        if (isSand) {
           ctx.save()
           ctx.globalAlpha = 0.18
           ctx.strokeStyle = 'rgba(235, 215, 175, 0.18)'
           ctx.lineWidth = streak.thickness * 2.2
           ctx.setLineDash([18, 26])
-          ctx.beginPath()
-          ctx.moveTo(startPoint.x, startPoint.y)
-          for (let i = 1; i <= segments; i += 1) {
-            const t = startT + ((tipT - startT) * i) / segments
-            const prev = getWindPoint(streak, t - (tipT - startT) / segments)
-            const current = getWindPoint(streak, t)
-            const midX = (prev.x + current.x) / 2
-            const midY = (prev.y + current.y) / 2
-            ctx.quadraticCurveTo(prev.x, prev.y, midX, midY)
-          }
-          ctx.lineTo(tip.x, tip.y)
+          drawWindCurve(points)
           ctx.stroke()
           ctx.setLineDash([])
           ctx.restore()
         }
 
-        if (style.sand) {
+        if (isSand) {
           ctx.save()
           ctx.globalAlpha = 0.3
           ctx.shadowBlur = 0
           ctx.fillStyle = 'rgba(235, 215, 175, 0.35)'
-          for (let i = 0; i < segments; i += 3) {
-            const t = startT + ((tipT - startT) * i) / segments
-            const grain = getWindPoint(streak, t)
+          for (let i = 0; i < points.length; i += 4) {
+            const grain = points[i]
             const jitterX = -2 + Math.random() * 4
             const jitterY = -2 + Math.random() * 4
             const size = 0.6 + Math.random() * 1.2
@@ -1292,29 +1298,19 @@ function Board() {
           ctx.restore()
         }
 
-        if (style.sand) {
+        if (isSand) {
           ctx.save()
           ctx.globalAlpha = 0.25
           ctx.shadowColor = 'rgba(220, 200, 160, 0.35)'
           ctx.shadowBlur = 150
           ctx.lineWidth = streak.thickness * 12
           ctx.strokeStyle = 'rgba(210, 190, 150, 0.18)'
-          ctx.beginPath()
-          ctx.moveTo(startPoint.x, startPoint.y)
-          for (let i = 1; i <= segments; i += 1) {
-            const t = startT + ((tipT - startT) * i) / segments
-            const prev = getWindPoint(streak, t - (tipT - startT) / segments)
-            const current = getWindPoint(streak, t)
-            const midX = (prev.x + current.x) / 2
-            const midY = (prev.y + current.y) / 2
-            ctx.quadraticCurveTo(prev.x, prev.y, midX, midY)
-          }
-          ctx.lineTo(tip.x, tip.y)
+          drawWindCurve(points)
           ctx.stroke()
           ctx.restore()
         }
 
-        if (style.sand) {
+        if (isSand) {
           const span = Math.max(0.001, tipT - startT)
           ctx.save()
           ctx.globalAlpha = 0.5

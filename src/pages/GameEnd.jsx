@@ -107,7 +107,7 @@ function GameEnd() {
     }
 
     if (key === 'tacOp') {
-      return selectedTacOp?.src ? (
+      return resolvedTacOp?.src ? (
         <img
           src={resolvedTacOp.src}
           alt={resolvedTacOp.label || 'Selected Tac Op'}
