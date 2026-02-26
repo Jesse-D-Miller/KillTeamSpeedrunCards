@@ -39,6 +39,7 @@ function Board() {
   const [textureVersion, setTextureVersion] = useState(0)
   const boardTextureRef = useRef(null)
   const boardWindRef = useRef(null)
+  const boardFogRef = useRef(null)
   const [showTextureWatermark, setShowTextureWatermark] = useState(false)
   const textureStyles = useMemo(
     () => [
@@ -58,10 +59,10 @@ function Board() {
         mode: 'rain',
       },
       {
-        label: 'Compound',
-        base: '#1b2418',
-        accent: 'rgba(150, 170, 140, 0.12)',
-        noiseAlpha: 0.18,
+        label: 'Foggy Compound',
+        base: '#0f1310',
+        accent: 'rgba(120, 150, 140, 0.1)',
+        noiseAlpha: 0.22,
         mode: 'pulse',
         grass: true,
       },
@@ -207,11 +208,13 @@ function Board() {
   useEffect(() => {
     const canvas = boardTextureRef.current
     const windCanvas = boardWindRef.current
+    const fogCanvas = boardFogRef.current
     const frame = boardFrameRef.current
     if (!canvas || !frame) return
 
     const context = canvas.getContext('2d')
     const windContext = windCanvas ? windCanvas.getContext('2d') : null
+    const fogContext = fogCanvas ? fogCanvas.getContext('2d') : null
     if (!context) return
 
     const style = textureStyles[activeTextureIndex % textureStyles.length]
@@ -226,6 +229,8 @@ function Board() {
       splashes: [],
       impacts: [],
       rainStreaks: [],
+      fogClouds: [],
+      fogCenter: { x: 0.5, y: 0.5 },
       rainAccumulator: 0,
       pulseOrigin: {
         x: 0.5,
@@ -327,10 +332,308 @@ function Board() {
 
       if (style.grass) {
         const fieldGradient = offscreenContext.createLinearGradient(0, 0, 0, height)
-        fieldGradient.addColorStop(0, 'rgba(120, 150, 110, 0.08)')
-        fieldGradient.addColorStop(1, 'rgba(40, 32, 18, 0.35)')
+        fieldGradient.addColorStop(0, 'rgba(24, 70, 28, 0.85)')
+        fieldGradient.addColorStop(1, 'rgba(10, 36, 16, 0.95)')
         offscreenContext.fillStyle = fieldGradient
         offscreenContext.fillRect(0, 0, width, height)
+
+        for (let i = 0; i < 24; i += 1) {
+          const patchX = Math.random() * width
+          const patchY = Math.random() * height
+          const patchRadius = 50 + Math.random() * 140
+          const patchGradient = offscreenContext.createRadialGradient(
+            patchX,
+            patchY,
+            patchRadius * 0.2,
+            patchX,
+            patchY,
+            patchRadius,
+          )
+          patchGradient.addColorStop(0, 'rgba(28, 90, 36, 0.5)')
+          patchGradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+          offscreenContext.fillStyle = patchGradient
+          offscreenContext.beginPath()
+          offscreenContext.arc(patchX, patchY, patchRadius, 0, Math.PI * 2)
+          offscreenContext.fill()
+        }
+
+        if (activeArrangement?.terrain?.length) {
+          const pieces = []
+          const scaleX = width / board.width
+          const scaleY = height / board.height
+          const toCanvasPoint = (point) => ({
+            x: point.x * scaleX,
+            y: height - point.y * scaleY,
+          })
+          const getPiecePoints = (piece) => {
+            if (piece?.areas?.length) {
+              return piece.areas.flatMap((area) => area?.points ?? [])
+            }
+            if (piece?.area?.points?.length) return piece.area.points
+            return []
+          }
+
+          activeArrangement.terrain.forEach((entry) => {
+            const piece = entry?.pieceId
+              ? terrainPieceById.get(entry.pieceId)
+              : entry
+            if (!piece) return
+            const points = getPiecePoints(piece)
+            if (!points.length) return
+            const placement = entry?.placement || {}
+            const rotation = placement.rotation || 0
+            const radians = (rotation * Math.PI) / 180
+            const cos = Math.cos(radians)
+            const sin = Math.sin(radians)
+            let minX = Number.POSITIVE_INFINITY
+            let minY = Number.POSITIVE_INFINITY
+            let maxX = Number.NEGATIVE_INFINITY
+            let maxY = Number.NEGATIVE_INFINITY
+            points.forEach(([x, y]) => {
+              const rotatedX = x * cos - y * sin
+              const rotatedY = x * sin + y * cos
+              const worldX = rotatedX + (placement.x || 0)
+              const worldY = rotatedY + (placement.y || 0)
+              minX = Math.min(minX, worldX)
+              minY = Math.min(minY, worldY)
+              maxX = Math.max(maxX, worldX)
+              maxY = Math.max(maxY, worldY)
+            })
+            if (!Number.isFinite(minX)) return
+            const centerX = (minX + maxX) / 2
+            const centerY = (minY + maxY) / 2
+            pieces.push({
+              x: centerX,
+              y: centerY,
+              halfW: Math.max(0.1, (maxX - minX) / 2),
+              halfH: Math.max(0.1, (maxY - minY) / 2),
+            })
+          })
+
+          const pathMargin = 1.8
+          const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+          const getPieceAreas = (piece) => {
+            if (piece?.areas?.length) return piece.areas
+            if (piece?.area) return [piece.area]
+            return []
+          }
+          const transformPoint = ([x, y], placement) => {
+            const rotation = placement.rotation || 0
+            if (!rotation) return { x: x + (placement.x || 0), y: y + (placement.y || 0) }
+            const radians = (rotation * Math.PI) / 180
+            const cos = Math.cos(radians)
+            const sin = Math.sin(radians)
+            const rotatedX = x * cos - y * sin
+            const rotatedY = x * sin + y * cos
+            return { x: rotatedX + (placement.x || 0), y: rotatedY + (placement.y || 0) }
+          }
+          const polygons = []
+          activeArrangement.terrain.forEach((entry) => {
+            const piece = entry?.pieceId
+              ? terrainPieceById.get(entry.pieceId)
+              : entry
+            if (!piece) return
+            const placement = entry?.placement || {}
+            getPieceAreas(piece).forEach((area) => {
+              const points = area?.points
+              if (!Array.isArray(points) || !points.length) return
+              polygons.push(points.map((point) => transformPoint(point, placement)))
+            })
+          })
+          const pointInPoly = (point, poly) => {
+            let inside = false
+            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+              const xi = poly[i].x
+              const yi = poly[i].y
+              const xj = poly[j].x
+              const yj = poly[j].y
+              const intersect =
+                yi > point.y !== yj > point.y &&
+                point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi
+              if (intersect) inside = !inside
+            }
+            return inside
+          }
+          const distToSegment = (point, a, b) => {
+            const dx = b.x - a.x
+            const dy = b.y - a.y
+            if (!dx && !dy) return Math.hypot(point.x - a.x, point.y - a.y)
+            const t = ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy)
+            const clamped = Math.max(0, Math.min(1, t))
+            const projX = a.x + clamped * dx
+            const projY = a.y + clamped * dy
+            return Math.hypot(point.x - projX, point.y - projY)
+          }
+          const isBlocked = (point) => {
+            for (let p = 0; p < polygons.length; p += 1) {
+              const poly = polygons[p]
+              if (pointInPoly(point, poly)) return true
+              for (let i = 0; i < poly.length; i += 1) {
+                const a = poly[i]
+                const b = poly[(i + 1) % poly.length]
+                if (distToSegment(point, a, b) <= pathMargin) return true
+              }
+            }
+            return false
+          }
+          const cellSize = 0.1
+          const gridWidth = Math.ceil(board.width / cellSize)
+          const gridHeight = Math.ceil(board.height / cellSize)
+          const toWorld = (gx, gy) => ({
+            x: (gx + 0.5) * cellSize,
+            y: (gy + 0.5) * cellSize,
+          })
+          const toGrid = (point) => ({
+            gx: clamp(Math.floor(point.x / cellSize), 0, gridWidth - 1),
+            gy: clamp(Math.floor(point.y / cellSize), 0, gridHeight - 1),
+          })
+          const blocked = Array.from({ length: gridHeight }, () =>
+            Array.from({ length: gridWidth }, () => false),
+          )
+          for (let gy = 0; gy < gridHeight; gy += 1) {
+            for (let gx = 0; gx < gridWidth; gx += 1) {
+              if (isBlocked(toWorld(gx, gy))) blocked[gy][gx] = true
+            }
+          }
+          const findNearestFree = (start) => {
+            if (!blocked[start.gy][start.gx]) return start
+            const maxRadius = Math.max(gridWidth, gridHeight)
+            for (let r = 1; r < maxRadius; r += 1) {
+              for (let dy = -r; dy <= r; dy += 1) {
+                for (let dx = -r; dx <= r; dx += 1) {
+                  const gx = start.gx + dx
+                  const gy = start.gy + dy
+                  if (gx < 0 || gy < 0 || gx >= gridWidth || gy >= gridHeight) continue
+                  if (!blocked[gy][gx]) return { gx, gy }
+                }
+              }
+            }
+            return start
+          }
+          const aStar = (start, goal) => {
+            const key = (node) => `${node.gx},${node.gy}`
+            const open = [start]
+            const cameFrom = new Map()
+            const gScore = Array.from({ length: gridHeight }, () =>
+              Array.from({ length: gridWidth }, () => Number.POSITIVE_INFINITY),
+            )
+            gScore[start.gy][start.gx] = 0
+            const h = (node) => Math.hypot(node.gx - goal.gx, node.gy - goal.gy)
+            const neighbors = [
+              { gx: 1, gy: 0, cost: 1 },
+              { gx: -1, gy: 0, cost: 1 },
+              { gx: 0, gy: 1, cost: 1 },
+              { gx: 0, gy: -1, cost: 1 },
+              { gx: 1, gy: 1, cost: Math.SQRT2 },
+              { gx: -1, gy: 1, cost: Math.SQRT2 },
+              { gx: 1, gy: -1, cost: Math.SQRT2 },
+              { gx: -1, gy: -1, cost: Math.SQRT2 },
+            ]
+            while (open.length) {
+              let bestIndex = 0
+              let bestF = gScore[open[0].gy][open[0].gx] + h(open[0])
+              for (let i = 1; i < open.length; i += 1) {
+                const node = open[i]
+                const f = gScore[node.gy][node.gx] + h(node)
+                if (f < bestF) {
+                  bestF = f
+                  bestIndex = i
+                }
+              }
+              const current = open.splice(bestIndex, 1)[0]
+              if (current.gx === goal.gx && current.gy === goal.gy) {
+                const path = [current]
+                let cursor = key(current)
+                while (cameFrom.has(cursor)) {
+                  const prev = cameFrom.get(cursor)
+                  path.push(prev)
+                  cursor = key(prev)
+                }
+                return path.reverse()
+              }
+              neighbors.forEach((neighbor) => {
+                const nx = current.gx + neighbor.gx
+                const ny = current.gy + neighbor.gy
+                if (nx < 0 || ny < 0 || nx >= gridWidth || ny >= gridHeight) return
+                if (blocked[ny][nx]) return
+                const tentative = gScore[current.gy][current.gx] + neighbor.cost
+                if (tentative < gScore[ny][nx]) {
+                  gScore[ny][nx] = tentative
+                  const next = { gx: nx, gy: ny }
+                  cameFrom.set(key(next), current)
+                  if (!open.some((node) => node.gx === nx && node.gy === ny)) {
+                    open.push(next)
+                  }
+                }
+              })
+            }
+            return null
+          }
+          const makePathPoints = () => {
+            const attempts = 12
+            for (let attempt = 0; attempt < attempts; attempt += 1) {
+              const leftToRight = Math.random() < 0.5
+              const start = leftToRight
+                ? { x: 0.2, y: 2 + Math.random() * (board.height - 4) }
+                : { x: 2 + Math.random() * (board.width - 4), y: 0.2 }
+              const end = leftToRight
+                ? { x: board.width - 0.2, y: 2 + Math.random() * (board.height - 4) }
+                : { x: 2 + Math.random() * (board.width - 4), y: board.height - 0.2 }
+              const startGrid = findNearestFree(toGrid(start))
+              const endGrid = findNearestFree(toGrid(end))
+              const path = aStar(startGrid, endGrid)
+              if (!path) continue
+              return path.map((node) => toWorld(node.gx, node.gy))
+            }
+            return []
+          }
+
+          const drawSoftPath = (ctx, points, widthPx, color, blur) => {
+            if (points.length < 2) return
+            ctx.save()
+            ctx.lineCap = 'round'
+            ctx.lineJoin = 'round'
+            ctx.strokeStyle = color
+            ctx.lineWidth = widthPx
+            ctx.shadowColor = color
+            ctx.shadowBlur = blur
+            const canvasPoints = points.map((point) => toCanvasPoint(point))
+            ctx.beginPath()
+            ctx.moveTo(canvasPoints[0].x, canvasPoints[0].y)
+            for (let i = 1; i < canvasPoints.length; i += 1) {
+              ctx.lineTo(canvasPoints[i].x, canvasPoints[i].y)
+            }
+            ctx.stroke()
+            ctx.restore()
+          }
+
+          const baseWidth = (width / board.width) * 1.5
+          for (let i = 0; i < 3; i += 1) {
+            const pathPoints = makePathPoints()
+            if (!pathPoints.length) continue
+            drawSoftPath(
+              offscreenContext,
+              pathPoints,
+              baseWidth,
+              'rgba(95, 60, 35, 0.18)',
+              baseWidth * 0.02,
+            )
+            drawSoftPath(
+              offscreenContext,
+              pathPoints,
+              baseWidth * 0.6,
+              'rgba(120, 85, 55, 0.45)',
+              baseWidth * 0.01,
+            )
+            drawSoftPath(
+              offscreenContext,
+              pathPoints,
+              baseWidth * 0.3,
+              'rgba(120, 85, 55, 0.5)',
+              0,
+            )
+          }
+        }
       }
 
       if (style.mode === 'rain') {
@@ -536,6 +839,7 @@ function Board() {
         offscreenContext.fill()
       }
 
+
       if (style.sand) {
         offscreenContext.fillStyle = 'rgba(255, 224, 170, 0.14)'
         for (let i = 0; i < 320; i += 1) {
@@ -600,18 +904,24 @@ function Board() {
       }
 
       if (style.grass) {
-        offscreenContext.fillStyle = 'rgba(110, 140, 90, 0.12)'
+        offscreenContext.fillStyle = 'rgba(40, 110, 46, 0.28)'
         for (let i = 0; i < 240; i += 1) {
           const bladeX = Math.random() * width
           const bladeY = Math.random() * height
           const bladeLength = 6 + Math.random() * 12
           offscreenContext.fillRect(bladeX, bladeY, 0.8, bladeLength)
         }
-        offscreenContext.fillStyle = 'rgba(90, 70, 40, 0.2)'
-        for (let i = 0; i < 26; i += 1) {
-          const trackY = Math.random() * height
-          const trackHeight = 4 + Math.random() * 6
-          offscreenContext.fillRect(0, trackY, width, trackHeight)
+        offscreenContext.fillStyle = 'rgba(18, 60, 26, 0.18)'
+        for (let i = 0; i < 40; i += 1) {
+          const tuftX = Math.random() * width
+          const tuftY = Math.random() * height
+          const tuftW = 8 + Math.random() * 22
+          const tuftH = 4 + Math.random() * 12
+          offscreenContext.save()
+          offscreenContext.translate(tuftX, tuftY)
+          offscreenContext.rotate(Math.random() * Math.PI)
+          offscreenContext.fillRect(-tuftW / 2, -tuftH / 2, tuftW, tuftH)
+          offscreenContext.restore()
         }
       }
     }
@@ -629,6 +939,8 @@ function Board() {
           streak.amplitude * 0.35
       return { x, y }
     }
+
+    const randomRange = (min, max) => min + Math.random() * (max - min)
 
     const buildEffectState = () => {
       const streakCount = style.sand ? 120 : 18
@@ -689,13 +1001,191 @@ function Board() {
         speed: 140 + Math.random() * 180,
         tilt: -1 + Math.random() * 2,
         targetY: Math.random() * height,
-        alpha: 0.04 + Math.random() * 0.06,
+        alpha: 0.06 + Math.random() * 0.08,
       }))
+      effectState.fogClouds = style.mode === 'pulse'
+        ? Array.from({ length: 40 }).map(() => ({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            radius: 240 + Math.random() * 360,
+            driftX: -5.5 + Math.random() * 11,
+            driftY: -4.5 + Math.random() * 9,
+            glow: 0.22 + Math.random() * 0.22,
+            isDark: Math.random() < 0.2,
+            billows: Array.from({ length: 3 }).map(() => ({
+              angle: Math.random() * Math.PI * 2,
+              offset: 0.12 + Math.random() * 0.22,
+              radiusScale: 0.55 + Math.random() * 0.3,
+            })),
+            specks: Array.from({ length: 14 }).map(() => ({
+              dx: -1 + Math.random() * 2,
+              dy: -1 + Math.random() * 2,
+              size: 2 + Math.random() * 5,
+              alpha: 0.05 + Math.random() * 0.08,
+            })),
+          }))
+        : []
+      effectState.fogCenter = { x: width * 0.5, y: height * 0.5 }
+      effectState.fogFade = {
+        phase: 'fading-in',
+        phaseStart: 0,
+        phaseDuration: 90,
+        nextFadeAllowedAt: 900,
+      }
       effectState.rainAccumulator = 0
       effectState.pulseOrigin = {
         x: 0.25 + Math.random() * 0.5,
         y: 0.25 + Math.random() * 0.5,
       }
+    }
+
+    const getFogFadeFactor = (timeSeconds) => {
+      if (!effectState.fogFade) {
+        effectState.fogFade = {
+          phase: 'fading-in',
+          phaseStart: timeSeconds,
+          phaseDuration: 90,
+          nextFadeAllowedAt: timeSeconds + 900,
+        }
+      }
+      const fade = effectState.fogFade
+      const elapsed = timeSeconds - fade.phaseStart
+      if (fade.phase === 'visible') {
+        if (elapsed >= fade.phaseDuration && timeSeconds >= fade.nextFadeAllowedAt) {
+          fade.phase = 'fading-out'
+          fade.phaseStart = timeSeconds
+          fade.phaseDuration = randomRange(60, 180)
+        }
+        return 1
+      }
+      if (fade.phase === 'fading-out') {
+        const t = Math.min(1, elapsed / fade.phaseDuration)
+        if (t >= 1) {
+          fade.phase = 'hidden'
+          fade.phaseStart = timeSeconds
+          fade.phaseDuration = randomRange(20, 40)
+        }
+        return 1 - t
+      }
+      if (fade.phase === 'hidden') {
+        if (elapsed >= fade.phaseDuration) {
+          fade.phase = 'fading-in'
+          fade.phaseStart = timeSeconds
+          fade.phaseDuration = randomRange(30, 60)
+        }
+        return 0
+      }
+      if (fade.phase === 'fading-in') {
+        const t = Math.min(1, elapsed / fade.phaseDuration)
+        if (t >= 1) {
+          fade.phase = 'visible'
+          fade.phaseStart = timeSeconds
+          fade.phaseDuration = randomRange(60, 180)
+          fade.nextFadeAllowedAt = timeSeconds + 900
+        }
+        return t
+      }
+      return 1
+    }
+
+    const renderFog = (deltaSeconds, timeSeconds, ctx = context, fadeFactor = 1) => {
+      if (!effectState.fogClouds.length) return
+      const fogAlpha = 0.35 * fadeFactor
+      let centerX = 0
+      let centerY = 0
+      effectState.fogClouds.forEach((cloud) => {
+        cloud.x += cloud.driftX * deltaSeconds
+        cloud.y += cloud.driftY * deltaSeconds
+        if (cloud.x < -cloud.radius) cloud.x = width + cloud.radius
+        if (cloud.x > width + cloud.radius) cloud.x = -cloud.radius
+        if (cloud.y < -cloud.radius) cloud.y = height + cloud.radius
+        if (cloud.y > height + cloud.radius) cloud.y = -cloud.radius
+        centerX += cloud.x
+        centerY += cloud.y
+      })
+      effectState.fogCenter = {
+        x: centerX / effectState.fogClouds.length,
+        y: centerY / effectState.fogClouds.length,
+      }
+      ctx.save()
+      ctx.globalCompositeOperation = 'screen'
+      ctx.globalAlpha = fogAlpha
+      effectState.fogClouds.forEach((cloud) => {
+        const gradient = ctx.createRadialGradient(
+          cloud.x,
+          cloud.y,
+          cloud.radius * 0.1,
+          cloud.x,
+          cloud.y,
+          cloud.radius,
+        )
+        if (cloud.isDark) {
+          gradient.addColorStop(0, `rgba(5, 5, 5, ${cloud.glow * 1.2})`)
+          gradient.addColorStop(1, 'rgba(5, 5, 5, 0.16)')
+        } else {
+          gradient.addColorStop(0, `rgba(35, 70, 140, ${cloud.glow * 0.4})`)
+          gradient.addColorStop(1, 'rgba(35, 70, 140, 0.012)')
+        }
+        ctx.fillStyle = gradient
+        ctx.beginPath()
+        ctx.arc(cloud.x, cloud.y, cloud.radius, 0, Math.PI * 2)
+        ctx.fill()
+
+        if (cloud.billows) {
+          cloud.billows.forEach((billow) => {
+            const angle = billow.angle + timeSeconds * 0.08
+            const offset = cloud.radius * billow.offset
+            const bx = cloud.x + Math.cos(angle) * offset
+            const by = cloud.y + Math.sin(angle) * offset
+            const billowRadius = cloud.radius * billow.radiusScale
+            const billowGradient = ctx.createRadialGradient(
+              bx,
+              by,
+              billowRadius * 0.15,
+              bx,
+              by,
+              billowRadius,
+            )
+            if (cloud.isDark) {
+              billowGradient.addColorStop(0, `rgba(8, 8, 8, ${cloud.glow * 0.6})`)
+              billowGradient.addColorStop(1, 'rgba(8, 8, 8, 0.05)')
+            } else {
+              billowGradient.addColorStop(0, `rgba(45, 85, 155, ${cloud.glow * 0.24})`)
+              billowGradient.addColorStop(1, 'rgba(45, 85, 155, 0.01)')
+            }
+            ctx.fillStyle = billowGradient
+            ctx.beginPath()
+            ctx.arc(bx, by, billowRadius, 0, Math.PI * 2)
+            ctx.fill()
+          })
+        }
+
+        ctx.fillStyle = cloud.isDark
+          ? 'rgba(55, 70, 65, 0.16)'
+          : 'rgba(70, 110, 165, 0.06)'
+        const groupAngle = timeSeconds * 1.8 + (cloud.x + cloud.y) * 0.002
+        const groupRadius = cloud.radius * 0.08
+        const groupX = cloud.x + Math.cos(groupAngle) * groupRadius
+        const groupY = cloud.y + Math.sin(groupAngle) * groupRadius
+        const swirlAngle = timeSeconds * 2.4 + (cloud.x - cloud.y) * 0.003
+        cloud.specks.forEach((speck) => {
+          const jitterX = Math.sin(timeSeconds + speck.dx * 12) * 6
+          const jitterY = Math.cos(timeSeconds + speck.dy * 9) * 6
+          ctx.globalAlpha = fogAlpha * speck.alpha * (cloud.isDark ? 0.7 : 1.1)
+          ctx.beginPath()
+          ctx.arc(
+            cloud.x + jitterX + speck.dx * cloud.radius * 0.4,
+            cloud.y + jitterY + speck.dy * cloud.radius * 0.4,
+            speck.size,
+            0,
+            Math.PI * 2,
+          )
+
+          ctx.fill()
+        })
+        ctx.globalAlpha = fogAlpha
+      })
+      ctx.restore()
     }
 
     const renderWind = (deltaSeconds) => {
@@ -892,13 +1382,14 @@ function Board() {
         })
       }
 
-      context.strokeStyle = 'rgba(170, 190, 205, 0.2)'
-      context.fillStyle = 'rgba(200, 210, 220, 0.12)'
+      context.strokeStyle = 'rgba(170, 190, 205, 0.3)'
+      context.fillStyle = 'rgba(205, 235, 225, 0.22)'
       effectState.impacts = effectState.impacts.filter((impact) => {
         impact.life -= deltaSeconds * 2
         if (impact.life <= 0) return false
         const expansion = 1 - impact.life
         const rippleRadius = impact.radius + expansion * 6
+        context.globalAlpha = impact.life
         context.beginPath()
         context.arc(impact.x, impact.y, rippleRadius, 0, Math.PI * 2)
         context.stroke()
@@ -907,6 +1398,7 @@ function Board() {
         context.fill()
         return true
       })
+      context.globalAlpha = 1
 
       context.lineCap = 'round'
       effectState.rainStreaks.forEach((streak) => {
@@ -927,7 +1419,7 @@ function Board() {
           streak.x = Math.random() * width
         }
         context.strokeStyle = `rgba(190, 210, 225, ${streak.alpha})`
-        context.lineWidth = 0.6
+        context.lineWidth = 0.75
         context.beginPath()
         context.moveTo(streak.x, streak.y)
         context.lineTo(streak.x - streak.tilt, streak.y - streak.length)
@@ -936,12 +1428,12 @@ function Board() {
 
     }
 
-    const renderPulse = (timeSeconds) => {
-      const pulse = 0.35 + Math.sin(timeSeconds * 0.6) * 0.25
-      const centerX = width * effectState.pulseOrigin.x
-      const centerY = height * effectState.pulseOrigin.y
+    const renderPulse = (timeSeconds, ctx = context, fadeFactor = 1) => {
+      const pulse = 0.2 + Math.sin(timeSeconds * 0.6) * 0.12
+      const centerX = effectState.fogCenter?.x ?? width * effectState.pulseOrigin.x
+      const centerY = effectState.fogCenter?.y ?? height * effectState.pulseOrigin.y
       const radius = Math.max(width, height) * 0.7
-      const gradient = context.createRadialGradient(
+      const gradient = ctx.createRadialGradient(
         centerX,
         centerY,
         radius * 0.1,
@@ -949,10 +1441,13 @@ function Board() {
         centerY,
         radius,
       )
-      gradient.addColorStop(0, `rgba(120, 200, 255, ${pulse})`)
+      gradient.addColorStop(0, `rgba(40, 80, 150, ${pulse})`)
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
-      context.fillStyle = gradient
-      context.fillRect(0, 0, width, height)
+      ctx.save()
+      ctx.globalAlpha = 0.02 * fadeFactor
+      ctx.fillStyle = gradient
+      ctx.fillRect(0, 0, width, height)
+      ctx.restore()
     }
 
     const drawFrame = (time) => {
@@ -964,6 +1459,9 @@ function Board() {
       context.clearRect(0, 0, width, height)
       if (windContext) {
         windContext.clearRect(0, 0, width, height)
+      }
+      if (fogContext) {
+        fogContext.clearRect(0, 0, width, height)
       }
       if (offscreen.width && offscreen.height) {
         context.drawImage(offscreen, 0, 0, width, height)
@@ -979,7 +1477,10 @@ function Board() {
         renderRain(deltaSeconds)
       }
       if (style.mode === 'pulse') {
-        renderPulse(timeSeconds)
+        const targetContext = fogContext || context
+        const fogFade = getFogFadeFactor(timeSeconds)
+        renderFog(deltaSeconds, timeSeconds, targetContext, fogFade)
+        renderPulse(timeSeconds, targetContext, fogFade)
       }
 
       animationFrame = requestAnimationFrame(drawFrame)
@@ -1000,9 +1501,18 @@ function Board() {
         windCanvas.style.width = `${width}px`
         windCanvas.style.height = `${height}px`
       }
+      if (fogCanvas) {
+        fogCanvas.width = Math.floor(width * dpr)
+        fogCanvas.height = Math.floor(height * dpr)
+        fogCanvas.style.width = `${width}px`
+        fogCanvas.style.height = `${height}px`
+      }
       context.setTransform(dpr, 0, 0, dpr, 0, 0)
       if (windContext) {
         windContext.setTransform(dpr, 0, 0, dpr, 0, 0)
+      }
+      if (fogContext) {
+        fogContext.setTransform(dpr, 0, 0, dpr, 0, 0)
       }
       buildBaseTexture()
       buildEffectState()
@@ -1018,7 +1528,7 @@ function Board() {
       cancelAnimationFrame(animationFrame)
       resizeObserver.disconnect()
     }
-  }, [activeTextureIndex, activeMap?.id, textureStyles])
+  }, [activeTextureIndex, activeMap?.id, textureStyles, arrangementIndex])
 
   const advanceArrangement = () => {
     if (!mapArrangements.length) return
@@ -1131,6 +1641,7 @@ function Board() {
           ) : null}
           <canvas ref={boardTextureRef} className="board-texture-canvas" />
           <canvas ref={boardWindRef} className="board-wind-canvas" />
+          <canvas ref={boardFogRef} className="board-fog-canvas" />
           {grid.enabled ? (
             <div
               className="board-grid"
