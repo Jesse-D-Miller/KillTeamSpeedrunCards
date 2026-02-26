@@ -16,6 +16,25 @@
   gap: 12px;
 }
 
+
+.board-texture-watermark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: rgba(240, 240, 240, 0.6);
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.9);
+  border: 4px solid rgba(240, 240, 240, 0.6);
+  padding: 26px 44px;
+  border-radius: 0;
+  z-index: 12;
+  pointer-events: none;
+}
+
 .board-toggle {
   background: rgba(15, 18, 23, 0.8);
   border: 1px solid var(--border);
@@ -620,9 +639,30 @@
   width: calc(var(--board-width) * 1in * var(--inch-scale));
   height: calc(var(--board-height) * 1in * var(--inch-scale));
   border: 1px solid var(--border);
-  background: linear-gradient(140deg, rgba(255, 255, 255, 0.05), transparent);
+  background: #0f1114;
   box-shadow: var(--shadow-soft);
   overflow: hidden;
+}
+
+.board-texture-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.board-wind-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 9;
+  pointer-events: none;
+  filter: blur(6px);
 }
 
 .board-grid {
@@ -633,7 +673,7 @@
     linear-gradient(to top, rgba(0, 0, 0, 0.7) 1px, transparent 1px);
   background-size: calc(100% / var(--board-width) * var(--grid-cell))
     calc(100% / var(--board-height) * var(--grid-cell));
-  z-index: 2;
+  z-index: 3;
   pointer-events: none;
 }
 
@@ -642,7 +682,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 3;
+  z-index: 4;
 }
 
 .board-terrain-fill {
@@ -696,7 +736,7 @@
   position: absolute;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.04);
-  z-index: 1;
+  z-index: 2;
 }
 
 .zone-a-territory {
