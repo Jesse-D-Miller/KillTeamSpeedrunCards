@@ -2,6 +2,7 @@ import http from 'http'
 import { WebSocketServer } from 'ws'
 
 const PORT = Number.parseInt(process.env.PORT || '8080', 10)
+const MAX_PLAYERS = 2
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((value) => value.trim())
@@ -31,6 +32,16 @@ const wss = new WebSocketServer({
 })
 
 const rooms = new Map()
+
+const isMapName = (value) => String(value || '').trim().toUpperCase() === 'MAP'
+
+const getNonMapPlayers = (room) =>
+  Array.from(room.players.values()).filter(
+    (player) => !isMapName(player.name),
+  )
+
+const hasMapPlayer = (room) =>
+  Array.from(room.players.values()).some((player) => isMapName(player.name))
 
 const randomId = () =>
   Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
@@ -80,10 +91,9 @@ const sendRoomUpdate = (room) => {
 }
 
 const tryStartGame = (room) => {
-  if (room.players.size < 2) return
-  const allReady = Array.from(room.players.values()).every(
-    (player) => player.ready,
-  )
+  const nonMapPlayers = getNonMapPlayers(room)
+  if (nonMapPlayers.length < MAX_PLAYERS) return
+  const allReady = nonMapPlayers.every((player) => player.ready)
   if (!allReady) return
   const startTime = Date.now()
   broadcast(room, {
@@ -170,7 +180,12 @@ wss.on('connection', (socket) => {
         sendJson(socket, { type: 'error', message: 'Room not found.' })
         return
       }
-      if (room.players.size >= 2) {
+      const isMap = isMapName(name)
+      if (isMap && hasMapPlayer(room)) {
+        sendJson(socket, { type: 'error', message: 'Map already joined.' })
+        return
+      }
+      if (!isMap && getNonMapPlayers(room).length >= MAX_PLAYERS) {
         sendJson(socket, { type: 'error', message: 'Room is full.' })
         return
       }
