@@ -1,0 +1,36 @@
+.board-sightline line {
+  stroke: rgba(220, 40, 40, 0.9);
+  stroke-width: 2px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.board-sightline-marker {
+  stroke: rgba(220, 40, 40, 0.9);
+  stroke-width: 1.5px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.board-sightline-label {
+  fill: rgba(0, 0, 0, 0.9);
+  font-weight: 600;
+  text-anchor: start;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
+.board-sightline-origin line {
+  stroke: rgba(220, 40, 40, 0.9);
+  stroke-width: 2px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.board-sightline-capture {
+  fill: transparent;
+  pointer-events: all;
+}

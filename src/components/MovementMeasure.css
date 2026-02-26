@@ -1,0 +1,46 @@
+.movement-measure {
+  pointer-events: none;
+}
+
+.movement-measure-capture {
+  fill: transparent;
+  pointer-events: none;
+}
+
+.movement-measure-capture.is-active {
+  pointer-events: all;
+}
+
+.movement-measure-line {
+  fill: none;
+  stroke: rgba(220, 40, 40, 0.9);
+  stroke-width: 5px;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.movement-measure-marker {
+  stroke: rgba(220, 40, 40, 0.9);
+  stroke-width: 2px;
+  stroke-linecap: butt;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.movement-measure-label {
+  fill: rgba(0, 0, 0, 0.9);
+  font-weight: 600;
+  text-anchor: start;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
+.movement-measure-origin line {
+  stroke: rgba(220, 40, 40, 0.9);
+  stroke-width: 2px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}

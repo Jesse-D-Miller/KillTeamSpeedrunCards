@@ -211,6 +211,7 @@ function Game() {
   const [stanceByUnit, setStanceByUnit] = useState({})
   const [statusesByUnit, setStatusesByUnit] = useState({})
   const [aplAdjustByUnit, setAplAdjustByUnit] = useState({})
+  const [gameId, setGameId] = useState('')
   const [timerStart, setTimerStart] = useState(null)
   const [timerNow, setTimerNow] = useState(Date.now())
   const [menuOpen, setMenuOpen] = useState(false)
@@ -319,10 +320,48 @@ function Game() {
     () => getKillteamById(killteamId),
     [killteamId],
   )
-  const storageKey = useMemo(
-    () => (killteamId ? `kt-game-${killteamId}` : null),
-    [killteamId],
-  )
+  const storageKey = useMemo(() => {
+    if (!killteamId) return null
+    return gameId ? `kt-game-${killteamId}-${gameId}` : `kt-game-${killteamId}`
+  }, [killteamId, gameId])
+
+  useEffect(() => {
+    if (!killteamId) return
+    try {
+      const storedGameId = localStorage.getItem('kt-game-id') || ''
+      setGameId(storedGameId)
+    } catch (error) {
+      console.warn('Failed to read game id.', error)
+      setGameId('')
+    }
+  }, [killteamId])
+
+  useEffect(() => {
+    if (!killteamId || !gameId) return
+    const resetKey = `kt-game-last-${killteamId}`
+    const lastGameId = localStorage.getItem(resetKey) || ''
+    if (lastGameId === gameId) return
+    setUnitStates({})
+    setDeadUnits({})
+    setWoundsByUnit({})
+    setDetailsOpenByUnit({})
+    setStanceByUnit({})
+    setStatusesByUnit({})
+    setAplAdjustByUnit({})
+    setTpCount(1)
+    setCpCount(2)
+    setVpCount(0)
+    setSpCount(0)
+    setMenuOpen(false)
+    setOpponentPanelOpen(false)
+    setLegionaryMarks(killteamId, {})
+    if (storageKey) {
+      localStorage.removeItem(storageKey)
+    }
+    hasHydratedRef.current = false
+    hydratedKillteamRef.current = null
+    localStorage.setItem(resetKey, gameId)
+  }, [killteamId, gameId, setLegionaryMarks, storageKey])
 
   useEffect(() => {
     try {

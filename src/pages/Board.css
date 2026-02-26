@@ -654,6 +654,22 @@
   pointer-events: none;
 }
 
+.board-tool-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.2in 0.35in;
+  border-radius: 999px;
+  background: rgba(12, 12, 12, 0.7);
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  z-index: 12;
+  pointer-events: none;
+}
+
 .board-wind-canvas {
   position: absolute;
   inset: 0;
@@ -731,6 +747,7 @@
   stroke-width: 0.08;
   stroke-dasharray: 0.35 0.25;
 }
+
 
 .board-objective circle {
   fill: rgba(220, 60, 60, 0.9);

@@ -6,6 +6,8 @@ import critOpsCardsData from '../data/critOpsCards.json'
 import CritOpsCard from '../components/CritOpsCard'
 import KillOp from '../components/KillOp'
 import BoardSide from '../components/BoardSide'
+import SightLine from '../components/SightLine'
+import MovementMeasure from '../components/MovementMeasure'
 import './Board.css'
 
 function Board() {
@@ -31,6 +33,8 @@ function Board() {
   const hasRandomizedMapRef = useRef(false)
   const boardSurfaceRef = useRef(null)
   const boardFrameRef = useRef(null)
+  const boardOverlayRef = useRef(null)
+  const [toolMode, setToolMode] = useState('none')
   const [selectedCardIndex, setSelectedCardIndex] = useState(0)
   const shouldRotateZones = activeMap?.id === 'map_02'
   const sourceWidth = shouldRotateZones ? board.height : board.width
@@ -41,6 +45,7 @@ function Board() {
   const boardWindRef = useRef(null)
   const boardFogRef = useRef(null)
   const [showTextureWatermark, setShowTextureWatermark] = useState(false)
+  const [toolWatermark, setToolWatermark] = useState('')
   const textureStyles = useMemo(
     () => [
       {
@@ -75,6 +80,47 @@ function Board() {
   )
 
   const toPercent = (value, max) => `${(value / max) * 100}%`
+
+  useEffect(() => {
+    const isEditableTarget = (target) => {
+      if (!target) return false
+      if (target.isContentEditable) return true
+      const tagName = target.tagName
+      return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT'
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.defaultPrevented || event.repeat || isEditableTarget(event.target)) return
+      if (event.key === 'Escape') {
+        window.dispatchEvent(new CustomEvent('kt-clear-tools'))
+        return
+      }
+      if (event.key !== 'Shift') return
+
+      setToolMode((prev) => {
+        if (prev === 'none') return 'sight'
+        if (prev === 'sight') return 'measure'
+        return 'none'
+      })
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  useEffect(() => {
+    if (toolMode === 'none') {
+      setToolWatermark('')
+      return
+    }
+
+    const label = toolMode === 'sight' ? 'Sight Line' : 'Movement Measure'
+    setToolWatermark(label)
+    const timeoutId = window.setTimeout(() => {
+      setToolWatermark('')
+    }, 1200)
+    return () => window.clearTimeout(timeoutId)
+  }, [toolMode])
 
   const renderZone = (zone, className) => {
     if (!zone) return null
@@ -195,7 +241,6 @@ function Board() {
 
   const activeTexture =
     textureStyles[activeTextureIndex % textureStyles.length]
-
   useEffect(() => {
     if (!activeTexture?.label) return
     setShowTextureWatermark(true)
@@ -1635,6 +1680,9 @@ function Board() {
               {activeTexture?.label || 'Texture'}
             </div>
           ) : null}
+          {toolWatermark ? (
+            <div className="board-tool-watermark">{toolWatermark}</div>
+          ) : null}
           <canvas ref={boardTextureRef} className="board-texture-canvas" />
           <canvas ref={boardWindRef} className="board-wind-canvas" />
           <canvas ref={boardFogRef} className="board-fog-canvas" />
@@ -1656,6 +1704,7 @@ function Board() {
             className="board-overlay"
             viewBox={`0 0 ${board.width} ${board.height}`}
             preserveAspectRatio="none"
+            ref={boardOverlayRef}
           >
             <g transform={`scale(1,-1) translate(0, -${board.height})`}>
               <line
@@ -1761,6 +1810,18 @@ function Board() {
                   )
                 }),
               )}
+              <SightLine
+                boardWidth={board.width}
+                boardHeight={board.height}
+                svgRef={boardOverlayRef}
+                active={toolMode === 'sight'}
+              />
+              <MovementMeasure
+                boardWidth={board.width}
+                boardHeight={board.height}
+                svgRef={boardOverlayRef}
+                active={toolMode === 'measure'}
+              />
             </g>
           </svg>
           {activeMap?.id === 'map_01' && selectedCritOpsCard ? (
