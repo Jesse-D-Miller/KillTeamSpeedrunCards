@@ -786,3 +786,137 @@
   background: rgba(184, 188, 194, 0.3);
   border-color: rgba(184, 188, 194, 0.4);
 }
+
+.board-dropzone-overlay {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(10, 10, 10, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.board-dropzone-overlay__text {
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+
+.board-dropzone-overlay__label {
+  display: inline-block;
+}
+
+.board-dropzone-overlay__name {
+  display: inline-block;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: none;
+  opacity: 0.85;
+}
+
+.board-dropzone-overlay.is-flipped .board-dropzone-overlay__text {
+  transform: rotate(180deg);
+}
+
+.board-dropzone-overlay.is-rotate-90 .board-dropzone-overlay__text {
+  transform: rotate(-90deg);
+}
+
+.board-dropzone-overlay.is-rotate-90-reverse .board-dropzone-overlay__text {
+  transform: rotate(90deg);
+}
+
+.board-dropzone-overlay.is-clickable {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.board-dropzone-overlay.is-clickable:hover {
+  background: rgba(210, 176, 138, 0.35);
+}
+
+.board-dropzone-overlay.is-selected {
+  background: rgba(240, 211, 138, 0.45);
+  color: rgba(20, 20, 20, 0.9);
+  border-color: rgba(240, 211, 138, 0.9);
+}
+
+.board-side__placeholder.is-filled {
+  align-items: start;
+  padding: 6px 8px;
+  border-style: solid;
+  background: rgba(6, 7, 9, 0.75);
+}
+
+.board-side__strat-ploys {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.board-side__strat-ploys-title {
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(240, 211, 138, 0.9);
+}
+
+.board-side__strat-ploys-list {
+  display: grid;
+  gap: 3px;
+}
+
+.board-side__strat-ploys-item {
+  display: grid;
+  gap: 2px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+}
+
+.board-side__strat-ploys-text {
+  display: grid;
+  gap: 2px;
+}
+
+.board-side__strat-ploys-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.board-side__strat-ploys-row span:first-child {
+  color: rgba(240, 211, 138, 0.9);
+}
+
+.board-side__strat-ploys-rule {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.board-side__strat-ploys-cost {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 700;
+}
+
+.board-side__strat-ploys-empty {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}

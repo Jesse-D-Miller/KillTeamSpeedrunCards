@@ -14,6 +14,34 @@ const truncate = (value, maxLength = 180) => {
 function SelectArmy() {
   const [query, setQuery] = useState('')
   const killteams = useMemo(() => getKillteams(), [])
+  const handleSelectKillteam = (killteamId) => {
+    try {
+      const roomCode =
+        sessionStorage.getItem('kt-room-code') ||
+        localStorage.getItem('kt-room-code') ||
+        ''
+      const playerId =
+        sessionStorage.getItem('kt-player-id') ||
+        localStorage.getItem('kt-player-id') ||
+        ''
+      const gameId = localStorage.getItem('kt-game-id') || ''
+      localStorage.setItem('kt-last-killteam', killteamId)
+      if (roomCode && playerId) {
+        localStorage.setItem(
+          `kt-room-player-killteam-${roomCode}-${playerId}`,
+          killteamId,
+        )
+        if (gameId) {
+          localStorage.setItem(
+            `kt-room-player-killteam-${roomCode}-${playerId}-${gameId}`,
+            killteamId,
+          )
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to persist selected killteam.', error)
+    }
+  }
 
   const filteredKillteams = useMemo(() => {
     if (!query) return killteams
@@ -84,6 +112,7 @@ function SelectArmy() {
                 to="/set-up-the-battle"
                 state={{ killteamId: team.killteamId }}
                 aria-label={`Select ${team.killteamName}`}
+                onClick={() => handleSelectKillteam(team.killteamId)}
               >
                 <div className="select-army-card-header">
                   <div>

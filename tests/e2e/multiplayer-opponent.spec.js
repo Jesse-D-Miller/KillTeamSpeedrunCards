@@ -54,39 +54,76 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  if (wsProcess && startedWs) {
+  if (wsProcess && startedWs && process.env.CI === '1') {
     wsProcess.kill()
   }
 })
 
 const startMatch = async (page, name) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Kill Team Speedrun' }).click()
+  await page.goto('/multiplayer')
   await page.getByRole('button', { name: 'Create' }).click()
   await page.getByLabel('Username').fill(name)
   await page.getByRole('button', { name: 'Create Room' }).click()
-  await page.locator('.multiplayer-lobby').waitFor({ state: 'visible' })
+  const lobby = page.locator('.multiplayer-lobby')
+  const error = page.locator('.multiplayer-error')
+  await Promise.race([
+    lobby.waitFor({ state: 'visible' }),
+    error.waitFor({ state: 'visible' }),
+  ])
+  if (await error.isVisible()) {
+    const errorMessage = await error.textContent()
+    throw new Error(errorMessage || 'Multiplayer create failed.')
+  }
 }
 
 const joinMatch = async (page, name, code) => {
-  await page.goto('/')
-  await page.getByRole('link', { name: 'Kill Team Speedrun' }).click()
+  await page.goto('/multiplayer')
   await page.getByRole('button', { name: 'Join' }).click()
   await page.getByLabel('Username').fill(name)
   await page.getByLabel('Room code').fill(code)
   await page.getByRole('button', { name: 'Join Room' }).click()
-  await page.locator('.multiplayer-lobby').waitFor({ state: 'visible' })
+  const lobby = page.locator('.multiplayer-lobby')
+  const error = page.locator('.multiplayer-error')
+  await Promise.race([
+    lobby.waitFor({ state: 'visible' }),
+    error.waitFor({ state: 'visible' }),
+  ])
+  if (await error.isVisible()) {
+    const errorMessage = await error.textContent()
+    throw new Error(errorMessage || 'Multiplayer join failed.')
+  }
 }
 
 const selectFirstTeamAndStart = async (page) => {
   await page.waitForURL('**/select-army')
   await page.locator('.select-army-card').first().click()
+  await page.waitForURL('**/set-up-the-battle')
+  await page.getByRole('link', { name: /select operatives/i }).click()
   await page.waitForURL('**/units')
-  await page.locator('.unit-card').first().click()
+  await page.locator('.game-card').first().click()
   await page.getByRole('link', { name: 'Lock In Units' }).click()
   await page.waitForURL('**/equipment')
-  await page.getByRole('button', { name: 'Start Game' }).click()
+  await page.getByRole('button', { name: /select tac ops/i }).click()
+  await page.waitForURL('**/select-tac-ops')
+  await page.locator('.select-tac-ops-card-item').first().click()
+  await page.getByRole('link', { name: /set up operatives/i }).click()
+  await page.waitForURL('**/set-up-operatives')
+  await page.getByRole('link', { name: /scouting/i }).click()
+  await page.waitForURL('**/scouting')
+  await page.locator('.scouting-card-item').first().click()
+  await page.getByRole('button', { name: /lock in/i }).click()
+  await page.getByRole('link', { name: /select primary op/i }).click()
+  await page.waitForURL('**/select-primary-op')
+  await page.locator('.primary-op-card-item').first().click()
+  await page.getByRole('link', { name: /play game/i }).click()
   await page.waitForURL('**/game/**')
+}
+
+const closeStratOpsModal = async (page) => {
+  const startTpButton = page.getByRole('button', { name: 'Start TP' })
+  if (await startTpButton.isVisible()) {
+    await startTpButton.click()
+  }
 }
 
 test('opponent view shows synced units', async ({ browser }) => {
@@ -102,14 +139,22 @@ test('opponent view shows synced units', async ({ browser }) => {
 
   await hostPage.getByRole('button', { name: 'Start Game' }).click()
   await guestPage.getByRole('button', { name: 'Start Game' }).click()
-  await expect(hostPage.getByRole('button', { name: 'Ready' })).toBeVisible()
-  await expect(guestPage.getByRole('button', { name: 'Ready' })).toBeVisible()
+  await Promise.race([
+    hostPage.waitForURL('**/select-army'),
+    expect(hostPage.getByRole('button', { name: 'Ready' })).toBeVisible(),
+  ])
+  await Promise.race([
+    guestPage.waitForURL('**/select-army'),
+    expect(guestPage.getByRole('button', { name: 'Ready' })).toBeVisible(),
+  ])
+  await hostPage.waitForURL('**/select-army')
+  await guestPage.waitForURL('**/select-army')
 
   await selectFirstTeamAndStart(hostPage)
   await selectFirstTeamAndStart(guestPage)
 
-  await guestPage.locator('.health-bar').first().click()
-  await guestPage.waitForTimeout(300)
+  await closeStratOpsModal(hostPage)
+  await closeStratOpsModal(guestPage)
 
   await expect(
     hostPage.evaluate(() => localStorage.getItem('kt-room-code')),
@@ -125,7 +170,9 @@ test('opponent view shows synced units', async ({ browser }) => {
   await hostPage.locator('.opponent-panel').waitFor({ state: 'visible' })
 
   const opponentPanel = hostPage.locator('.opponent-panel')
-  await expect(opponentPanel.getByText('Guest')).toBeVisible({ timeout: 15000 })
+  await expect(
+    opponentPanel.getByRole('heading', { name: 'Guest' }),
+  ).toBeVisible({ timeout: 15000 })
   const opponentCards = opponentPanel.locator('.game-card')
   await expect(opponentCards.first()).toBeVisible({ timeout: 15000 })
 

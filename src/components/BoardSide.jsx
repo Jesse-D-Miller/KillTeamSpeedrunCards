@@ -8,6 +8,8 @@ function BoardSide({
   cardContent,
   killOpContent,
   killOpFirst = false,
+  tacContent = null,
+  catContent = null,
 }) {
   const isMap02 = mapClass?.includes('is-map-02')
   const cardInnerClassName = isMap02
@@ -16,6 +18,12 @@ function BoardSide({
   const killOpInnerClassName = isMap02
     ? `board-side__inner board-side__inner--killop ${side}`
     : 'board-side__inner'
+  const tacPlaceholderClass = `board-side__placeholder board-side__placeholder--tac${
+    tacContent ? ' is-filled' : ''
+  }`
+  const catPlaceholderClass = `board-side__placeholder board-side__placeholder--cat${
+    catContent ? ' is-filled' : ''
+  }`
 
   return (
     <div className={`board-op-group ${mapClass} ${side}`}>
@@ -26,11 +34,11 @@ function BoardSide({
           >
             <div className={killOpInnerClassName}>{killOpContent}</div>
           </div>
-          <div className="board-side__placeholder board-side__placeholder--tac">
-            TAC
+          <div className={tacPlaceholderClass}>
+            {tacContent || 'TAC'}
           </div>
-          <div className="board-side__placeholder board-side__placeholder--cat">
-            CAT
+          <div className={catPlaceholderClass}>
+            {catContent || 'CAT'}
           </div>
           <div
             className={`board-side__slot board-side__slot--secondary board-side__slot--card ${cardClassName}`}
@@ -45,11 +53,11 @@ function BoardSide({
           >
             <div className={cardInnerClassName}>{cardContent}</div>
           </div>
-          <div className="board-side__placeholder board-side__placeholder--tac">
-            TAC
+          <div className={tacPlaceholderClass}>
+            {tacContent || 'TAC'}
           </div>
-          <div className="board-side__placeholder board-side__placeholder--cat">
-            CAT
+          <div className={catPlaceholderClass}>
+            {catContent || 'CAT'}
           </div>
           <div
             className={`board-side__slot board-side__slot--secondary board-side__slot--killop ${killOpClassName}`}

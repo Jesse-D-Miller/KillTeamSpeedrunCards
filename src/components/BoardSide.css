@@ -16,3 +16,10 @@
   text-transform: uppercase;
   font-size: 0.7rem;
 }
+
+.board-side__placeholder--tac.is-filled {
+  aspect-ratio: 1 / 1;
+  width: min(100%, 240px);
+  max-width: 220px;
+  max-height: 220px;
+}

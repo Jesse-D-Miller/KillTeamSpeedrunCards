@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import mapsData from '../data/killzoneMaps.json'
+import { getKillteamById } from '../data/ktData.js'
 import terrainData from '../data/terrain.json'
 import terrainPiecesData from '../data/terrainPieces.json'
 import critOpsCardsData from '../data/critOpsCards.json'
@@ -9,9 +10,15 @@ import BoardSide from '../components/BoardSide'
 import SightLine from '../components/SightLine'
 import MovementMeasure from '../components/MovementMeasure'
 import FieldOfVision from '../components/FieldOfVision'
+import { resolveWsUrl } from '../state/wsUrl.js'
 import './Board.css'
 
-function Board() {
+function Board({
+  dropZoneSelectionEnabled = false,
+  onDropZoneSelect = null,
+  selectedDropZone = null,
+}) {
+  const WS_URL = resolveWsUrl()
   const maps = mapsData?.maps ?? []
   const [selectedMapId, setSelectedMapId] = useState(maps[0]?.id || '')
   const activeMap = useMemo(
@@ -30,14 +37,25 @@ function Board() {
   )
   const critOpsCards = critOpsCardsData?.cards ?? []
   const [arrangementIndex, setArrangementIndex] = useState(0)
+        const parseRoomPloys = (payload) => {
+          if (!payload) return []
+          const parsed = JSON.parse(payload)
+          return Array.isArray(parsed) ? parsed : []
+        }
+        const storedPlayerName =
+          sessionStorage.getItem('kt-player-name') ||
+          localStorage.getItem('kt-player-name') ||
+          ''
   const activeArrangement = mapArrangements[arrangementIndex] || null
   const hasRandomizedMapRef = useRef(false)
   const boardSurfaceRef = useRef(null)
   const boardFrameRef = useRef(null)
+        const activeGameId = localStorage.getItem('kt-game-id') || ''
   const boardOverlayRef = useRef(null)
   const [toolMode, setToolMode] = useState('none')
   const [selectedCardIndex, setSelectedCardIndex] = useState(0)
   const shouldRotateZones = activeMap?.id === 'map_02'
+        const isMapUser = storedPlayerName.trim().toUpperCase() === 'MAP'
   const sourceWidth = shouldRotateZones ? board.height : board.width
   const sourceHeight = shouldRotateZones ? board.width : board.height
   const textureByMapIdRef = useRef(new Map())
@@ -47,6 +65,17 @@ function Board() {
   const boardFogRef = useRef(null)
   const [showTextureWatermark, setShowTextureWatermark] = useState(false)
   const [toolWatermark, setToolWatermark] = useState('')
+  const [storedDropZone, setStoredDropZone] = useState('')
+  const [storedOpponentDropZone, setStoredOpponentDropZone] = useState('')
+  const [playerStratPloys, setPlayerStratPloys] = useState([])
+  const [opponentStratPloys, setOpponentStratPloys] = useState([])
+  const [playerName, setPlayerName] = useState('Player')
+  const [opponentName, setOpponentName] = useState('Opponent')
+  const [playerArmyName, setPlayerArmyName] = useState('')
+  const [opponentArmyName, setOpponentArmyName] = useState('')
+  const [playerAssignedZone, setPlayerAssignedZone] = useState('')
+  const [opponentAssignedZone, setOpponentAssignedZone] = useState('')
+  const mapSocketRef = useRef(null)
   const textureStyles = useMemo(
     () => [
       {
@@ -83,31 +112,344 @@ function Board() {
   const toPercent = (value, max) => `${(value / max) * 100}%`
 
   useEffect(() => {
-    const isEditableTarget = (target) => {
-      if (!target) return false
-      if (target.isContentEditable) return true
-      const tagName = target.tagName
-      return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT'
+    const readDropZone = () => {
+      const stored = localStorage.getItem('kt-drop-zone') || ''
+      setStoredDropZone(stored)
+      const opponentStored = localStorage.getItem('kt-drop-zone-opponent') || ''
+      setStoredOpponentDropZone(opponentStored)
     }
+    readDropZone()
+    const handleDropZoneUpdate = () => readDropZone()
+    window.addEventListener('kt-dropzone-update', handleDropZoneUpdate)
+    window.addEventListener('storage', handleDropZoneUpdate)
+    return () => {
+      window.removeEventListener('kt-dropzone-update', handleDropZoneUpdate)
+      window.removeEventListener('storage', handleDropZoneUpdate)
+    }
+  }, [])
 
-    const handleKeyDown = (event) => {
-      if (event.defaultPrevented || event.repeat || isEditableTarget(event.target)) return
-      if (event.key === 'Escape') {
-        window.dispatchEvent(new CustomEvent('kt-clear-tools'))
+  useEffect(() => {
+    const readNames = () => {
+      const storedPlayerName =
+        sessionStorage.getItem('kt-player-name') ||
+        localStorage.getItem('kt-player-name') ||
+        ''
+      const roomCode =
+        sessionStorage.getItem('kt-room-code') ||
+        localStorage.getItem('kt-room-code') ||
+        ''
+      const activeGameId = localStorage.getItem('kt-game-id') || ''
+      const playerId =
+        sessionStorage.getItem('kt-player-id') ||
+        localStorage.getItem('kt-player-id') ||
+        ''
+      const normalizedPlayerName = storedPlayerName.trim()
+      const isMapUser = normalizedPlayerName.toUpperCase() === 'MAP'
+      let roomPlayers = []
+      if (roomCode) {
+        try {
+          const storedPlayers = localStorage.getItem(
+            `kt-room-players-${roomCode}`,
+          )
+          roomPlayers = storedPlayers ? JSON.parse(storedPlayers) : []
+        } catch (error) {
+          console.warn('Failed to read room players.', error)
+        }
+      }
+      const nonMapPlayers = roomPlayers.filter(
+        (player) => String(player?.name || '').trim().toUpperCase() !== 'MAP',
+      )
+      const getArmyNameForPlayer = (id) => {
+        if (!roomCode || !id) return ''
+        const teamId =
+          (activeGameId &&
+            localStorage.getItem(
+              `kt-room-player-killteam-${roomCode}-${id}-${activeGameId}`,
+            )) ||
+          localStorage.getItem(`kt-room-player-killteam-${roomCode}-${id}`)
+        const team = teamId ? getKillteamById(teamId) : null
+        return team?.killteamName || ''
+      }
+      if (isMapUser && nonMapPlayers.length) {
+        const primaryName = nonMapPlayers[0]?.name || ''
+        const secondaryName = nonMapPlayers[1]?.name || ''
+        if (primaryName) setPlayerName(primaryName)
+        if (secondaryName) setOpponentName(secondaryName)
+        const primaryArmy = getArmyNameForPlayer(nonMapPlayers[0]?.id)
+        const secondaryArmy = getArmyNameForPlayer(nonMapPlayers[1]?.id)
+        if (primaryArmy) setPlayerArmyName(primaryArmy)
+        if (secondaryArmy) setOpponentArmyName(secondaryArmy)
+      } else {
+        if (normalizedPlayerName) setPlayerName(normalizedPlayerName)
+        if (roomCode && playerId) {
+          const playerArmy = getArmyNameForPlayer(playerId)
+          if (playerArmy) setPlayerArmyName(playerArmy)
+        }
+      }
+      if (!roomCode || !playerId) {
+        if (!isMapUser && nonMapPlayers.length) {
+          const fallbackOpponent = nonMapPlayers.find(
+            (player) => player?.name && player.name !== normalizedPlayerName,
+          )
+          if (fallbackOpponent?.name) setOpponentName(fallbackOpponent.name)
+          const fallbackArmy = getArmyNameForPlayer(fallbackOpponent?.id)
+          if (fallbackArmy) setOpponentArmyName(fallbackArmy)
+        }
         return
       }
-      if (event.key !== 'Shift') return
+      const opponentStored = localStorage.getItem(
+        `kt-opponent-${roomCode}-${playerId}`,
+      )
+      if (!opponentStored) {
+        if (!isMapUser && nonMapPlayers.length) {
+          const fallbackOpponent = nonMapPlayers.find(
+            (player) => player?.name && player.name !== normalizedPlayerName,
+          )
+          if (fallbackOpponent?.name) setOpponentName(fallbackOpponent.name)
+          const fallbackArmy = getArmyNameForPlayer(fallbackOpponent?.id)
+          if (fallbackArmy) setOpponentArmyName(fallbackArmy)
+        }
+        return
+      }
+      try {
+        const opponentParsed = JSON.parse(opponentStored)
+        const incomingName = opponentParsed?.state?.name || ''
+        if (incomingName) setOpponentName(incomingName)
+        if (opponentParsed?.state?.killteamId) {
+          const opponentTeam = getKillteamById(opponentParsed.state.killteamId)
+          const opponentArmy = opponentTeam?.killteamName || ''
+          if (opponentArmy) setOpponentArmyName(opponentArmy)
+        }
+      } catch (error) {
+        console.warn('Failed to read opponent name.', error)
+        if (!isMapUser && nonMapPlayers.length) {
+          const fallbackOpponent = nonMapPlayers.find(
+            (player) => player?.name && player.name !== normalizedPlayerName,
+          )
+          if (fallbackOpponent?.name) setOpponentName(fallbackOpponent.name)
+          const fallbackArmy = getArmyNameForPlayer(fallbackOpponent?.id)
+          if (fallbackArmy) setOpponentArmyName(fallbackArmy)
+        }
+      }
+    }
+    readNames()
+    const handleNameUpdate = () => readNames()
+    window.addEventListener('storage', handleNameUpdate)
+    return () => {
+      window.removeEventListener('storage', handleNameUpdate)
+    }
+  }, [])
 
-      setToolMode((prev) => {
-        if (prev === 'none') return 'sight'
-        if (prev === 'sight') return 'measure'
-        if (prev === 'measure') return 'fov'
-        return 'none'
-      })
+  useEffect(() => {
+    const storedPlayerName =
+      sessionStorage.getItem('kt-player-name') ||
+      localStorage.getItem('kt-player-name') ||
+      ''
+    const isMapUser = storedPlayerName.trim().toUpperCase() === 'MAP'
+    const roomCode =
+      sessionStorage.getItem('kt-room-code') ||
+      localStorage.getItem('kt-room-code') ||
+      ''
+    const playerId =
+      sessionStorage.getItem('kt-player-id') ||
+      localStorage.getItem('kt-player-id') ||
+      ''
+    if (!isMapUser || !roomCode || !playerId) return undefined
+    if (mapSocketRef.current) return undefined
+
+    const socket = new WebSocket(WS_URL)
+    mapSocketRef.current = socket
+
+    const handleMessage = (event) => {
+      const message = JSON.parse(event.data)
+      if (message.type === 'sync_ready') return
+      if (message.type !== 'opponent_state') return
+      const state = message.state
+      const incomingPlayerId = state?.playerId || ''
+      if (!incomingPlayerId) return
+      try {
+        const activeGameId = localStorage.getItem('kt-game-id') || ''
+        if (state?.killteamId) {
+          localStorage.setItem(
+            `kt-room-player-killteam-${roomCode}-${incomingPlayerId}`,
+            state.killteamId,
+          )
+          if (activeGameId) {
+            localStorage.setItem(
+              `kt-room-player-killteam-${roomCode}-${incomingPlayerId}-${activeGameId}`,
+              state.killteamId,
+            )
+          }
+        }
+        if (Array.isArray(state?.activeStratPloys)) {
+          const baseKey =
+            `kt-room-player-strat-ploys-${roomCode}-${incomingPlayerId}`
+          localStorage.setItem(baseKey, JSON.stringify(state.activeStratPloys))
+          if (activeGameId) {
+            localStorage.setItem(
+              `${baseKey}-${activeGameId}`,
+              JSON.stringify(state.activeStratPloys),
+            )
+          }
+          window.dispatchEvent(new CustomEvent('kt-strat-ploys-update'))
+        }
+      } catch (error) {
+        console.warn('Failed to store map sync data.', error)
+      }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    socket.addEventListener('open', () => {
+      socket.send(
+        JSON.stringify({
+          type: 'sync_init',
+          code: roomCode,
+          name: storedPlayerName || 'MAP',
+          playerId,
+          isMap: true,
+        }),
+      )
+    })
+    socket.addEventListener('message', handleMessage)
+
+    return () => {
+      socket.removeEventListener('message', handleMessage)
+      socket.close()
+      mapSocketRef.current = null
+    }
+  }, [WS_URL])
+
+  useEffect(() => {
+    const readStratPloys = () => {
+      try {
+        const parsePloys = (payload) => {
+          if (!payload) return []
+          const parsed = JSON.parse(payload)
+          return Array.isArray(parsed?.ploys) ? parsed.ploys : []
+        }
+        const parseRoomPloys = (payload) => {
+          if (!payload) return []
+          const parsed = JSON.parse(payload)
+          return Array.isArray(parsed) ? parsed : []
+        }
+        const storedPlayerName =
+          sessionStorage.getItem('kt-player-name') ||
+          localStorage.getItem('kt-player-name') ||
+          ''
+        const roomCode =
+          sessionStorage.getItem('kt-room-code') ||
+          localStorage.getItem('kt-room-code') ||
+          ''
+        const activeGameId = localStorage.getItem('kt-game-id') || ''
+        const playerId =
+          sessionStorage.getItem('kt-player-id') ||
+          localStorage.getItem('kt-player-id') ||
+          ''
+        const isMapUser = storedPlayerName.trim().toUpperCase() === 'MAP'
+        const storedPlayers = roomCode
+          ? localStorage.getItem(`kt-room-players-${roomCode}`)
+          : ''
+        const roomPlayers = storedPlayers ? JSON.parse(storedPlayers) : []
+        const nonMapPlayers = roomPlayers.filter(
+          (player) => String(player?.name || '').trim().toUpperCase() !== 'MAP',
+        )
+        const getRoomTeamId = (id) => {
+          if (!roomCode || !id) return ''
+          return (
+            (activeGameId &&
+              localStorage.getItem(
+                `kt-room-player-killteam-${roomCode}-${id}-${activeGameId}`,
+              )) ||
+            localStorage.getItem(`kt-room-player-killteam-${roomCode}-${id}`) ||
+            ''
+          )
+        }
+        const getRoomPloys = (id) => {
+          if (!roomCode || !id) return []
+          const baseKey = `kt-room-player-strat-ploys-${roomCode}-${id}`
+          const stored =
+            (activeGameId && localStorage.getItem(`${baseKey}-${activeGameId}`)) ||
+            localStorage.getItem(baseKey)
+          return parseRoomPloys(stored)
+        }
+        const playerPloysId = isMapUser
+          ? nonMapPlayers[0]?.id
+          : playerId
+        const opponentPloysId = isMapUser
+          ? nonMapPlayers[1]?.id
+          : nonMapPlayers.find(
+              (player) => player?.id && player.id !== playerId,
+            )?.id
+        const playerTeamId = playerPloysId
+          ? getRoomTeamId(playerPloysId)
+          : localStorage.getItem('kt-last-killteam') || ''
+        let opponentTeamId = opponentPloysId ? getRoomTeamId(opponentPloysId) : ''
+        let opponentPloys = []
+        if (roomCode && playerId) {
+          const opponentStored = localStorage.getItem(
+            `kt-opponent-${roomCode}-${playerId}`,
+          )
+          if (opponentStored) {
+            const opponentParsed = JSON.parse(opponentStored)
+            opponentTeamId = opponentParsed?.state?.killteamId || ''
+            opponentPloys = Array.isArray(opponentParsed?.state?.activeStratPloys)
+              ? opponentParsed.state.activeStratPloys
+              : []
+          }
+        }
+        if (!opponentTeamId && opponentPloysId) {
+          opponentTeamId = getRoomTeamId(opponentPloysId)
+        }
+        const assignmentsKey = roomCode
+          ? `kt-drop-zone-assignments-${roomCode}`
+          : 'kt-drop-zone-assignments'
+        const assignmentsStored = roomCode
+          ? (activeGameId &&
+              localStorage.getItem(`${assignmentsKey}-${activeGameId}`)) ||
+            localStorage.getItem(assignmentsKey)
+          : localStorage.getItem(assignmentsKey)
+        const assignments = assignmentsStored
+          ? JSON.parse(assignmentsStored)
+          : null
+        const resolveTeamZone = (teamId) => {
+          if (!teamId || !assignments) return ''
+          if (assignments.A === teamId) return 'A'
+          if (assignments.B === teamId) return 'B'
+          return ''
+        }
+        setPlayerAssignedZone(resolveTeamZone(playerTeamId))
+        setOpponentAssignedZone(resolveTeamZone(opponentTeamId))
+        const playerStored = playerTeamId
+          ? localStorage.getItem(`kt-strat-ploys-active-${playerTeamId}`)
+          : ''
+        const opponentStored = opponentTeamId
+          ? localStorage.getItem(`kt-strat-ploys-active-${opponentTeamId}`)
+          : ''
+        const playerRoomPloys = playerPloysId ? getRoomPloys(playerPloysId) : []
+        const opponentRoomPloys = opponentPloysId
+          ? getRoomPloys(opponentPloysId)
+          : []
+        setPlayerStratPloys(
+          playerRoomPloys.length ? playerRoomPloys : parsePloys(playerStored),
+        )
+        setOpponentStratPloys(
+          opponentPloys.length
+            ? opponentPloys
+            : opponentRoomPloys.length
+              ? opponentRoomPloys
+              : parsePloys(opponentStored),
+        )
+      } catch (error) {
+        console.warn('Failed to read strat ploys selection.', error)
+      }
+    }
+    readStratPloys()
+    const handleStratPloysUpdate = () => readStratPloys()
+    window.addEventListener('kt-strat-ploys-update', handleStratPloysUpdate)
+    window.addEventListener('storage', handleStratPloysUpdate)
+    return () => {
+      window.removeEventListener('kt-strat-ploys-update', handleStratPloysUpdate)
+      window.removeEventListener('storage', handleStratPloysUpdate)
+    }
   }, [])
 
   useEffect(() => {
@@ -129,7 +471,7 @@ function Board() {
     return () => window.clearTimeout(timeoutId)
   }, [toolMode])
 
-  const renderZone = (zone, className) => {
+  const getZoneStyle = (zone) => {
     if (!zone) return null
     const rotated = shouldRotateZones
       ? {
@@ -139,18 +481,139 @@ function Board() {
           h: (zone.w / sourceWidth) * board.height,
         }
       : zone
+    return {
+      left: toPercent(rotated.x, board.width),
+      bottom: toPercent(rotated.y, board.height),
+      width: toPercent(rotated.w, board.width),
+      height: toPercent(rotated.h, board.height),
+    }
+  }
+
+  const renderZone = (zone, className) => {
+    const style = getZoneStyle(zone)
+    if (!style) return null
+    return <div className={`board-zone ${className}`} style={style} />
+  }
+
+  const renderDropZoneOverlay = (
+    zone,
+    className,
+    label,
+    value,
+    teamName,
+    armyName,
+  ) => {
+    const style = getZoneStyle(zone)
+    if (!style) return null
+    const isSelected = selectedDropZone === value
     return (
       <div
-        className={`board-zone ${className}`}
-        style={{
-          left: toPercent(rotated.x, board.width),
-          bottom: toPercent(rotated.y, board.height),
-          width: toPercent(rotated.w, board.width),
-          height: toPercent(rotated.h, board.height),
-        }}
-      />
+        className={`board-dropzone-overlay ${className}${
+          isSelected ? ' is-selected' : ''
+        }${dropZoneSelectionEnabled ? ' is-clickable' : ''}`}
+        style={style}
+        onClick={
+          dropZoneSelectionEnabled
+            ? () => onDropZoneSelect?.(value)
+            : undefined
+        }
+      >
+        <div className="board-dropzone-overlay__text">
+          <span className="board-dropzone-overlay__label">{label}</span>
+          <span className="board-dropzone-overlay__name">
+            {teamName
+              ? `${teamName}${armyName ? ` - ${armyName}` : ''}`
+              : 'OOPSIE, Jesse needs to fix this'}
+          </span>
+        </div>
+      </div>
     )
   }
+
+  const condensePloyRules = (ployName, description) => {
+    const normalizedName = String(ployName || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+    const overrides = {
+      'masterful bladework':
+        '+1 ATK on MELEE (max 4) +balanced (+ceasless if balanced already)',
+      'tough survivalists':
+        'First time dice damages unit, per unit, per TP, halve damage (round up, min 2dmg)',
+    }
+    if (overrides[normalizedName]) {
+      return [overrides[normalizedName]]
+    }
+    if (!description) return []
+    const fragments = description
+      .split(/\r?\n|\.(?=\s)|;\s*/)
+      .map((fragment) => fragment.replace(/^[-*]\s*/, '').trim())
+      .filter(Boolean)
+    const ruleHint =
+      /(\d|CP|AP|re[- ]?roll|dice|attack|defen[cs]e|weapon|within|inch|\+|\-)/i
+    const selected = fragments.filter((fragment) => ruleHint.test(fragment))
+    if (selected.length) return selected.slice(0, 2)
+    return fragments.length ? fragments.slice(0, 1) : []
+  }
+
+  const renderStratPloys = (ploys) =>
+    ploys.length ? (
+      <div className="board-side__strat-ploys">
+        <div className="board-side__strat-ploys-title">Strat Ploys</div>
+        <div className="board-side__strat-ploys-list">
+          {ploys.map((ploy) => (
+            <div
+              className="board-side__strat-ploys-item"
+              key={ploy.id || ploy.name}
+            >
+              <div className="board-side__strat-ploys-text">
+                <div className="board-side__strat-ploys-row">
+                  <span>{ploy.name}</span>
+                  {ploy.cost ? (
+                    <span className="board-side__strat-ploys-cost">{ploy.cost}</span>
+                  ) : null}
+                </div>
+                {condensePloyRules(ploy.name, ploy.description).map((rule, index) => (
+                  <span
+                    className="board-side__strat-ploys-rule"
+                    key={`${ploy.id || ploy.name}-rule-${index}`}
+                  >
+                    {rule}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : (
+      <div className="board-side__strat-ploys-empty">No strat ploys</div>
+    )
+
+  const resolvedPlayerDropZone = playerAssignedZone || storedDropZone
+  const resolvedOpponentDropZone = opponentAssignedZone || storedOpponentDropZone
+  const playerSide = resolvedPlayerDropZone
+    ? resolvedPlayerDropZone === 'B'
+      ? 'right'
+      : 'left'
+    : ''
+  const hasPloys = playerStratPloys.length || opponentStratPloys.length
+  const leftStratPloys = playerSide
+    ? playerSide === 'left'
+      ? playerStratPloys
+      : opponentStratPloys
+    : hasPloys
+      ? playerStratPloys
+      : []
+  const rightStratPloys = playerSide
+    ? playerSide === 'left'
+      ? opponentStratPloys
+      : playerStratPloys
+    : hasPloys
+      ? opponentStratPloys
+      : []
+  const leftStratPloysContent = renderStratPloys(leftStratPloys)
+  const rightStratPloysContent = renderStratPloys(rightStratPloys)
 
   useEffect(() => {
     if (!maps.length || hasRandomizedMapRef.current) return
@@ -1727,6 +2190,42 @@ function Board() {
               {renderZone(activeMap.zones?.playerB?.territory, 'zone-b-territory')}
               {renderZone(activeMap.zones?.playerA?.dropZone, 'zone-a-drop')}
               {renderZone(activeMap.zones?.playerB?.dropZone, 'zone-b-drop')}
+              {renderDropZoneOverlay(
+                activeMap.zones?.playerA?.dropZone,
+                `zone-a-drop-label${
+                  activeMap?.id === 'map_02' ? ' is-rotate-90-reverse' : ''
+                }`,
+                'DROP ZONE A',
+                'A',
+                resolvedPlayerDropZone === 'A'
+                  ? playerName
+                  : resolvedOpponentDropZone === 'A'
+                    ? opponentName
+                    : '',
+                resolvedPlayerDropZone === 'A'
+                  ? playerArmyName
+                  : resolvedOpponentDropZone === 'A'
+                    ? opponentArmyName
+                    : '',
+              )}
+              {renderDropZoneOverlay(
+                activeMap.zones?.playerB?.dropZone,
+                `zone-b-drop-label is-flipped${
+                  activeMap?.id === 'map_02' ? ' is-rotate-90' : ''
+                }`,
+                'DROP ZONE B',
+                'B',
+                resolvedPlayerDropZone === 'B'
+                  ? playerName
+                  : resolvedOpponentDropZone === 'B'
+                    ? opponentName
+                    : '',
+                resolvedPlayerDropZone === 'B'
+                  ? playerArmyName
+                  : resolvedOpponentDropZone === 'B'
+                    ? opponentArmyName
+                    : '',
+              )}
             </>
           ) : null}
           <svg
@@ -1870,6 +2369,7 @@ function Board() {
                 cardContent={<CritOpsCard card={selectedCritOpsCard} />}
                 killOpContent={<KillOp />}
                 killOpFirst
+                tacContent={leftStratPloysContent}
               />
               <BoardSide
                 mapClass="is-map-01"
@@ -1879,6 +2379,7 @@ function Board() {
                 cardContent={<CritOpsCard card={selectedCritOpsCard} />}
                 killOpContent={<KillOp />}
                 killOpFirst
+                tacContent={rightStratPloysContent}
               />
             </>
           ) : activeMap?.id === 'map_02' && selectedCritOpsCard ? (
@@ -1893,6 +2394,7 @@ function Board() {
                 }
                 killOpContent={<KillOp />}
                 killOpFirst
+                tacContent={leftStratPloysContent}
               />
               <BoardSide
                 mapClass="is-map-02"
@@ -1904,6 +2406,7 @@ function Board() {
                 }
                 killOpContent={<KillOp />}
                 killOpFirst
+                tacContent={rightStratPloysContent}
               />
             </>
           ) : null}

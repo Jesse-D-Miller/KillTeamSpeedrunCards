@@ -220,6 +220,8 @@ function Game() {
   const [cpCount, setCpCount] = useState(2)
   const [vpCount, setVpCount] = useState(0)
   const [spCount, setSpCount] = useState(0)
+  const [stratOpsModalOpen, setStratOpsModalOpen] = useState(true)
+  const [stratOpsByTp, setStratOpsByTp] = useState({})
   const [opponentPanelOpen, setOpponentPanelOpen] = useState(false)
   const [opponentState, setOpponentState] = useState(null)
   const [opponentSnapshot, setOpponentSnapshot] = useState(null)
@@ -352,12 +354,18 @@ function Game() {
     setCpCount(2)
     setVpCount(0)
     setSpCount(0)
+    setStratOpsByTp({})
     setMenuOpen(false)
     setOpponentPanelOpen(false)
     setLegionaryMarks(killteamId, {})
     if (storageKey) {
       localStorage.removeItem(storageKey)
     }
+    localStorage.removeItem(`kt-strat-ploys-active-${killteamId}`)
+    localStorage.removeItem('kt-drop-zone')
+    localStorage.removeItem('kt-drop-zone-opponent')
+    window.dispatchEvent(new CustomEvent('kt-dropzone-update'))
+    window.dispatchEvent(new CustomEvent('kt-strat-ploys-update'))
     hasHydratedRef.current = false
     hydratedKillteamRef.current = null
     localStorage.setItem(resetKey, gameId)
@@ -390,6 +398,31 @@ function Game() {
       console.warn('Failed to read multiplayer metadata.', error)
     }
   }, [])
+
+  useEffect(() => {
+    if (!roomCode || !playerId || !killteamId) return
+    try {
+      const activeGameId = gameId || localStorage.getItem('kt-game-id') || ''
+      if (activeGameId) {
+        localStorage.setItem(
+          `kt-room-player-killteam-${roomCode}-${playerId}-${activeGameId}`,
+          killteamId,
+        )
+      }
+      localStorage.setItem(
+        `kt-room-player-killteam-${roomCode}-${playerId}`,
+        killteamId,
+      )
+      if (playerName) {
+        localStorage.setItem(
+          `kt-room-player-name-${roomCode}-${playerId}`,
+          playerName,
+        )
+      }
+    } catch (error) {
+      console.warn('Failed to persist room player killteam.', error)
+    }
+  }, [roomCode, playerId, killteamId, playerName, gameId])
 
   useEffect(() => {
     if (!timerStart) return undefined
@@ -565,11 +598,25 @@ function Game() {
       ),
     [killteam, selectedEquipmentIds],
   )
+  const getStratOpsForTp = (tp, teamId) =>
+    stratOpsByTp[tp]?.[teamId] ?? []
   const ploys = killteam.ploys ?? []
   const stratPloys = ploys.filter((ploy) => ploy.ployType === 'S')
   const firefightPloys = ploys.filter(
     (ploy) => ploy.ployType === 'T' || ploy.ployType === 'F',
   )
+  const activeStratPloys = useMemo(() => {
+    if (!killteamId) return []
+    const selectedIds = getStratOpsForTp(tpCount, killteamId)
+    return stratPloys
+      .filter((ploy) => selectedIds.includes(ploy.ployId))
+      .map((ploy) => ({
+        id: ploy.ployId,
+        name: ploy.ployName,
+        cost: formatCostLabel(ploy),
+        description: String(ploy.description ?? ''),
+      }))
+  }, [killteamId, tpCount, stratPloys, stratOpsByTp])
   const factionRules = useMemo(() => {
     const seen = new Set()
     const rules = []
@@ -863,9 +910,11 @@ function Game() {
     const displayName = playerName || 'Player'
     syncStateRef.current = {
       name: displayName,
+      playerId,
       killteamId,
       selectedUnits: selectedUnitKeys,
       selectedEquipment: selectedEquipmentKeys,
+      activeStratPloys,
       unitStates,
       deadUnits,
       woundsByUnit,
@@ -876,9 +925,11 @@ function Game() {
     }
   }, [
     playerName,
+    playerId,
     killteamId,
     selectedUnitKeys,
     selectedEquipmentKeys,
+    activeStratPloys,
     unitStates,
     deadUnits,
     woundsByUnit,
@@ -900,9 +951,11 @@ function Game() {
       playerId,
       state: {
         name: displayName,
+        playerId,
         killteamId,
         selectedUnits: selectedUnitKeys,
         selectedEquipment: selectedEquipmentKeys,
+        activeStratPloys,
         unitStates,
         deadUnits,
         woundsByUnit,
@@ -922,11 +975,13 @@ function Game() {
     roomCode,
     playerName,
     wsReady,
+    playerId,
     killteamId,
     selectedUnitKeys,
     aplAdjustByUnit,
     legionaryMarkByUnit,
     selectedEquipmentKeys,
+    activeStratPloys,
     unitStates,
     deadUnits,
     woundsByUnit,
@@ -992,6 +1047,62 @@ function Game() {
     resetStates()
     setTpCount((prev) => prev + 1)
   }
+
+  const toggleStratOp = (tp, teamId, ployId) => {
+    if (!teamId) return
+    setStratOpsByTp((prev) => {
+      const tpEntry = prev[tp] ?? {}
+      const current = tpEntry[teamId] ?? []
+      const next = current.includes(ployId)
+        ? current.filter((id) => id !== ployId)
+        : [...current, ployId]
+      return {
+        ...prev,
+        [tp]: {
+          ...tpEntry,
+          [teamId]: next,
+        },
+      }
+    })
+  }
+
+  const prevTpRef = useRef(tpCount)
+  const initModalRef = useRef(false)
+  useEffect(() => {
+    if (!initModalRef.current) {
+      initModalRef.current = true
+      setStratOpsModalOpen(true)
+      prevTpRef.current = tpCount
+      return
+    }
+    if (tpCount > prevTpRef.current) {
+      setStratOpsModalOpen(true)
+    }
+    prevTpRef.current = tpCount
+  }, [tpCount])
+
+  useEffect(() => {
+    if (!killteamId) return
+    try {
+      const storageKey = `kt-strat-ploys-active-${killteamId}`
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({ tp: tpCount, ploys: activeStratPloys }),
+      )
+      if (roomCode && playerId) {
+        const activeGameId = gameId || localStorage.getItem('kt-game-id') || ''
+        const roomKey = `kt-room-player-strat-ploys-${roomCode}-${playerId}`
+        localStorage.setItem(roomKey, JSON.stringify(activeStratPloys))
+        if (activeGameId) {
+          const roomGameKey = `${roomKey}-${activeGameId}`
+          localStorage.setItem(roomGameKey, JSON.stringify(activeStratPloys))
+        }
+      }
+      window.dispatchEvent(new CustomEvent('kt-strat-ploys-update'))
+    } catch (error) {
+      console.warn('Failed to store strat ploys selection.', error)
+    }
+  }, [killteamId, tpCount, activeStratPloys, roomCode, playerId, gameId])
 
   const handleNextAction = () => {
     if (tpCount >= 4) {
@@ -1293,7 +1404,14 @@ function Game() {
               {stratPloys.length ? (
                 <div className="game-menu-ploys">
                   {stratPloys.map((ploy) => (
-                    <details className="game-menu-ploy-item" key={ploy.ployId}>
+                    <details
+                      className={`game-menu-ploy-item${
+                        getStratOpsForTp(tpCount, killteamId).includes(ploy.ployId)
+                          ? ' is-selected'
+                          : ''
+                      }`}
+                      key={ploy.ployId}
+                    >
                       <summary className="game-menu-ploy-name">
                         <span className="game-menu-ploy-title">
                           {ploy.ployName}
@@ -1411,6 +1529,64 @@ function Game() {
           roomCode={roomCode}
           playerId={playerId}
         />
+      ) : null}
+      {stratOpsModalOpen ? (
+        <div className="game-stratops-backdrop">
+          <div className="game-stratops-modal">
+            <div className="game-stratops-header">
+              <h2>Turning Point {tpCount}: Strat Ops</h2>
+              <button
+                type="button"
+                className="game-stratops-close"
+                onClick={() => setStratOpsModalOpen(false)}
+              >
+                Start TP
+              </button>
+            </div>
+            <div className="game-stratops-columns">
+              <section className="game-stratops-column">
+                <h3>{killteam?.killteamName || 'Team A'}</h3>
+                <div className="game-stratops-list">
+                  {stratPloys.length ? (
+                    stratPloys.map((ploy) => (
+                      <button
+                        type="button"
+                        key={ploy.ployId}
+                        className={`game-stratops-item${
+                          getStratOpsForTp(tpCount, killteamId).includes(ploy.ployId)
+                            ? ' is-selected'
+                            : ''
+                        }`}
+                        onClick={() => toggleStratOp(tpCount, killteamId, ploy.ployId)}
+                      >
+                        <div className="game-stratops-item-header">
+                          <span className="game-stratops-item-title">
+                            {ploy.ployName}
+                          </span>
+                          {formatCostLabel(ploy) ? (
+                            <span className="cost-badge">{formatCostLabel(ploy)}</span>
+                          ) : null}
+                        </div>
+                        <div className="game-stratops-item-body">
+                          {String(ploy.description ?? '')
+                            .split('\n')
+                            .map((line, lineIndex, lines) => (
+                              <span key={`${ploy.ployId}-modal-${lineIndex}`}>
+                                {renderRuleText(line, setRuleModal)}
+                                {lineIndex < lines.length - 1 ? <br /> : null}
+                              </span>
+                            ))}
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="game-stratops-empty">No strat ploys.</div>
+                  )}
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
       ) : null}
       <main className="app-content">
         <section className="page game-page">

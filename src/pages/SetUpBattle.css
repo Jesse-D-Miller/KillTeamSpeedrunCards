@@ -15,6 +15,10 @@
   text-align: center;
 }
 
+.setup-battle-card {
+  width: min(560px, 92vw);
+}
+
 .setup-battle-card h1 {
   margin: 0 0 8px;
   font-size: clamp(1.6rem, 2.4vw, 2.1rem);
@@ -47,6 +51,71 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
   text-align: left;
 }
+
+.setup-battle-item.is-drop-zone {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.setup-battle-dropzone-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.setup-battle-dropzone-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.setup-battle-dropzone-lock {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(240, 211, 138, 0.9);
+  border: 1px solid rgba(240, 211, 138, 0.5);
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+.setup-battle-dropzone-header strong {
+  color: rgba(240, 211, 138, 0.95);
+  font-weight: 700;
+}
+
+.setup-battle-dropzone-header em {
+  font-style: normal;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
+
+.setup-battle-dropzone-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dropzone-button {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(10, 10, 10, 0.6);
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dropzone-button.is-selected {
+  background: rgba(240, 211, 138, 0.9);
+  color: rgba(20, 20, 20, 0.9);
+  border-color: rgba(240, 211, 138, 0.9);
+}
+
 
 .setup-battle-item input {
   width: 18px;

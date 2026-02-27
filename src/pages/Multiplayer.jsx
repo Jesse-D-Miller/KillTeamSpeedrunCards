@@ -69,6 +69,18 @@ function Multiplayer() {
       setMode('lobby')
       setError('')
       try {
+        if (message.code) {
+          localStorage.setItem(
+            `kt-room-players-${message.code}`,
+            JSON.stringify(message.players || []),
+          )
+          if (message.hostId) {
+            localStorage.setItem(
+              `kt-room-host-${message.code}`,
+              message.hostId,
+            )
+          }
+        }
         const resolvedName =
           message.players?.find((player) => player.id === message.playerId)
             ?.name || name.trim()
@@ -86,6 +98,22 @@ function Multiplayer() {
     if (message.type === 'room_update') {
       setPlayers(message.players || [])
       setHostId(message.hostId || '')
+      if (roomCode) {
+        try {
+          localStorage.setItem(
+            `kt-room-players-${roomCode}`,
+            JSON.stringify(message.players || []),
+          )
+          if (message.hostId) {
+            localStorage.setItem(
+              `kt-room-host-${roomCode}`,
+              message.hostId,
+            )
+          }
+        } catch (storageError) {
+          console.warn('Failed to persist room players.', storageError)
+        }
+      }
       return
     }
 
