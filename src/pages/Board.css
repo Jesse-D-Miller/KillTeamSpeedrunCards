@@ -426,9 +426,9 @@
 
 .board-card-overlay.is-map-02.is-op-04 {
   --card-width: clamp(
-    calc(70mm * var(--inch-scale) * 3.0),
+    calc(70mm * var(--inch-scale) * 2.4),
     calc(100vw - 0.1in),
-    calc(70mm * var(--inch-scale) * 4.4)
+    calc(70mm * var(--inch-scale) * 3.45)
   );
 }
 
@@ -442,17 +442,17 @@
 
 .board-card-overlay.is-map-02.is-op-06 {
   --card-width: clamp(
-    calc(70mm * var(--inch-scale) * 2.8),
+    calc(70mm * var(--inch-scale) * 2.5),
     calc(100vw - 0.1in),
-    calc(70mm * var(--inch-scale) * 4.05)
+    calc(70mm * var(--inch-scale) * 3.55)
   );
 }
 
 .board-card-overlay.is-map-02.is-op-09 {
   --card-width: clamp(
-    calc(70mm * var(--inch-scale) * 2.4),
+    calc(70mm * var(--inch-scale) * 2.0),
     calc(100vw - 0.1in),
-    calc(70mm * var(--inch-scale) * 3.4)
+    calc(70mm * var(--inch-scale) * 2.8)
   );
 }
 
@@ -461,6 +461,14 @@
     calc(70mm * var(--inch-scale) * 2.2),
     calc(100vw - 0.1in),
     calc(70mm * var(--inch-scale) * 3.1)
+  );
+}
+
+.board-card-overlay.is-map-02.is-op-08 {
+  --card-width: clamp(
+    calc(70mm * var(--inch-scale) * 2.7),
+    calc(100vw - 0.1in),
+    calc(70mm * var(--inch-scale) * 3.6)
   );
 }
 

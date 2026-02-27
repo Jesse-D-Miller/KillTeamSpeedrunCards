@@ -2169,6 +2169,8 @@ function Board({
                 ? ' is-op-06'
                 : selectedCritOpsCard?.opNumber === 7
                   ? ' is-op-07'
+                  : selectedCritOpsCard?.opNumber === 8
+                    ? ' is-op-08'
                   : selectedCritOpsCard?.opNumber === 9
                     ? ' is-op-09'
                     : ''
@@ -2405,7 +2407,21 @@ function Board({
                 cardClassName={`board-card-overlay is-top-left is-map-02${map2OpClass}`}
                 killOpClassName={`board-killop-overlay is-map-02 is-left${map2OpClass}`}
                 cardContent={
-                  <CritOpsCard card={selectedCritOpsCard} isTwoColumn />
+                  <CritOpsCard
+                    card={selectedCritOpsCard}
+                    isTwoColumn
+                    layoutVariant={
+                      selectedCritOpsCard?.opNumber === 8
+                        ? 'op8-wide'
+                        : selectedCritOpsCard?.opNumber === 4
+                          ? 'op4-left-narrow'
+                          : selectedCritOpsCard?.opNumber === 6
+                            ? 'op6-left-tuned'
+                            : selectedCritOpsCard?.opNumber === 9
+                              ? 'op9-split'
+                          : ''
+                    }
+                  />
                 }
                 killOpContent={<KillOp />}
                 killOpFirst
@@ -2417,7 +2433,21 @@ function Board({
                 cardClassName={`board-card-overlay is-bottom-right is-map-02${map2OpClass}`}
                 killOpClassName={`board-killop-overlay is-map-02 is-right${map2OpClass}`}
                 cardContent={
-                  <CritOpsCard card={selectedCritOpsCard} isTwoColumn />
+                  <CritOpsCard
+                    card={selectedCritOpsCard}
+                    isTwoColumn
+                    layoutVariant={
+                      selectedCritOpsCard?.opNumber === 8
+                        ? 'op8-wide'
+                        : selectedCritOpsCard?.opNumber === 4
+                          ? 'op4-left-narrow'
+                          : selectedCritOpsCard?.opNumber === 6
+                            ? 'op6-left-tuned'
+                            : selectedCritOpsCard?.opNumber === 9
+                              ? 'op9-split'
+                          : ''
+                    }
+                  />
                 }
                 killOpContent={<KillOp />}
                 killOpFirst
