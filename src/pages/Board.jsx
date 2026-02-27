@@ -8,6 +8,7 @@ import KillOp from '../components/KillOp'
 import BoardSide from '../components/BoardSide'
 import SightLine from '../components/SightLine'
 import MovementMeasure from '../components/MovementMeasure'
+import FieldOfVision from '../components/FieldOfVision'
 import './Board.css'
 
 function Board() {
@@ -100,6 +101,7 @@ function Board() {
       setToolMode((prev) => {
         if (prev === 'none') return 'sight'
         if (prev === 'sight') return 'measure'
+        if (prev === 'measure') return 'fov'
         return 'none'
       })
     }
@@ -114,7 +116,12 @@ function Board() {
       return
     }
 
-    const label = toolMode === 'sight' ? 'Sight Line' : 'Movement Measure'
+    const label =
+      toolMode === 'sight'
+        ? 'Sight Line'
+        : toolMode === 'measure'
+          ? 'Movement Measure'
+          : 'Field Of Vision'
     setToolWatermark(label)
     const timeoutId = window.setTimeout(() => {
       setToolWatermark('')
@@ -1622,6 +1629,28 @@ function Board() {
   const getSegmentType = (segment) =>
     Array.isArray(segment?.[0]) ? 'heavy' : segment?.type || 'heavy'
 
+  const wallSegments = useMemo(() => {
+    const segments = []
+    ;(activeArrangement?.terrain ?? []).forEach((entry) => {
+      const piece = resolveTerrainPiece(entry)
+      if (!piece) return
+      const placement = entry.placement
+      ;(piece.walls?.segments ?? []).forEach((segment) => {
+        const segmentType = getSegmentType(segment)
+        if (!['heavy', 'door'].includes(segmentType)) return
+        const segmentPoints = Array.isArray(segment?.[0])
+          ? segment
+          : segment?.segment
+        if (!Array.isArray(segmentPoints)) return
+        const [start, end] = segmentPoints
+        const [x1, y1] = transformPoint(start, placement)
+        const [x2, y2] = transformPoint(end, placement)
+        segments.push({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 } })
+      })
+    })
+    return segments
+  }, [activeArrangement?.terrain])
+
   const selectedCritOpsCard = critOpsCards[selectedCardIndex] || null
   useEffect(() => {
     if (!selectedCritOpsCard?.opNumber) return
@@ -1815,6 +1844,13 @@ function Board() {
                 boardHeight={board.height}
                 svgRef={boardOverlayRef}
                 active={toolMode === 'sight'}
+              />
+              <FieldOfVision
+                boardWidth={board.width}
+                boardHeight={board.height}
+                svgRef={boardOverlayRef}
+                active={toolMode === 'fov'}
+                wallSegments={wallSegments}
               />
               <MovementMeasure
                 boardWidth={board.width}
