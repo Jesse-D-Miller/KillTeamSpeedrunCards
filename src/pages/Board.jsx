@@ -540,6 +540,21 @@ function Board({
         '+1 ATK on MELEE (max 4) +balanced (+ceasless if balanced already)',
       'tough survivalists':
         'First time dice damages unit, per unit, per TP, halve damage (round up, min 2dmg)',
+      'dakka dakka dakka':
+        'Ranged: Punishing (if any crits, retain 1 failed as normal success).',
+      'skulk about':
+        'If shot while Conceal: auto retain 1 defense success (plus cover).',
+      sssshhhh: 'If not a valid target OR Conceal + >6": free Dash (not TP1).',
+      waaagh: 'Melee: Balanced (re-roll 1 attack die).',
+      'just a scratch':
+        'When normal damage inflicted on KOMMANDO (not Bomb Squig/Grot): ignore it.',
+      'kunnin but brutal':
+        'If Conceal + Charged and first strike is normal: treat it as a crit.',
+      'krump em': 'End of Firefight: 1 KOMMANDO performs a free Fight.',
+      'shake it off':
+        'On activation or APL change: ignore APL changes until next TP.',
+      'in position':
+        'If concealed and in cover, cannot be selected as valid target (precedence over all other rules)',
     }
     if (overrides[normalizedName]) {
       return [overrides[normalizedName]]
