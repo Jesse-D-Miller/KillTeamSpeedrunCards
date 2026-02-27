@@ -144,6 +144,38 @@
 .board-op-group.is-map-01 .board-side__placeholder--cat {
   grid-row: 2;
 }
+
+.board-op-group.is-map-01.is-left .board-side__placeholder--cat {
+  grid-row: 1;
+}
+
+.board-op-group.is-map-01.is-left .board-side__placeholder--tac {
+  grid-row: 2;
+}
+
+.board-op-group.is-map-01.is-left .board-side__slot--primary {
+  grid-row: 3;
+}
+
+.board-op-group.is-map-01.is-left .board-side__slot--secondary {
+  grid-row: 4;
+}
+
+.board-op-group.is-map-01.is-right .board-side__placeholder--tac {
+  grid-row: 3;
+}
+
+.board-op-group.is-map-01.is-right .board-side__placeholder--cat {
+  grid-row: 4;
+}
+
+.board-op-group.is-map-01.is-right .board-side__slot--primary {
+  grid-row: 2;
+}
+
+.board-op-group.is-map-01.is-right .board-side__slot--secondary {
+  grid-row: 1;
+}
 .board-op-group .board-side__slot--killop {
   width: fit-content;
   height: fit-content;

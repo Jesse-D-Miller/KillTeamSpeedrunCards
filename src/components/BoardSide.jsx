@@ -8,6 +8,7 @@ function BoardSide({
   cardContent,
   killOpContent,
   killOpFirst = false,
+  swapCardAndTac = false,
   tacContent = null,
   catContent = null,
 }) {
@@ -34,36 +35,77 @@ function BoardSide({
           >
             <div className={killOpInnerClassName}>{killOpContent}</div>
           </div>
-          <div className={tacPlaceholderClass}>
-            {tacContent || 'TAC'}
-          </div>
-          <div className={catPlaceholderClass}>
-            {catContent || 'CAT'}
-          </div>
-          <div
-            className={`board-side__slot board-side__slot--secondary board-side__slot--card ${cardClassName}`}
-          >
-            <div className={cardInnerClassName}>{cardContent}</div>
-          </div>
+          {swapCardAndTac ? (
+            <>
+              <div
+                className={`board-side__slot board-side__slot--secondary board-side__slot--card ${cardClassName}`}
+              >
+                <div className={cardInnerClassName}>{cardContent}</div>
+              </div>
+              <div className={catPlaceholderClass}>
+                {catContent || 'CAT'}
+              </div>
+              <div className={tacPlaceholderClass}>
+                {tacContent || 'TAC'}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={tacPlaceholderClass}>
+                {tacContent || 'TAC'}
+              </div>
+              <div className={catPlaceholderClass}>
+                {catContent || 'CAT'}
+              </div>
+              <div
+                className={`board-side__slot board-side__slot--secondary board-side__slot--card ${cardClassName}`}
+              >
+                <div className={cardInnerClassName}>{cardContent}</div>
+              </div>
+            </>
+          )}
         </>
       ) : (
         <>
-          <div
-            className={`board-side__slot board-side__slot--primary board-side__slot--card ${cardClassName}`}
-          >
-            <div className={cardInnerClassName}>{cardContent}</div>
-          </div>
-          <div className={tacPlaceholderClass}>
-            {tacContent || 'TAC'}
-          </div>
-          <div className={catPlaceholderClass}>
-            {catContent || 'CAT'}
-          </div>
-          <div
-            className={`board-side__slot board-side__slot--secondary board-side__slot--killop ${killOpClassName}`}
-          >
-            <div className={killOpInnerClassName}>{killOpContent}</div>
-          </div>
+          {swapCardAndTac ? (
+            <>
+              <div className={tacPlaceholderClass}>
+                {tacContent || 'TAC'}
+              </div>
+              <div className={catPlaceholderClass}>
+                {catContent || 'CAT'}
+              </div>
+              <div
+                className={`board-side__slot board-side__slot--primary board-side__slot--card ${cardClassName}`}
+              >
+                <div className={cardInnerClassName}>{cardContent}</div>
+              </div>
+              <div
+                className={`board-side__slot board-side__slot--secondary board-side__slot--killop ${killOpClassName}`}
+              >
+                <div className={killOpInnerClassName}>{killOpContent}</div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div
+                className={`board-side__slot board-side__slot--primary board-side__slot--card ${cardClassName}`}
+              >
+                <div className={cardInnerClassName}>{cardContent}</div>
+              </div>
+              <div className={tacPlaceholderClass}>
+                {tacContent || 'TAC'}
+              </div>
+              <div className={catPlaceholderClass}>
+                {catContent || 'CAT'}
+              </div>
+              <div
+                className={`board-side__slot board-side__slot--secondary board-side__slot--killop ${killOpClassName}`}
+              >
+                <div className={killOpInnerClassName}>{killOpContent}</div>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

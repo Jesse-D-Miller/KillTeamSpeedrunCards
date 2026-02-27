@@ -2396,6 +2396,7 @@ function Board({
                 cardContent={<CritOpsCard card={selectedCritOpsCard} />}
                 killOpContent={<KillOp />}
                 killOpFirst
+                swapCardAndTac
                 tacContent={rightStratPloysContent}
               />
             </>
