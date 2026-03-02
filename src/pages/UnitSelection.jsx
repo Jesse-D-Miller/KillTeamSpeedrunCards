@@ -36,7 +36,7 @@ const UNIT_COUNT_OVERRIDES = {
     'TAU-VESP-WAR': 5,
   },
   'ORK-KOM': {
-    'ORK-KOM-BOY': 3,
+    'ORK-KOM-BOY': 2,
   },
 }
 
