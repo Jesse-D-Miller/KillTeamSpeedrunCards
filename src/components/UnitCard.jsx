@@ -43,6 +43,53 @@ const addWeaponRule = (wrValue, ruleLabel) => {
   return `${wrValue}, ${ruleLabel}`
 }
 
+const parseEquipmentWeaponEffects = (effects) => {
+  if (!effects) return []
+  return String(effects)
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.startsWith('ADDWEP:'))
+    .map((entry, index) => {
+      const parts = entry.replace('ADDWEP:', '').split('|')
+      const [name, range, atk, hit, dmg, wr] = parts
+      return {
+        key: `${name ?? 'weapon'}-${index}`,
+        name: name?.trim() || 'Weapon',
+        range: range?.trim() || '',
+        ATK: atk?.trim() || '—',
+        HIT: hit?.trim() || '—',
+        DMG: dmg?.trim() || '—',
+        WR: wr?.trim() || '—',
+      }
+    })
+}
+
+const stripEquipmentTable = (description) => {
+  if (!description) return ''
+  const lines = String(description).split('\n')
+  let inTable = false
+  const result = []
+
+  lines.forEach((line) => {
+    if (line.includes('|**Name**|')) {
+      inTable = true
+      return
+    }
+
+    if (inTable) {
+      if (!line.trim().startsWith('|')) {
+        inTable = false
+      } else {
+        return
+      }
+    }
+
+    result.push(line)
+  })
+
+  return result.join('\n').trim()
+}
+
 const STATUS_OPTIONS = statusEffectsData?.statusEffects ?? []
 const LEGIONARY_MARKS = [
   {
@@ -573,38 +620,79 @@ function UnitCard({
         <div className="game-abilities">
           <div className="abilities-title">Equipment</div>
           {assignedEquipment.length ? (
-            assignedEquipment.map((equipment) => (
-              <details className="ability-row" key={equipment.eqId}>
-                <summary className="ability-name">
-                  <span className="ability-title">{equipment.eqName}</span>
-                </summary>
-                <div className="ability-description">
-                  {String(equipment.description ?? '')
-                    .split('\n')
-                    .map((line, lineIndex, lines) => (
-                      <span key={`${equipment.eqId}-line-${lineIndex}`}>
-                        {tokenizeWeaponRuleText(line).map((token, tokenIndex) =>
-                          token.type === 'rule' && !isRangeRule(token.value) ? (
-                            <button
-                              key={`${equipment.eqId}-token-${lineIndex}-${tokenIndex}`}
-                              type="button"
-                              className="weapon-rule weapon-rule-button"
-                              onClick={() => setRuleModal(token.ruleName)}
-                            >
-                              {token.value}
-                            </button>
-                          ) : (
-                            <span key={`${equipment.eqId}-token-${lineIndex}-${tokenIndex}`}>
-                              {token.value}
+            assignedEquipment.map((equipment) => {
+              const equipmentWeaponRows = parseEquipmentWeaponEffects(equipment.effects)
+              const descriptionText = stripEquipmentTable(equipment.description)
+              return (
+                <details className="ability-row" key={equipment.eqId}>
+                  <summary className="ability-name">
+                    <span className="ability-title">{equipment.eqName}</span>
+                  </summary>
+                  <div className="ability-description">
+                    {equipmentWeaponRows.length ? (
+                      <div className="game-weapon-table">
+                        <div className="game-weapon-row game-weapon-header">
+                          <span>NAME</span>
+                          <span>ATK</span>
+                          <span>HIT</span>
+                          <span>DMG</span>
+                          <span>WR</span>
+                        </div>
+                        {equipmentWeaponRows.map((row) => (
+                          <div className="game-weapon-row" key={`${equipment.eqId}-${row.key}`}>
+                            <span className="weapon-name">{row.name}</span>
+                            <span>{row.ATK}</span>
+                            <span>{row.HIT}</span>
+                            <span>{row.DMG}</span>
+                            <span className="weapon-rules">
+                              {parseRules(row.WR).map((rule, index) =>
+                                isRangeRule(rule) ? (
+                                  <span className="weapon-rule" key={`${equipment.eqId}-${row.key}-rule-${index}`}>
+                                    {rule}
+                                  </span>
+                                ) : (
+                                  <button
+                                    key={`${equipment.eqId}-${row.key}-rule-${index}`}
+                                    type="button"
+                                    className="weapon-rule weapon-rule-button"
+                                    onClick={() => setRuleModal(rule)}
+                                  >
+                                    {rule}
+                                  </button>
+                                ),
+                              )}
                             </span>
-                          ),
-                        )}
-                        {lineIndex < lines.length - 1 ? <br /> : null}
-                      </span>
-                    ))}
-                </div>
-              </details>
-            ))
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                    {descriptionText
+                      ? descriptionText.split('\n').map((line, lineIndex, lines) => (
+                          <span key={`${equipment.eqId}-line-${lineIndex}`}>
+                            {tokenizeWeaponRuleText(line).map((token, tokenIndex) =>
+                              token.type === 'rule' && !isRangeRule(token.value) ? (
+                                <button
+                                  key={`${equipment.eqId}-token-${lineIndex}-${tokenIndex}`}
+                                  type="button"
+                                  className="weapon-rule weapon-rule-button"
+                                  onClick={() => setRuleModal(token.ruleName)}
+                                >
+                                  {token.value}
+                                </button>
+                              ) : (
+                                <span key={`${equipment.eqId}-token-${lineIndex}-${tokenIndex}`}>
+                                  {token.value}
+                                </span>
+                              ),
+                            )}
+                            {lineIndex < lines.length - 1 ? <br /> : null}
+                          </span>
+                        ))
+                      : null}
+                  </div>
+                </details>
+              )
+            })
           ) : (
             <div className="ability-empty">No equipment assigned.</div>
           )}

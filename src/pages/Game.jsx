@@ -225,18 +225,71 @@ const unitHasBoltShotgun = (unit) =>
     /bolt\s*shotgun/i.test(String(weapon?.wepName ?? '')),
   )
 
-const buildAssignedEquipmentForUnit = ({ unit, selectedEquipment, killteamId }) => {
-  if (killteamId !== 'VOT-HKY') return []
-  const hasBoltShotgun = unitHasBoltShotgun(unit)
+const KOMMANDO_EXCLUDED_OP_IDS = new Set(['ORK-KOM-GROT', 'ORK-KOM-SQUIG'])
+const KOMMANDO_CHOPPAS_IDS = new Set(['ORK-KOM-CHP'])
+const KOMMANDO_COLLAPSIBLE_STOCKS_IDS = new Set(['ORK-KOM-CS'])
+const KOMMANDO_DYNAMITE_IDS = new Set(['ORK-KOM-DYN'])
+const KOMMANDO_HARPOON_IDS = new Set(['ORK-KOM-HRP'])
+
+const isKommandoExcludedUnit = (unit) =>
+  KOMMANDO_EXCLUDED_OP_IDS.has(String(unit?.opType?.opTypeId ?? ''))
+
+const unitHasSluggaOrShokka = (unit) =>
+  (unit?.opType?.weapons ?? []).some((weapon) =>
+    /slugga|shokka/i.test(String(weapon?.wepName ?? '')),
+  )
+
+const isKommandoChoppasEquipment = (equipment) =>
+  KOMMANDO_CHOPPAS_IDS.has(String(equipment?.eqId ?? ''))
+
+const isKommandoCollapsibleStocksEquipment = (equipment) =>
+  KOMMANDO_COLLAPSIBLE_STOCKS_IDS.has(String(equipment?.eqId ?? ''))
+
+const isKommandoDynamiteEquipment = (equipment) =>
+  KOMMANDO_DYNAMITE_IDS.has(String(equipment?.eqId ?? ''))
+
+const isKommandoHarpoonEquipment = (equipment) =>
+  KOMMANDO_HARPOON_IDS.has(String(equipment?.eqId ?? ''))
+
+const buildKommandoAssignedEquipmentForUnit = ({ unit, selectedEquipment }) => {
+  if (isKommandoExcludedUnit(unit)) return []
   return (selectedEquipment ?? []).filter((equipment) => {
-    if (isHernkynKvUndersuitEquipment(equipment)) return true
-    if (isHernkynBoltShellEquipment(equipment)) return hasBoltShotgun
+    if (isKommandoChoppasEquipment(equipment)) return false
+    if (isKommandoDynamiteEquipment(equipment)) return true
+    if (isKommandoHarpoonEquipment(equipment)) return true
+    if (isKommandoCollapsibleStocksEquipment(equipment)) {
+      return unitHasSluggaOrShokka(unit)
+    }
     return false
   })
 }
 
+const buildAssignedEquipmentForUnit = ({ unit, selectedEquipment, killteamId }) => {
+  if (killteamId === 'VOT-HKY') {
+    const hasBoltShotgun = unitHasBoltShotgun(unit)
+    return (selectedEquipment ?? []).filter((equipment) => {
+      if (isHernkynKvUndersuitEquipment(equipment)) return true
+      if (isHernkynBoltShellEquipment(equipment)) return hasBoltShotgun
+      return false
+    })
+  }
+
+  if (killteamId === 'ORK-KOM') {
+    return buildKommandoAssignedEquipmentForUnit({
+      unit,
+      selectedEquipment,
+    })
+  }
+
+  return []
+}
+
 const buildEquipmentWeapon = (equipment, weaponEffect) => {
-  const wepId = `${equipment.eqId}-plasma-knife`
+  const normalizedName = String(weaponEffect.name ?? 'weapon')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  const wepId = `${equipment.eqId}-${normalizedName || 'weapon'}`
   return {
     wepId,
     wepName: weaponEffect.name || 'Plasma Knife',
@@ -281,6 +334,50 @@ const applyYaegirPlasmaKnifeEquipment = (weapons, equipmentWeapon) => {
   }
 
   return [...sourceWeapons, equipmentWeapon]
+}
+
+const applyKommandoChoppasEquipment = (weapons, equipmentWeapon) => {
+  if (!equipmentWeapon) return weapons
+  const sourceWeapons = Array.isArray(weapons) ? weapons : []
+  return sourceWeapons.map((weapon) =>
+    isFistsWeapon(weapon)
+      ? {
+          ...equipmentWeapon,
+          wepId: `${equipmentWeapon.wepId}-${weapon.wepId ?? 'fists'}`,
+          profiles: (equipmentWeapon.profiles ?? []).map((profile, profileIndex) => ({
+            ...profile,
+            wepprofileId: `${equipmentWeapon.wepId}-${weapon.wepId ?? 'fists'}-${profileIndex}`,
+          })),
+        }
+      : weapon,
+  )
+}
+
+const isKommandoCollapsibleStocksWeapon = (weapon) =>
+  /slugga|shokka/i.test(String(weapon?.wepName ?? ''))
+
+const removeRangeWeaponRule = (wrValue) => {
+  if (!wrValue || wrValue === '—') return wrValue
+  const remainingRules = String(wrValue)
+    .split(',')
+    .map((rule) => rule.trim())
+    .filter((rule) => rule && !/^(rng|range)\b/i.test(rule))
+  return remainingRules.length ? remainingRules.join(', ') : '—'
+}
+
+const applyKommandoCollapsibleStocksEquipment = (weapons, isSelected) => {
+  if (!isSelected) return weapons
+  const sourceWeapons = Array.isArray(weapons) ? weapons : []
+  return sourceWeapons.map((weapon) => {
+    if (!isKommandoCollapsibleStocksWeapon(weapon)) return weapon
+    return {
+      ...weapon,
+      profiles: (weapon.profiles ?? []).map((profile) => ({
+        ...profile,
+        WR: removeRangeWeaponRule(profile.WR),
+      })),
+    }
+  })
 }
 
 function Game() {
@@ -722,6 +819,23 @@ function Game() {
     }
     return null
   }, [killteamId, selectedEquipment])
+  const kommandoChoppasEquipmentWeapon = useMemo(() => {
+    if (killteamId !== 'ORK-KOM') return null
+    const choppasEquipment = selectedEquipment.find(
+      (equipment) => String(equipment.eqId ?? '') === 'ORK-KOM-CHP',
+    )
+    if (!choppasEquipment) return null
+    const weaponRows = parseEquipmentWeaponEffects(choppasEquipment.effects)
+    const choppaRow = weaponRows.find((row) => /choppa/i.test(String(row.name ?? '')))
+    if (!choppaRow) return null
+    return buildEquipmentWeapon(choppasEquipment, choppaRow)
+  }, [killteamId, selectedEquipment])
+  const isKommandoCollapsibleStocksSelected = useMemo(() => {
+    if (killteamId !== 'ORK-KOM') return false
+    return selectedEquipment.some((equipment) =>
+      isKommandoCollapsibleStocksEquipment(equipment),
+    )
+  }, [killteamId, selectedEquipment])
   const getStratOpsForTp = (tp, teamId) =>
     stratOpsByTp[tp]?.[teamId] ?? []
   const ploys = killteam.ploys ?? []
@@ -784,7 +898,15 @@ function Game() {
               baseWeapons,
               yaegirPlasmaKnifeEquipmentWeapon,
             )
-          : baseWeapons
+          : killteamId === 'ORK-KOM'
+            ? applyKommandoCollapsibleStocksEquipment(
+                applyKommandoChoppasEquipment(
+                  baseWeapons,
+                  kommandoChoppasEquipmentWeapon,
+                ),
+                isKommandoCollapsibleStocksSelected,
+              )
+            : baseWeapons
       return {
         ...unit,
         opType: {
@@ -1750,7 +1872,7 @@ function Game() {
         <section className="page game-page">
           <div className="game-grid">
             {orderedUnits.length ? (
-              orderedUnits.map(({ opType, instance, instanceCount, key }, index) => {
+              orderedUnits.map(({ opType, instance, instanceCount, key, assignedEquipment }, index) => {
                 const maxWounds = Number.parseInt(opType.WOUNDS, 10)
                 const safeMax = Number.isNaN(maxWounds) ? 0 : maxWounds
                 const currentWounds =
@@ -1812,7 +1934,7 @@ function Game() {
                         : undefined
                     }
                     stance={stance}
-                    assignedEquipment={orderedUnits[index].assignedEquipment ?? []}
+                    assignedEquipment={assignedEquipment ?? []}
                     onStanceChange={(nextStance) =>
                       setStanceByUnit((prev) => ({
                         ...prev,

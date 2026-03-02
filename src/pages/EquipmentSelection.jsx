@@ -7,6 +7,53 @@ import './EquipmentSelection.css'
 
 const WS_URL = resolveWsUrl()
 
+const parseEquipmentWeaponEffects = (effects) => {
+  if (!effects) return []
+  return String(effects)
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.startsWith('ADDWEP:'))
+    .map((entry, index) => {
+      const parts = entry.replace('ADDWEP:', '').split('|')
+      const [name, range, atk, hit, dmg, wr] = parts
+      return {
+        key: `${name ?? 'weapon'}-${index}`,
+        name: name?.trim() || 'Weapon',
+        range: range?.trim() || '',
+        ATK: atk?.trim() || '—',
+        HIT: hit?.trim() || '—',
+        DMG: dmg?.trim() || '—',
+        WR: wr?.trim() || '—',
+      }
+    })
+}
+
+const stripEquipmentTable = (description) => {
+  if (!description) return ''
+  const lines = String(description).split('\n')
+  let inTable = false
+  const result = []
+
+  lines.forEach((line) => {
+    if (line.includes('|**Name**|')) {
+      inTable = true
+      return
+    }
+
+    if (inTable) {
+      if (!line.trim().startsWith('|')) {
+        inTable = false
+      } else {
+        return
+      }
+    }
+
+    result.push(line)
+  })
+
+  return result.join('\n').trim()
+}
+
 function EquipmentSelection() {
   const { killteamId } = useParams()
   const {
@@ -196,6 +243,77 @@ function EquipmentSelection() {
     navigate('/select-tac-ops', { state: { killteamId } })
   }
 
+  const renderEquipmentCard = (equipment) => {
+    const weaponRows = parseEquipmentWeaponEffects(equipment.effects)
+    const descriptionText = stripEquipmentTable(equipment.description)
+
+    return (
+      <article
+        className={`equipment-card${
+          selectedEquipment.has(equipment.eqId) ? ' selected' : ''
+        }${expandedEquipment.has(equipment.eqId) ? ' expanded' : ''
+        }`}
+        key={equipment.eqId}
+        role="button"
+        tabIndex={0}
+        aria-pressed={selectedEquipment.has(equipment.eqId)}
+        onClick={() => toggleEquipment(equipment.eqId)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            toggleEquipment(equipment.eqId)
+          }
+        }}
+      >
+        <div className="equipment-card-header">
+          <button
+            className="equipment-toggle"
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              handleToggleExpanded(equipment.eqId)
+            }}
+            aria-expanded={expandedEquipment.has(equipment.eqId)}
+            aria-label={`Toggle ${equipment.eqName} details`}
+          >
+            &gt;
+          </button>
+          <h3>{equipment.eqName}</h3>
+        </div>
+        <div className="equipment-description">
+          {weaponRows.length ? (
+            <div className="equipment-weapon-table">
+              <div className="equipment-weapon-row equipment-weapon-header">
+                <span>NAME</span>
+                <span>ATK</span>
+                <span>HIT</span>
+                <span>DMG</span>
+                <span>WR</span>
+              </div>
+              {weaponRows.map((row) => (
+                <div className="equipment-weapon-row" key={`${equipment.eqId}-${row.key}`}>
+                  <span className="equipment-weapon-name">{row.name}</span>
+                  <span>{row.ATK}</span>
+                  <span>{row.HIT}</span>
+                  <span>{row.DMG}</span>
+                  <span className="equipment-weapon-rules">{row.WR}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {descriptionText
+            ? descriptionText.split('\n').map((line, lineIndex, lines) => (
+                <span key={`${equipment.eqId}-line-${lineIndex}`}>
+                  {line}
+                  {lineIndex < lines.length - 1 ? <br /> : null}
+                </span>
+              ))
+            : null}
+        </div>
+      </article>
+    )
+  }
+
   return (
     <div className="app-shell">
       <main className="app-content">
@@ -219,44 +337,7 @@ function EquipmentSelection() {
               </span>
             </div>
             <div className="equipment-grid">
-              {factionEquipment.map((equipment) => (
-                <article
-                  className={`equipment-card${
-                    selectedEquipment.has(equipment.eqId) ? ' selected' : ''
-                  }${expandedEquipment.has(equipment.eqId) ? ' expanded' : ''
-                  }`}
-                  key={equipment.eqId}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={selectedEquipment.has(equipment.eqId)}
-                  onClick={() => toggleEquipment(equipment.eqId)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
-                      toggleEquipment(equipment.eqId)
-                    }
-                  }}
-                >
-                  <div className="equipment-card-header">
-                    <button
-                      className="equipment-toggle"
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        handleToggleExpanded(equipment.eqId)
-                      }}
-                      aria-expanded={expandedEquipment.has(equipment.eqId)}
-                      aria-label={`Toggle ${equipment.eqName} details`}
-                    >
-                      &gt;
-                    </button>
-                    <h3>{equipment.eqName}</h3>
-                  </div>
-                  <p className="equipment-description">
-                    {equipment.description}
-                  </p>
-                </article>
-              ))}
+              {factionEquipment.map(renderEquipmentCard)}
             </div>
           </section>
 
@@ -268,44 +349,7 @@ function EquipmentSelection() {
               </span>
             </div>
             <div className="equipment-grid">
-              {universalEquipment.map((equipment) => (
-                <article
-                  className={`equipment-card${
-                    selectedEquipment.has(equipment.eqId) ? ' selected' : ''
-                  }${expandedEquipment.has(equipment.eqId) ? ' expanded' : ''
-                  }`}
-                  key={equipment.eqId}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={selectedEquipment.has(equipment.eqId)}
-                  onClick={() => toggleEquipment(equipment.eqId)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
-                      toggleEquipment(equipment.eqId)
-                    }
-                  }}
-                >
-                  <div className="equipment-card-header">
-                    <button
-                      className="equipment-toggle"
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        handleToggleExpanded(equipment.eqId)
-                      }}
-                      aria-expanded={expandedEquipment.has(equipment.eqId)}
-                      aria-label={`Toggle ${equipment.eqName} details`}
-                    >
-                      &gt;
-                    </button>
-                    <h3>{equipment.eqName}</h3>
-                  </div>
-                  <p className="equipment-description">
-                    {equipment.description}
-                  </p>
-                </article>
-              ))}
+              {universalEquipment.map(renderEquipmentCard)}
             </div>
           </section>
 
