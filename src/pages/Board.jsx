@@ -13,6 +13,8 @@ import FieldOfVision from '../components/FieldOfVision'
 import { resolveWsUrl } from '../state/wsUrl.js'
 import './Board.css'
 
+const HIDDEN_TAC_OP_SRC = '/images/tacOps/hidden-tac-op.png'
+
 function Board({
   dropZoneSelectionEnabled = false,
   onDropZoneSelect = null,
@@ -79,6 +81,10 @@ function Board({
   const [opponentArmyName, setOpponentArmyName] = useState('')
   const [playerAssignedZone, setPlayerAssignedZone] = useState('')
   const [opponentAssignedZone, setOpponentAssignedZone] = useState('')
+  const [playerTacOpCard, setPlayerTacOpCard] = useState(null)
+  const [opponentTacOpCard, setOpponentTacOpCard] = useState(null)
+  const [playerTacOpRevealed, setPlayerTacOpRevealed] = useState(false)
+  const [opponentTacOpRevealed, setOpponentTacOpRevealed] = useState(false)
   const mapSocketRef = useRef(null)
   const textureStyles = useMemo(
     () => [
@@ -326,6 +332,19 @@ function Board({
             )
           }
         }
+        const tacOpPayload = JSON.stringify({
+          selectedTacOp: state?.selectedTacOp ?? null,
+          revealed: Boolean(state?.tacOpRevealed),
+        })
+        const tacOpBaseKey = `kt-room-player-tac-op-${roomCode}-${incomingPlayerId}`
+        localStorage.setItem(tacOpBaseKey, tacOpPayload)
+        if (activeGameId) {
+          localStorage.setItem(
+            `${tacOpBaseKey}-${activeGameId}`,
+            tacOpPayload,
+          )
+        }
+        window.dispatchEvent(new CustomEvent('kt-tacop-reveal-update'))
         if (Array.isArray(state?.activeStratPloys)) {
           const baseKey =
             `kt-room-player-strat-ploys-${roomCode}-${incomingPlayerId}`
@@ -386,6 +405,133 @@ function Board({
       mapSocketRef.current = null
     }
   }, [WS_URL])
+
+  useEffect(() => {
+    const readTacOps = () => {
+      try {
+        const parseSelectionTacOps = () => {
+          const raw = localStorage.getItem('kt-selection-state')
+          if (!raw) return {}
+          const parsed = JSON.parse(raw)
+          return parsed?.selectedTacOpsByTeam ?? {}
+        }
+        const parseRoomTacOp = (payload) => {
+          if (!payload) return { selectedTacOp: null, revealed: false }
+          const parsed = JSON.parse(payload)
+          return {
+            selectedTacOp: parsed?.selectedTacOp ?? null,
+            revealed: Boolean(parsed?.revealed),
+          }
+        }
+        const storedPlayerName =
+          sessionStorage.getItem('kt-player-name') ||
+          localStorage.getItem('kt-player-name') ||
+          ''
+        const roomCode =
+          sessionStorage.getItem('kt-room-code') ||
+          localStorage.getItem('kt-room-code') ||
+          ''
+        const activeGameId = localStorage.getItem('kt-game-id') || ''
+        const playerId =
+          sessionStorage.getItem('kt-player-id') ||
+          localStorage.getItem('kt-player-id') ||
+          ''
+        const isMapUser = storedPlayerName.trim().toUpperCase() === 'MAP'
+        const storedPlayers = roomCode
+          ? localStorage.getItem(`kt-room-players-${roomCode}`)
+          : ''
+        const roomPlayers = storedPlayers ? JSON.parse(storedPlayers) : []
+        const nonMapPlayers = roomPlayers.filter(
+          (player) => String(player?.name || '').trim().toUpperCase() !== 'MAP',
+        )
+        const getRoomTeamId = (id) => {
+          if (!roomCode || !id) return ''
+          return (
+            (activeGameId &&
+              localStorage.getItem(
+                `kt-room-player-killteam-${roomCode}-${id}-${activeGameId}`,
+              )) ||
+            localStorage.getItem(`kt-room-player-killteam-${roomCode}-${id}`) ||
+            ''
+          )
+        }
+        const getRoomTacOp = (id) => {
+          if (!roomCode || !id) return { selectedTacOp: null, revealed: false }
+          const baseKey = `kt-room-player-tac-op-${roomCode}-${id}`
+          const stored = activeGameId
+            ? localStorage.getItem(`${baseKey}-${activeGameId}`) ||
+              localStorage.getItem(baseKey)
+            : localStorage.getItem(baseKey)
+          return parseRoomTacOp(stored)
+        }
+
+        const playerRoomId = isMapUser ? nonMapPlayers[0]?.id : playerId
+        const opponentRoomId = isMapUser
+          ? nonMapPlayers[1]?.id
+          : nonMapPlayers.find((player) => player?.id && player.id !== playerId)?.id
+
+        const selectedTacOpsByTeam = parseSelectionTacOps()
+        const playerTeamId = playerRoomId
+          ? getRoomTeamId(playerRoomId)
+          : localStorage.getItem('kt-last-killteam') || ''
+
+        let resolvedPlayerTacOp =
+          (playerTeamId && selectedTacOpsByTeam[playerTeamId]) || null
+        let resolvedPlayerRevealed = playerTeamId
+          ? localStorage.getItem(
+              activeGameId
+                ? `kt-tac-op-revealed-${playerTeamId}-${activeGameId}`
+                : `kt-tac-op-revealed-${playerTeamId}`,
+            ) === '1'
+          : false
+
+        if (roomCode && playerRoomId) {
+          const roomPlayerTacOp = getRoomTacOp(playerRoomId)
+          if (roomPlayerTacOp.selectedTacOp) {
+            resolvedPlayerTacOp = roomPlayerTacOp.selectedTacOp
+          }
+          resolvedPlayerRevealed = roomPlayerTacOp.revealed
+        }
+
+        let resolvedOpponentTacOp = null
+        let resolvedOpponentRevealed = false
+
+        if (roomCode && playerId) {
+          const scopedOpponentKey = activeGameId
+            ? `kt-opponent-${roomCode}-${playerId}-${activeGameId}`
+            : `kt-opponent-${roomCode}-${playerId}`
+          const opponentStored = localStorage.getItem(scopedOpponentKey)
+          if (opponentStored) {
+            const opponentParsed = JSON.parse(opponentStored)
+            resolvedOpponentTacOp = opponentParsed?.state?.selectedTacOp ?? null
+            resolvedOpponentRevealed = Boolean(opponentParsed?.state?.tacOpRevealed)
+          }
+        }
+
+        if (!resolvedOpponentTacOp && opponentRoomId) {
+          const roomOpponentTacOp = getRoomTacOp(opponentRoomId)
+          resolvedOpponentTacOp = roomOpponentTacOp.selectedTacOp
+          resolvedOpponentRevealed = roomOpponentTacOp.revealed
+        }
+
+        setPlayerTacOpCard(resolvedPlayerTacOp)
+        setOpponentTacOpCard(resolvedOpponentTacOp)
+        setPlayerTacOpRevealed(resolvedPlayerRevealed)
+        setOpponentTacOpRevealed(resolvedOpponentRevealed)
+      } catch (error) {
+        console.warn('Failed to read tac op reveal state.', error)
+      }
+    }
+
+    readTacOps()
+    const handleTacOpUpdate = () => readTacOps()
+    window.addEventListener('storage', handleTacOpUpdate)
+    window.addEventListener('kt-tacop-reveal-update', handleTacOpUpdate)
+    return () => {
+      window.removeEventListener('storage', handleTacOpUpdate)
+      window.removeEventListener('kt-tacop-reveal-update', handleTacOpUpdate)
+    }
+  }, [])
 
   useEffect(() => {
     const readStratPloys = () => {
@@ -802,39 +948,49 @@ function Board({
     return fragments.length ? fragments.slice(0, 1) : []
   }
 
-  const renderStratPloys = (ploys) =>
-    ploys.length ? (
-      <div className="board-side__strat-ploys">
-        <div className="board-side__strat-ploys-title">Strat Ploys</div>
-        <div className="board-side__strat-ploys-list">
-          {ploys.map((ploy) => (
-            <div
-              className="board-side__strat-ploys-item"
-              key={ploy.id || ploy.name}
-            >
-              <div className="board-side__strat-ploys-text">
-                <div className="board-side__strat-ploys-row">
-                  <span>{ploy.name}</span>
-                  {ploy.cost ? (
-                    <span className="board-side__strat-ploys-cost">{ploy.cost}</span>
-                  ) : null}
-                </div>
-                {condensePloyRules(ploy.name, ploy.description).map((rule, index) => (
-                  <span
-                    className="board-side__strat-ploys-rule"
-                    key={`${ploy.id || ploy.name}-rule-${index}`}
-                  >
-                    {rule}
-                  </span>
-                ))}
+  const renderStratPloys = (ploys) => (
+    <div className="board-side__strat-ploys">
+      <div className="board-side__strat-ploys-title">Strat Ploys</div>
+      <div className="board-side__strat-ploys-list">
+        {ploys.map((ploy) => (
+          <div
+            className="board-side__strat-ploys-item"
+            key={ploy.id || ploy.name}
+          >
+            <div className="board-side__strat-ploys-text">
+              <div className="board-side__strat-ploys-row">
+                <span>{ploy.name}</span>
+                {ploy.cost ? (
+                  <span className="board-side__strat-ploys-cost">{ploy.cost}</span>
+                ) : null}
               </div>
+              {condensePloyRules(ploy.name, ploy.description).map((rule, index) => (
+                <span
+                  className="board-side__strat-ploys-rule"
+                  key={`${ploy.id || ploy.name}-rule-${index}`}
+                >
+                  {rule}
+                </span>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
-    ) : (
-      <div className="board-side__strat-ploys-empty">No strat ploys</div>
+    </div>
+  )
+
+  const renderTacOpCard = (tacOpCard, isRevealed) => {
+    if (!tacOpCard?.src) return null
+    const imageSrc = isRevealed ? tacOpCard.src : HIDDEN_TAC_OP_SRC
+    const altText = isRevealed
+      ? tacOpCard.label || 'Selected Tac Op'
+      : 'Hidden Tac Op'
+    return (
+      <div className="board-side__tacop-card">
+        <img src={imageSrc} alt={altText} loading="lazy" />
+      </div>
     )
+  }
 
   const resolvedPlayerDropZone = playerAssignedZone || storedDropZone
   const resolvedOpponentDropZone = opponentAssignedZone || storedOpponentDropZone
@@ -860,6 +1016,28 @@ function Board({
       : []
   const leftStratPloysContent = renderStratPloys(leftStratPloys)
   const rightStratPloysContent = renderStratPloys(rightStratPloys)
+  const leftTacOpCard = playerSide
+    ? playerSide === 'left'
+      ? playerTacOpCard
+      : opponentTacOpCard
+    : playerTacOpCard
+  const rightTacOpCard = playerSide
+    ? playerSide === 'left'
+      ? opponentTacOpCard
+      : playerTacOpCard
+    : opponentTacOpCard
+  const leftTacOpRevealed = playerSide
+    ? playerSide === 'left'
+      ? playerTacOpRevealed
+      : opponentTacOpRevealed
+    : playerTacOpRevealed
+  const rightTacOpRevealed = playerSide
+    ? playerSide === 'left'
+      ? opponentTacOpRevealed
+      : playerTacOpRevealed
+    : opponentTacOpRevealed
+  const leftTacOpContent = renderTacOpCard(leftTacOpCard, leftTacOpRevealed)
+  const rightTacOpContent = renderTacOpCard(rightTacOpCard, rightTacOpRevealed)
   const leftKillOpCount = playerSide
     ? playerSide === 'left'
       ? playerKillOpCount
@@ -933,14 +1111,20 @@ function Board({
         surface.scrollHeight > surface.clientHeight + 1 ||
         surface.scrollWidth > surface.clientWidth + 1
       if (canScrollSurface) {
-        const scrollLeft = Math.max(
-          0,
-          (surface.scrollWidth - surface.clientWidth) / 2,
-        )
-        const scrollTop = Math.max(
-          0,
-          (surface.scrollHeight - surface.clientHeight) / 2,
-        )
+        const surfaceRect = surface.getBoundingClientRect()
+        const frameRect = frame.getBoundingClientRect()
+        const rawLeft =
+          surface.scrollLeft +
+          (frameRect.left - surfaceRect.left) -
+          (surface.clientWidth - frameRect.width) / 2
+        const rawTop =
+          surface.scrollTop +
+          (frameRect.top - surfaceRect.top) -
+          (surface.clientHeight - frameRect.height) / 2
+        const maxScrollLeft = Math.max(0, surface.scrollWidth - surface.clientWidth)
+        const maxScrollTop = Math.max(0, surface.scrollHeight - surface.clientHeight)
+        const scrollLeft = Math.min(maxScrollLeft, Math.max(0, rawLeft))
+        const scrollTop = Math.min(maxScrollTop, Math.max(0, rawTop))
         surface.scrollTo({
           left: scrollLeft,
           top: scrollTop,
@@ -2472,47 +2656,6 @@ function Board({
 
   return (
     <div className="board-view">
-      <div className="board-toolbar">
-        <button
-          type="button"
-          className="board-arrangement-button"
-          onClick={advanceArrangement}
-          disabled={!mapArrangements.length}
-        >
-          Next Setup
-        </button>
-        <div className="board-toggle" role="group" aria-label="Measuring tools">
-          <button
-            type="button"
-            className={`board-toggle-button${toolMode === 'sight' ? ' is-active' : ''}`}
-            onClick={() => toggleToolMode('sight')}
-          >
-            Sight
-          </button>
-          <button
-            type="button"
-            className={`board-toggle-button${toolMode === 'measure' ? ' is-active' : ''}`}
-            onClick={() => toggleToolMode('measure')}
-          >
-            Measure
-          </button>
-          <button
-            type="button"
-            className={`board-toggle-button${toolMode === 'fov' ? ' is-active' : ''}`}
-            onClick={() => toggleToolMode('fov')}
-          >
-            FoV
-          </button>
-        </div>
-        <button
-          type="button"
-          className="board-arrangement-button"
-          onClick={clearActiveTool}
-          disabled={toolMode === 'none'}
-        >
-          Clear Tool
-        </button>
-      </div>
       <div
         ref={boardSurfaceRef}
         className="board-surface"
@@ -2726,7 +2869,8 @@ function Board({
                   />
                 }
                 killOpFirst
-                tacContent={leftStratPloysContent}
+                tacContent={leftTacOpContent}
+                catContent={leftStratPloysContent}
               />
               <BoardSide
                 mapClass="is-map-01"
@@ -2742,7 +2886,8 @@ function Board({
                 }
                 killOpFirst
                 swapCardAndTac
-                tacContent={rightStratPloysContent}
+                tacContent={rightTacOpContent}
+                catContent={rightStratPloysContent}
               />
             </>
           ) : activeMap?.id === 'map_02' && selectedCritOpsCard ? (
@@ -2776,7 +2921,8 @@ function Board({
                   />
                 }
                 killOpFirst
-                tacContent={leftStratPloysContent}
+                tacContent={leftTacOpContent}
+                catContent={leftStratPloysContent}
               />
               <BoardSide
                 mapClass="is-map-02"
@@ -2807,7 +2953,8 @@ function Board({
                   />
                 }
                 killOpFirst
-                tacContent={rightStratPloysContent}
+                tacContent={rightTacOpContent}
+                catContent={rightStratPloysContent}
               />
             </>
           ) : null}

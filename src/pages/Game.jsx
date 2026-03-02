@@ -407,6 +407,7 @@ function Game() {
   const [timerNow, setTimerNow] = useState(Date.now())
   const [menuOpen, setMenuOpen] = useState(false)
   const [ruleModal, setRuleModal] = useState(null)
+  const [isTacOpRevealed, setIsTacOpRevealed] = useState(false)
   const [tpCount, setTpCount] = useState(1)
   const [cpCount, setCpCount] = useState(2)
   const [vpCount, setVpCount] = useState(0)
@@ -526,6 +527,12 @@ function Game() {
     if (!killteamId) return null
     return gameId ? `kt-game-${killteamId}-${gameId}` : `kt-game-${killteamId}`
   }, [killteamId, gameId])
+  const tacOpRevealStorageKey = useMemo(() => {
+    if (!killteamId) return null
+    return gameId
+      ? `kt-tac-op-revealed-${killteamId}-${gameId}`
+      : `kt-tac-op-revealed-${killteamId}`
+  }, [killteamId, gameId])
 
   useEffect(() => {
     if (!killteamId) return
@@ -537,6 +544,20 @@ function Game() {
       setGameId('')
     }
   }, [killteamId])
+
+  useEffect(() => {
+    if (!tacOpRevealStorageKey) {
+      setIsTacOpRevealed(false)
+      return
+    }
+    try {
+      const stored = localStorage.getItem(tacOpRevealStorageKey)
+      setIsTacOpRevealed(stored === '1')
+    } catch (error) {
+      console.warn('Failed to read tac op reveal state.', error)
+      setIsTacOpRevealed(false)
+    }
+  }, [tacOpRevealStorageKey])
 
   useEffect(() => {
     if (!killteamId || !gameId) return
@@ -555,6 +576,7 @@ function Game() {
     setVpCount(0)
     setSpCount(0)
     setStratOpsByTp({})
+    setIsTacOpRevealed(false)
     setMenuOpen(false)
     setOpponentPanelOpen(false)
     setLegionaryMarks(killteamId, {})
@@ -579,6 +601,35 @@ function Game() {
     hydratedKillteamRef.current = null
     localStorage.setItem(resetKey, gameId)
   }, [killteamId, gameId, setLegionaryMarks, storageKey])
+
+  useEffect(() => {
+    if (!tacOpRevealStorageKey) return
+    try {
+      localStorage.setItem(tacOpRevealStorageKey, isTacOpRevealed ? '1' : '0')
+      if (roomCode && playerId) {
+        const payload = JSON.stringify({
+          selectedTacOp,
+          revealed: isTacOpRevealed,
+        })
+        const baseKey = `kt-room-player-tac-op-${roomCode}-${playerId}`
+        localStorage.setItem(baseKey, payload)
+        const activeGameId = gameId || localStorage.getItem('kt-game-id') || ''
+        if (activeGameId) {
+          localStorage.setItem(`${baseKey}-${activeGameId}`, payload)
+        }
+      }
+      window.dispatchEvent(new CustomEvent('kt-tacop-reveal-update'))
+    } catch (error) {
+      console.warn('Failed to persist tac op reveal state.', error)
+    }
+  }, [
+    tacOpRevealStorageKey,
+    isTacOpRevealed,
+    roomCode,
+    playerId,
+    selectedTacOp,
+    gameId,
+  ])
 
   useEffect(() => {
     try {
@@ -1171,6 +1222,8 @@ function Game() {
       name: displayName,
       playerId,
       killteamId,
+      selectedTacOp,
+      tacOpRevealed: isTacOpRevealed,
       selectedUnits: selectedUnitKeys,
       selectedEquipment: selectedEquipmentKeys,
       activeStratPloys,
@@ -1186,6 +1239,8 @@ function Game() {
     playerName,
     playerId,
     killteamId,
+    selectedTacOp,
+    isTacOpRevealed,
     selectedUnitKeys,
     selectedEquipmentKeys,
     activeStratPloys,
@@ -1212,6 +1267,8 @@ function Game() {
         name: displayName,
         playerId,
         killteamId,
+        selectedTacOp,
+        tacOpRevealed: isTacOpRevealed,
         selectedUnits: selectedUnitKeys,
         selectedEquipment: selectedEquipmentKeys,
         activeStratPloys,
@@ -1236,6 +1293,8 @@ function Game() {
     wsReady,
     playerId,
     killteamId,
+    selectedTacOp,
+    isTacOpRevealed,
     selectedUnitKeys,
     aplAdjustByUnit,
     legionaryMarkByUnit,
@@ -1643,6 +1702,17 @@ function Game() {
           <details className="game-menu-group">
             <summary className="game-menu-summary">Tac Op / Primary Op</summary>
             <div className="game-menu-content">
+              {selectedTacOp?.src ? (
+                <div className="game-menu-tacop-actions">
+                  <button
+                    type="button"
+                    className="game-menu-tacop-toggle"
+                    onClick={() => setIsTacOpRevealed((prev) => !prev)}
+                  >
+                    {isTacOpRevealed ? 'Hide Tac Op' : 'Reveal Tac Op'}
+                  </button>
+                </div>
+              ) : null}
               {selectedTacOp?.src || selectedPrimaryOp?.src ? (
                 <div className="game-menu-tacop-grid">
                   {selectedTacOp?.src ? (

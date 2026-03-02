@@ -1,9 +1,3 @@
-.board-op-group {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
 .board-side__placeholder {
   display: grid;
   place-items: center;
@@ -18,8 +12,29 @@
 }
 
 .board-side__placeholder--tac.is-filled {
-  aspect-ratio: 1 / 1;
-  width: min(100%, 240px);
-  max-width: 220px;
-  max-height: 220px;
+  aspect-ratio: 7 / 12;
+  width: calc(67mm * var(--inch-scale));
+  max-width: calc(67mm * var(--inch-scale));
+  max-height: none;
+  padding: 0;
+  border: none;
+}
+
+.board-side__tacop-card {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.board-side__tacop-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
