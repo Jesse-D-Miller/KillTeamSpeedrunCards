@@ -69,6 +69,10 @@ function Board({
   const [storedOpponentDropZone, setStoredOpponentDropZone] = useState('')
   const [playerStratPloys, setPlayerStratPloys] = useState([])
   const [opponentStratPloys, setOpponentStratPloys] = useState([])
+  const [playerKillOpCount, setPlayerKillOpCount] = useState(null)
+  const [opponentKillOpCount, setOpponentKillOpCount] = useState(null)
+  const [playerDeadCount, setPlayerDeadCount] = useState(0)
+  const [opponentDeadCount, setOpponentDeadCount] = useState(0)
   const [playerName, setPlayerName] = useState('Player')
   const [opponentName, setOpponentName] = useState('Opponent')
   const [playerArmyName, setPlayerArmyName] = useState('')
@@ -110,6 +114,47 @@ function Board({
   )
 
   const toPercent = (value, max) => `${(value / max) * 100}%`
+  const toOpTypeId = (unitKey) => {
+    if (typeof unitKey !== 'string') return ''
+    const lastDashIndex = unitKey.lastIndexOf('-')
+    if (lastDashIndex <= 0) return unitKey
+    return unitKey.slice(0, lastDashIndex)
+  }
+  const deriveKillOpCount = (killteamId, selectedUnits) => {
+    if (!killteamId || !Array.isArray(selectedUnits) || !selectedUnits.length) {
+      return null
+    }
+    const killteam = getKillteamById(killteamId)
+    const opTypeById = new Map(
+      (killteam?.opTypes ?? []).map((opType) => [opType.opTypeId, opType]),
+    )
+    const count = selectedUnits.reduce((total, unitKey) => {
+      const opTypeId = toOpTypeId(unitKey)
+      const opType = opTypeById.get(opTypeId)
+      const isBombSquig = /\bBOMB\s+SQUIG\b/i.test(
+        String(opType?.opTypeName ?? ''),
+      )
+      return isBombSquig ? total : total + 1
+    }, 0)
+    if (count < 5 || count > 14) return null
+    return count
+  }
+  const deriveDeadCount = (killteamId, deadUnits) => {
+    if (!killteamId || !deadUnits || typeof deadUnits !== 'object') return 0
+    const killteam = getKillteamById(killteamId)
+    const opTypeById = new Map(
+      (killteam?.opTypes ?? []).map((opType) => [opType.opTypeId, opType]),
+    )
+    return Object.entries(deadUnits).reduce((total, [unitKey, isDead]) => {
+      if (!isDead) return total
+      const opTypeId = toOpTypeId(unitKey)
+      const opType = opTypeById.get(opTypeId)
+      const isBombSquig = /\bBOMB\s+SQUIG\b/i.test(
+        String(opType?.opTypeName ?? ''),
+      )
+      return isBombSquig ? total : total + 1
+    }, 0)
+  }
 
   useEffect(() => {
     const readDropZone = () => {
@@ -293,6 +338,30 @@ function Board({
           }
           window.dispatchEvent(new CustomEvent('kt-strat-ploys-update'))
         }
+        if (Array.isArray(state?.selectedUnits)) {
+          const baseKey =
+            `kt-room-player-selected-units-${roomCode}-${incomingPlayerId}`
+          localStorage.setItem(baseKey, JSON.stringify(state.selectedUnits))
+          if (activeGameId) {
+            localStorage.setItem(
+              `${baseKey}-${activeGameId}`,
+              JSON.stringify(state.selectedUnits),
+            )
+          }
+          window.dispatchEvent(new CustomEvent('kt-strat-ploys-update'))
+        }
+        if (state?.deadUnits && typeof state.deadUnits === 'object') {
+          const baseKey =
+            `kt-room-player-dead-units-${roomCode}-${incomingPlayerId}`
+          localStorage.setItem(baseKey, JSON.stringify(state.deadUnits))
+          if (activeGameId) {
+            localStorage.setItem(
+              `${baseKey}-${activeGameId}`,
+              JSON.stringify(state.deadUnits),
+            )
+          }
+          window.dispatchEvent(new CustomEvent('kt-strat-ploys-update'))
+        }
       } catch (error) {
         console.warn('Failed to store map sync data.', error)
       }
@@ -449,6 +518,159 @@ function Board({
     return () => {
       window.removeEventListener('kt-strat-ploys-update', handleStratPloysUpdate)
       window.removeEventListener('storage', handleStratPloysUpdate)
+    }
+  }, [])
+
+  useEffect(() => {
+    const readKillOpCounts = () => {
+      try {
+        const parseSelectionState = () => {
+          const raw = localStorage.getItem('kt-selection-state')
+          if (!raw) return {}
+          const parsed = JSON.parse(raw)
+          return parsed?.selectedUnitsByTeam ?? {}
+        }
+        const parseRoomSelectedUnits = (payload) => {
+          if (!payload) return []
+          const parsed = JSON.parse(payload)
+          return Array.isArray(parsed) ? parsed : []
+        }
+        const parseRoomDeadUnits = (payload) => {
+          if (!payload) return {}
+          const parsed = JSON.parse(payload)
+          return parsed && typeof parsed === 'object' ? parsed : {}
+        }
+        const storedPlayerName =
+          sessionStorage.getItem('kt-player-name') ||
+          localStorage.getItem('kt-player-name') ||
+          ''
+        const roomCode =
+          sessionStorage.getItem('kt-room-code') ||
+          localStorage.getItem('kt-room-code') ||
+          ''
+        const activeGameId = localStorage.getItem('kt-game-id') || ''
+        const playerId =
+          sessionStorage.getItem('kt-player-id') ||
+          localStorage.getItem('kt-player-id') ||
+          ''
+        const isMapUser = storedPlayerName.trim().toUpperCase() === 'MAP'
+        const storedPlayers = roomCode
+          ? localStorage.getItem(`kt-room-players-${roomCode}`)
+          : ''
+        const roomPlayers = storedPlayers ? JSON.parse(storedPlayers) : []
+        const nonMapPlayers = roomPlayers.filter(
+          (player) => String(player?.name || '').trim().toUpperCase() !== 'MAP',
+        )
+        const getRoomTeamId = (id) => {
+          if (!roomCode || !id) return ''
+          return (
+            (activeGameId &&
+              localStorage.getItem(
+                `kt-room-player-killteam-${roomCode}-${id}-${activeGameId}`,
+              )) ||
+            localStorage.getItem(`kt-room-player-killteam-${roomCode}-${id}`) ||
+            ''
+          )
+        }
+        const getRoomSelectedUnits = (id) => {
+          if (!roomCode || !id) return []
+          const baseKey = `kt-room-player-selected-units-${roomCode}-${id}`
+          const stored =
+            (activeGameId && localStorage.getItem(`${baseKey}-${activeGameId}`)) ||
+            localStorage.getItem(baseKey)
+          return parseRoomSelectedUnits(stored)
+        }
+        const getRoomDeadUnits = (id) => {
+          if (!roomCode || !id) return {}
+          const baseKey = `kt-room-player-dead-units-${roomCode}-${id}`
+          const stored =
+            (activeGameId && localStorage.getItem(`${baseKey}-${activeGameId}`)) ||
+            localStorage.getItem(baseKey)
+          return parseRoomDeadUnits(stored)
+        }
+        const getGameDeadUnits = (teamId) => {
+          if (!teamId) return {}
+          const gameKey = activeGameId
+            ? `kt-game-${teamId}-${activeGameId}`
+            : `kt-game-${teamId}`
+          const stored = localStorage.getItem(gameKey)
+          if (!stored) return {}
+          const parsed = JSON.parse(stored)
+          return parsed?.deadUnits && typeof parsed.deadUnits === 'object'
+            ? parsed.deadUnits
+            : {}
+        }
+
+        const playerRoomId = isMapUser
+          ? nonMapPlayers[0]?.id
+          : playerId
+        const opponentRoomId = isMapUser
+          ? nonMapPlayers[1]?.id
+          : nonMapPlayers.find((player) => player?.id && player.id !== playerId)?.id
+
+        const selectedUnitsByTeam = parseSelectionState()
+        const playerTeamId = playerRoomId
+          ? getRoomTeamId(playerRoomId)
+          : localStorage.getItem('kt-last-killteam') || ''
+
+        let opponentTeamId = opponentRoomId ? getRoomTeamId(opponentRoomId) : ''
+        let opponentSelectedUnits = []
+        let opponentDeadUnits = {}
+
+        if (roomCode && playerId) {
+          const opponentStored = localStorage.getItem(
+            `kt-opponent-${roomCode}-${playerId}`,
+          )
+          if (opponentStored) {
+            const opponentParsed = JSON.parse(opponentStored)
+            opponentTeamId = opponentParsed?.state?.killteamId || opponentTeamId
+            opponentSelectedUnits = Array.isArray(opponentParsed?.state?.selectedUnits)
+              ? opponentParsed.state.selectedUnits
+              : []
+            opponentDeadUnits =
+              opponentParsed?.state?.deadUnits &&
+              typeof opponentParsed.state.deadUnits === 'object'
+                ? opponentParsed.state.deadUnits
+                : {}
+          }
+        }
+
+        const playerSelectedUnits =
+          (playerTeamId && selectedUnitsByTeam[playerTeamId]) ||
+          getRoomSelectedUnits(playerRoomId)
+
+        const resolvedOpponentSelectedUnits =
+          opponentSelectedUnits.length
+            ? opponentSelectedUnits
+            : getRoomSelectedUnits(opponentRoomId)
+        const gamePlayerDeadUnits = getGameDeadUnits(playerTeamId)
+        const playerDeadUnits = Object.keys(gamePlayerDeadUnits).length
+          ? gamePlayerDeadUnits
+          : getRoomDeadUnits(playerRoomId)
+        const resolvedOpponentDeadUnits =
+          Object.keys(opponentDeadUnits).length
+            ? opponentDeadUnits
+            : getRoomDeadUnits(opponentRoomId)
+
+        setPlayerKillOpCount(deriveKillOpCount(playerTeamId, playerSelectedUnits))
+        setOpponentKillOpCount(
+          deriveKillOpCount(opponentTeamId, resolvedOpponentSelectedUnits),
+        )
+        setPlayerDeadCount(deriveDeadCount(playerTeamId, playerDeadUnits))
+        setOpponentDeadCount(
+          deriveDeadCount(opponentTeamId, resolvedOpponentDeadUnits),
+        )
+      } catch (error) {
+        console.warn('Failed to read kill op counts.', error)
+      }
+    }
+    readKillOpCounts()
+    const handleSelectionUpdate = () => readKillOpCounts()
+    window.addEventListener('storage', handleSelectionUpdate)
+    window.addEventListener('kt-strat-ploys-update', handleSelectionUpdate)
+    return () => {
+      window.removeEventListener('storage', handleSelectionUpdate)
+      window.removeEventListener('kt-strat-ploys-update', handleSelectionUpdate)
     }
   }, [])
 
@@ -629,6 +851,30 @@ function Board({
       : []
   const leftStratPloysContent = renderStratPloys(leftStratPloys)
   const rightStratPloysContent = renderStratPloys(rightStratPloys)
+  const leftKillOpCount = playerSide
+    ? playerSide === 'left'
+      ? playerKillOpCount
+      : opponentKillOpCount
+    : playerKillOpCount
+  const rightKillOpCount = playerSide
+    ? playerSide === 'left'
+      ? opponentKillOpCount
+      : playerKillOpCount
+    : opponentKillOpCount
+  const leftKillOpHighlight = rightKillOpCount
+  const rightKillOpHighlight = leftKillOpCount
+  const leftDeadCount = playerSide
+    ? playerSide === 'left'
+      ? playerDeadCount
+      : opponentDeadCount
+    : playerDeadCount
+  const rightDeadCount = playerSide
+    ? playerSide === 'left'
+      ? opponentDeadCount
+      : playerDeadCount
+    : opponentDeadCount
+  const leftKillOpDeadCount = rightDeadCount
+  const rightKillOpDeadCount = leftDeadCount
 
   useEffect(() => {
     if (!maps.length || hasRandomizedMapRef.current) return
@@ -2384,7 +2630,12 @@ function Board({
                 cardClassName={`board-card-overlay is-bottom-left is-map-01${map1OpClass}`}
                 killOpClassName="board-killop-overlay is-map-01 is-left"
                 cardContent={<CritOpsCard card={selectedCritOpsCard} />}
-                killOpContent={<KillOp />}
+                killOpContent={
+                  <KillOp
+                    highlightRow={leftKillOpHighlight}
+                    deadCount={leftKillOpDeadCount}
+                  />
+                }
                 killOpFirst
                 tacContent={leftStratPloysContent}
               />
@@ -2394,7 +2645,12 @@ function Board({
                 cardClassName={`board-card-overlay is-top-right is-map-01${map1OpClass}`}
                 killOpClassName="board-killop-overlay is-map-01 is-right"
                 cardContent={<CritOpsCard card={selectedCritOpsCard} />}
-                killOpContent={<KillOp />}
+                killOpContent={
+                  <KillOp
+                    highlightRow={rightKillOpHighlight}
+                    deadCount={rightKillOpDeadCount}
+                  />
+                }
                 killOpFirst
                 swapCardAndTac
                 tacContent={rightStratPloysContent}
@@ -2424,7 +2680,12 @@ function Board({
                     }
                   />
                 }
-                killOpContent={<KillOp />}
+                killOpContent={
+                  <KillOp
+                    highlightRow={leftKillOpHighlight}
+                    deadCount={leftKillOpDeadCount}
+                  />
+                }
                 killOpFirst
                 tacContent={leftStratPloysContent}
               />
@@ -2450,7 +2711,12 @@ function Board({
                     }
                   />
                 }
-                killOpContent={<KillOp />}
+                killOpContent={
+                  <KillOp
+                    highlightRow={rightKillOpHighlight}
+                    deadCount={rightKillOpDeadCount}
+                  />
+                }
                 killOpFirst
                 tacContent={rightStratPloysContent}
               />

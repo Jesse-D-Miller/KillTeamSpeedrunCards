@@ -119,6 +119,16 @@
   border-radius: 0;
 }
 
+.killop__axis-value.is-highlighted {
+  background: #f3a03a;
+  color: #241607;
+}
+
+.killop__axis-value.is-highlighted-column {
+  background: #d87313;
+  color: #ffffff;
+}
+
 .killop__grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -133,4 +143,20 @@
   border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 3px;
   font-size: clamp(0.38rem, 0.7vw, 0.52rem);
+}
+
+.killop__cell.is-highlighted {
+  background: rgba(243, 160, 58, 0.32);
+  border-color: rgba(216, 115, 19, 0.9);
+}
+
+.killop__cell.is-highlighted-column {
+  background: rgba(216, 115, 19, 0.28);
+  border-color: rgba(171, 83, 10, 0.92);
+}
+
+.killop__cell.is-dead-match {
+  background: rgba(140, 63, 7, 0.9);
+  border-color: rgba(110, 45, 0, 1);
+  color: #ffffff;
 }

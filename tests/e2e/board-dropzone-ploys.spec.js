@@ -372,3 +372,132 @@ test('map shows names, armies, and strat ploys on correct sides', async ({ brows
   await guestContext.close()
   await mapContext.close()
 })
+
+test('kill op highlights exclude Bomb Squig and use threshold score progression', async ({ browser }) => {
+  const mapContext = await browser.newContext()
+  const mapPage = await mapContext.newPage()
+
+  await mapPage.goto('/board')
+  await mapPage.waitForLoadState('domcontentloaded')
+
+  const roomCode = 'ROOM-KILLOP'
+  const hostPlayerId = 'host-player'
+  const guestPlayerId = 'guest-player'
+
+  await mapPage.evaluate(
+    ({ code, hostId, guestId }) => {
+      localStorage.setItem('kt-room-code', code)
+      localStorage.setItem('kt-player-id', hostId)
+      localStorage.setItem('kt-player-name', 'Host')
+      localStorage.setItem('kt-last-killteam', 'ORK-KOM')
+      localStorage.setItem(
+        'kt-selection-state',
+        JSON.stringify({
+          selectedUnitsByTeam: {
+            'ORK-KOM': [
+              'ORK-KOM-NOB-0',
+              'ORK-KOM-BOY-1',
+              'ORK-KOM-BOY-2',
+              'ORK-KOM-BRCH-0',
+              'ORK-KOM-BURNA-0',
+              'ORK-KOM-DAKKA-0',
+              'ORK-KOM-COMMS-0',
+              'ORK-KOM-SLASHA-0',
+            ],
+          },
+        }),
+      )
+      localStorage.setItem(
+        `kt-opponent-${code}-${hostId}`,
+        JSON.stringify({
+          state: {
+            playerId: guestId,
+            name: 'Guest',
+            killteamId: 'ORK-KOM',
+            selectedUnits: [
+              'ORK-KOM-NOB-0',
+              'ORK-KOM-BOY-1',
+              'ORK-KOM-BOY-2',
+              'ORK-KOM-BRCH-0',
+              'ORK-KOM-BURNA-0',
+              'ORK-KOM-DAKKA-0',
+              'ORK-KOM-COMMS-0',
+              'ORK-KOM-SLASHA-0',
+              'ORK-KOM-SQUIG-0',
+            ],
+            deadUnits: {
+              'ORK-KOM-NOB-0': true,
+              'ORK-KOM-BOY-1': true,
+              'ORK-KOM-BOY-2': true,
+              'ORK-KOM-BRCH-0': true,
+              'ORK-KOM-BURNA-0': true,
+              'ORK-KOM-DAKKA-0': true,
+            },
+          },
+        }),
+      )
+      window.dispatchEvent(new StorageEvent('storage'))
+    },
+    {
+      code: roomCode,
+      hostId: hostPlayerId,
+      guestId: guestPlayerId,
+    },
+  )
+
+  await mapPage.reload()
+  await mapPage.waitForLoadState('domcontentloaded')
+
+  const leftKillOp = mapPage.locator('.board-op-group.is-left .killop').first()
+  await expect(leftKillOp).toBeVisible({ timeout: 15000 })
+
+  const highlightedRow = leftKillOp.locator(
+    '.killop__axis-col .killop__axis-value.is-highlighted',
+  )
+  await expect(highlightedRow).toHaveText('8')
+
+  const highlightedGrade = leftKillOp.locator(
+    '.killop__x-values .killop__axis-value.is-highlighted-column',
+  )
+  await expect(highlightedGrade).toHaveText('4')
+
+  await mapPage.evaluate(({ code, hostId }) => {
+    const raw = localStorage.getItem(`kt-opponent-${code}-${hostId}`)
+    const parsed = raw ? JSON.parse(raw) : { state: {} }
+    parsed.state.deadUnits = {
+      'ORK-KOM-NOB-0': true,
+      'ORK-KOM-BOY-1': true,
+      'ORK-KOM-BOY-2': true,
+      'ORK-KOM-BRCH-0': true,
+      'ORK-KOM-BURNA-0': true,
+      'ORK-KOM-DAKKA-0': true,
+      'ORK-KOM-COMMS-0': true,
+    }
+    localStorage.setItem(`kt-opponent-${code}-${hostId}`, JSON.stringify(parsed))
+    window.dispatchEvent(new StorageEvent('storage'))
+  }, { code: roomCode, hostId: hostPlayerId })
+
+  await expect(highlightedGrade).toHaveText('4')
+
+  await mapPage.evaluate(({ code, hostId }) => {
+    const raw = localStorage.getItem(`kt-opponent-${code}-${hostId}`)
+    const parsed = raw ? JSON.parse(raw) : { state: {} }
+    parsed.state.deadUnits = {
+      'ORK-KOM-NOB-0': true,
+      'ORK-KOM-BOY-1': true,
+      'ORK-KOM-BOY-2': true,
+      'ORK-KOM-BRCH-0': true,
+      'ORK-KOM-BURNA-0': true,
+      'ORK-KOM-DAKKA-0': true,
+      'ORK-KOM-COMMS-0': true,
+      'ORK-KOM-SLASHA-0': true,
+      'ORK-KOM-SQUIG-0': true,
+    }
+    localStorage.setItem(`kt-opponent-${code}-${hostId}`, JSON.stringify(parsed))
+    window.dispatchEvent(new StorageEvent('storage'))
+  }, { code: roomCode, hostId: hostPlayerId })
+
+  await expect(highlightedGrade).toHaveText('5')
+
+  await mapContext.close()
+})
