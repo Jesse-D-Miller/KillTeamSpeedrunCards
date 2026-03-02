@@ -102,6 +102,7 @@ function UnitCard({
   onLegionaryMarkChange,
   weaponSelection,
   onWeaponSelectionChange,
+  collapseSignal = 0,
   readOnly = false,
 }) {
   const maxWounds = useMemo(() => {
@@ -113,6 +114,7 @@ function UnitCard({
   const [statusDetail, setStatusDetail] = useState(null)
   const [aplModalOpen, setAplModalOpen] = useState(false)
   const [markModalOpen, setMarkModalOpen] = useState(false)
+  const cardRef = useRef(null)
   const onDeadChangeRef = useRef(onDeadChange)
   const ruleDetails = useMemo(() => {
     if (!ruleModal) return null
@@ -156,6 +158,19 @@ function UnitCard({
       onDeadChangeRef.current(isDead)
     }
   }, [isDead])
+
+  useEffect(() => {
+    setRuleModal(null)
+    setStatusModalOpen(false)
+    setStatusDetail(null)
+    setAplModalOpen(false)
+    setMarkModalOpen(false)
+    if (cardRef.current) {
+      cardRef.current.querySelectorAll('details[open]').forEach((element) => {
+        element.open = false
+      })
+    }
+  }, [collapseSignal])
 
   const weaponRows = (opType.weapons ?? []).flatMap((weapon, weaponIndex) => {
     const profiles = weapon.profiles?.length ? weapon.profiles : [null]
@@ -301,6 +316,7 @@ function UnitCard({
   }
   return (
     <article
+      ref={cardRef}
       className={`game-card stance-${stance}${
         isDead ? ' is-dead' : state === 'expended' ? ' is-dimmed' : ''
       }`}

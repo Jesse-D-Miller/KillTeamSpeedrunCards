@@ -211,6 +211,7 @@ function Game() {
   const [stanceByUnit, setStanceByUnit] = useState({})
   const [statusesByUnit, setStatusesByUnit] = useState({})
   const [aplAdjustByUnit, setAplAdjustByUnit] = useState({})
+  const [collapseSignal, setCollapseSignal] = useState(0)
   const [gameId, setGameId] = useState('')
   const [timerStart, setTimerStart] = useState(null)
   const [timerNow, setTimerNow] = useState(Date.now())
@@ -1045,6 +1046,17 @@ function Game() {
 
   const handleNextTp = () => {
     resetStates()
+    setDetailsOpenByUnit({})
+    setRuleModal(null)
+    setCollapseSignal((prev) => prev + 1)
+    if (menuDrawerRef.current) {
+      menuDrawerRef.current
+        .querySelectorAll('details[open]')
+        .forEach((element) => {
+          element.open = false
+        })
+    }
+    setMenuOpen(false)
     setTpCount((prev) => prev + 1)
   }
 
@@ -1661,6 +1673,7 @@ function Game() {
                       }))
                     }
                     selectedStatuses={selectedStatuses}
+                    collapseSignal={collapseSignal}
                     onStatusChange={(nextStatuses) =>
                       setStatusesByUnit((prev) => ({
                         ...prev,
