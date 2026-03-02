@@ -102,6 +102,7 @@ function UnitCard({
   onLegionaryMarkChange,
   weaponSelection,
   onWeaponSelectionChange,
+  assignedEquipment = [],
   collapseSignal = 0,
   readOnly = false,
 }) {
@@ -567,6 +568,45 @@ function UnitCard({
             ))
           ) : (
             <div className="ability-empty">No special rules.</div>
+          )}
+        </div>
+        <div className="game-abilities">
+          <div className="abilities-title">Equipment</div>
+          {assignedEquipment.length ? (
+            assignedEquipment.map((equipment) => (
+              <details className="ability-row" key={equipment.eqId}>
+                <summary className="ability-name">
+                  <span className="ability-title">{equipment.eqName}</span>
+                </summary>
+                <div className="ability-description">
+                  {String(equipment.description ?? '')
+                    .split('\n')
+                    .map((line, lineIndex, lines) => (
+                      <span key={`${equipment.eqId}-line-${lineIndex}`}>
+                        {tokenizeWeaponRuleText(line).map((token, tokenIndex) =>
+                          token.type === 'rule' && !isRangeRule(token.value) ? (
+                            <button
+                              key={`${equipment.eqId}-token-${lineIndex}-${tokenIndex}`}
+                              type="button"
+                              className="weapon-rule weapon-rule-button"
+                              onClick={() => setRuleModal(token.ruleName)}
+                            >
+                              {token.value}
+                            </button>
+                          ) : (
+                            <span key={`${equipment.eqId}-token-${lineIndex}-${tokenIndex}`}>
+                              {token.value}
+                            </span>
+                          ),
+                        )}
+                        {lineIndex < lines.length - 1 ? <br /> : null}
+                      </span>
+                    ))}
+                </div>
+              </details>
+            ))
+          ) : (
+            <div className="ability-empty">No equipment assigned.</div>
           )}
         </div>
       </div>

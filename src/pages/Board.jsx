@@ -435,9 +435,9 @@ function Board({
         const getRoomPloys = (id) => {
           if (!roomCode || !id) return []
           const baseKey = `kt-room-player-strat-ploys-${roomCode}-${id}`
-          const stored =
-            (activeGameId && localStorage.getItem(`${baseKey}-${activeGameId}`)) ||
-            localStorage.getItem(baseKey)
+          const stored = activeGameId
+            ? localStorage.getItem(`${baseKey}-${activeGameId}`)
+            : localStorage.getItem(baseKey)
           return parseRoomPloys(stored)
         }
         const playerPloysId = isMapUser
@@ -488,10 +488,18 @@ function Board({
         setPlayerAssignedZone(resolveTeamZone(playerTeamId))
         setOpponentAssignedZone(resolveTeamZone(opponentTeamId))
         const playerStored = playerTeamId
-          ? localStorage.getItem(`kt-strat-ploys-active-${playerTeamId}`)
+          ? activeGameId
+            ? localStorage.getItem(
+                `kt-strat-ploys-active-${playerTeamId}-${activeGameId}`,
+              )
+            : localStorage.getItem(`kt-strat-ploys-active-${playerTeamId}`)
           : ''
         const opponentStored = opponentTeamId
-          ? localStorage.getItem(`kt-strat-ploys-active-${opponentTeamId}`)
+          ? activeGameId
+            ? localStorage.getItem(
+                `kt-strat-ploys-active-${opponentTeamId}-${activeGameId}`,
+              )
+            : localStorage.getItem(`kt-strat-ploys-active-${opponentTeamId}`)
           : ''
         const playerRoomPloys = playerPloysId ? getRoomPloys(playerPloysId) : []
         const opponentRoomPloys = opponentPloysId
@@ -563,29 +571,29 @@ function Board({
         )
         const getRoomTeamId = (id) => {
           if (!roomCode || !id) return ''
-          return (
-            (activeGameId &&
+          if (activeGameId) {
+            return (
               localStorage.getItem(
                 `kt-room-player-killteam-${roomCode}-${id}-${activeGameId}`,
-              )) ||
-            localStorage.getItem(`kt-room-player-killteam-${roomCode}-${id}`) ||
-            ''
-          )
+              ) || ''
+            )
+          }
+          return localStorage.getItem(`kt-room-player-killteam-${roomCode}-${id}`) || ''
         }
         const getRoomSelectedUnits = (id) => {
           if (!roomCode || !id) return []
           const baseKey = `kt-room-player-selected-units-${roomCode}-${id}`
-          const stored =
-            (activeGameId && localStorage.getItem(`${baseKey}-${activeGameId}`)) ||
-            localStorage.getItem(baseKey)
+          const stored = activeGameId
+            ? localStorage.getItem(`${baseKey}-${activeGameId}`)
+            : localStorage.getItem(baseKey)
           return parseRoomSelectedUnits(stored)
         }
         const getRoomDeadUnits = (id) => {
           if (!roomCode || !id) return {}
           const baseKey = `kt-room-player-dead-units-${roomCode}-${id}`
-          const stored =
-            (activeGameId && localStorage.getItem(`${baseKey}-${activeGameId}`)) ||
-            localStorage.getItem(baseKey)
+          const stored = activeGameId
+            ? localStorage.getItem(`${baseKey}-${activeGameId}`)
+            : localStorage.getItem(baseKey)
           return parseRoomDeadUnits(stored)
         }
         const getGameDeadUnits = (teamId) => {
@@ -618,9 +626,10 @@ function Board({
         let opponentDeadUnits = {}
 
         if (roomCode && playerId) {
-          const opponentStored = localStorage.getItem(
-            `kt-opponent-${roomCode}-${playerId}`,
-          )
+          const scopedOpponentKey = activeGameId
+            ? `kt-opponent-${roomCode}-${playerId}-${activeGameId}`
+            : `kt-opponent-${roomCode}-${playerId}`
+          const opponentStored = localStorage.getItem(scopedOpponentKey)
           if (opponentStored) {
             const opponentParsed = JSON.parse(opponentStored)
             opponentTeamId = opponentParsed?.state?.killteamId || opponentTeamId
@@ -635,9 +644,9 @@ function Board({
           }
         }
 
-        const playerSelectedUnits =
-          (playerTeamId && selectedUnitsByTeam[playerTeamId]) ||
-          getRoomSelectedUnits(playerRoomId)
+        const playerSelectedUnits = roomCode
+          ? getRoomSelectedUnits(playerRoomId)
+          : (playerTeamId && selectedUnitsByTeam[playerTeamId]) || []
 
         const resolvedOpponentSelectedUnits =
           opponentSelectedUnits.length
@@ -2307,6 +2316,46 @@ function Board({
     setArrangementIndex((prev) => (prev + 1) % mapArrangements.length)
   }
 
+  const toggleToolMode = (mode) => {
+    setToolMode((prev) => (prev === mode ? 'none' : mode))
+  }
+
+  const clearActiveTool = () => {
+    window.dispatchEvent(new CustomEvent('kt-clear-tools'))
+  }
+
+  useEffect(() => {
+    const isEditableTarget = (target) => {
+      if (!target) return false
+      if (target.isContentEditable) return true
+      const tagName = target.tagName
+      return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT'
+    }
+
+    const cycleOrder = ['none', 'sight', 'measure', 'fov']
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !isEditableTarget(event.target)) {
+        event.preventDefault()
+        window.dispatchEvent(new CustomEvent('kt-clear-tools'))
+        setToolMode('none')
+        return
+      }
+      if (event.key !== 'Shift' || event.repeat || isEditableTarget(event.target)) {
+        return
+      }
+      event.preventDefault()
+      setToolMode((prev) => {
+        const index = cycleOrder.indexOf(prev)
+        const nextIndex = index >= 0 ? (index + 1) % cycleOrder.length : 1
+        return cycleOrder[nextIndex]
+      })
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const transformPoint = ([x, y], placement) => {
     const offsetX = placement?.x || 0
     const offsetY = placement?.y || 0
@@ -2423,7 +2472,47 @@ function Board({
 
   return (
     <div className="board-view">
-      <div className="board-toolbar" />
+      <div className="board-toolbar">
+        <button
+          type="button"
+          className="board-arrangement-button"
+          onClick={advanceArrangement}
+          disabled={!mapArrangements.length}
+        >
+          Next Setup
+        </button>
+        <div className="board-toggle" role="group" aria-label="Measuring tools">
+          <button
+            type="button"
+            className={`board-toggle-button${toolMode === 'sight' ? ' is-active' : ''}`}
+            onClick={() => toggleToolMode('sight')}
+          >
+            Sight
+          </button>
+          <button
+            type="button"
+            className={`board-toggle-button${toolMode === 'measure' ? ' is-active' : ''}`}
+            onClick={() => toggleToolMode('measure')}
+          >
+            Measure
+          </button>
+          <button
+            type="button"
+            className={`board-toggle-button${toolMode === 'fov' ? ' is-active' : ''}`}
+            onClick={() => toggleToolMode('fov')}
+          >
+            FoV
+          </button>
+        </div>
+        <button
+          type="button"
+          className="board-arrangement-button"
+          onClick={clearActiveTool}
+          disabled={toolMode === 'none'}
+        >
+          Clear Tool
+        </button>
+      </div>
       <div
         ref={boardSurfaceRef}
         className="board-surface"

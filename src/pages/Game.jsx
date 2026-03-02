@@ -180,6 +180,19 @@ const parseRules = (wrValue) => {
     .filter(Boolean)
 }
 
+const addWeaponRule = (wrValue, ruleLabel) => {
+  if (!ruleLabel) return wrValue
+  if (!wrValue || wrValue === '—') return ruleLabel
+  const rules = wrValue
+    .split(',')
+    .map((rule) => rule.trim())
+    .filter(Boolean)
+  if (rules.some((rule) => rule.toLowerCase() === ruleLabel.toLowerCase())) {
+    return wrValue
+  }
+  return `${wrValue}, ${ruleLabel}`
+}
+
 const formatCostLabel = (item) => {
   if (!item) return null
   if (item.AP != null) return `${item.AP}AP`
@@ -189,6 +202,86 @@ const formatCostLabel = (item) => {
 
 const isLegionaryUnit = (opType) =>
   /\bLEGIONARY\b/i.test(opType?.keywords ?? '')
+
+const isPlasmaKnifeWeapon = (weapon) =>
+  /plasma\s*knife/i.test(String(weapon?.wepName ?? ''))
+
+const isFistsWeapon = (weapon) =>
+  /^fists$/i.test(String(weapon?.wepName ?? '').trim())
+
+const HERNKYN_BOLT_SHELL_IDS = new Set(['VOT-HKY-FSBS', 'VOT-HKY-SBS'])
+const HERNKYN_KV_UNDERSUIT_IDS = new Set(['VOT-HKY-KVCU'])
+
+const isHernkynBoltShellEquipment = (equipment) =>
+  HERNKYN_BOLT_SHELL_IDS.has(String(equipment?.eqId ?? '')) ||
+  /bolt\s*shell/i.test(String(equipment?.eqName ?? ''))
+
+const isHernkynKvUndersuitEquipment = (equipment) =>
+  HERNKYN_KV_UNDERSUIT_IDS.has(String(equipment?.eqId ?? '')) ||
+  /kv[\s-]*ceramide\s*undersuit/i.test(String(equipment?.eqName ?? ''))
+
+const unitHasBoltShotgun = (unit) =>
+  (unit?.opType?.weapons ?? []).some((weapon) =>
+    /bolt\s*shotgun/i.test(String(weapon?.wepName ?? '')),
+  )
+
+const buildAssignedEquipmentForUnit = ({ unit, selectedEquipment, killteamId }) => {
+  if (killteamId !== 'VOT-HKY') return []
+  const hasBoltShotgun = unitHasBoltShotgun(unit)
+  return (selectedEquipment ?? []).filter((equipment) => {
+    if (isHernkynKvUndersuitEquipment(equipment)) return true
+    if (isHernkynBoltShellEquipment(equipment)) return hasBoltShotgun
+    return false
+  })
+}
+
+const buildEquipmentWeapon = (equipment, weaponEffect) => {
+  const wepId = `${equipment.eqId}-plasma-knife`
+  return {
+    wepId,
+    wepName: weaponEffect.name || 'Plasma Knife',
+    wepType: weaponEffect.range || 'M',
+    profiles: [
+      {
+        wepprofileId: `${wepId}-0`,
+        wepId,
+        ATK: weaponEffect.ATK,
+        HIT: weaponEffect.HIT,
+        DMG: weaponEffect.DMG,
+        WR: weaponEffect.WR,
+      },
+    ],
+  }
+}
+
+const applyYaegirPlasmaKnifeEquipment = (weapons, equipmentWeapon) => {
+  if (!equipmentWeapon) return weapons
+  const sourceWeapons = Array.isArray(weapons) ? weapons : []
+  const hasPlasmaKnife = sourceWeapons.some((weapon) => isPlasmaKnifeWeapon(weapon))
+
+  if (hasPlasmaKnife) {
+    return sourceWeapons.map((weapon) => {
+      if (!isPlasmaKnifeWeapon(weapon)) return weapon
+      const profiles = (weapon.profiles ?? []).map((profile) => ({
+        ...profile,
+        WR: addWeaponRule(profile.WR, 'Balanced'),
+      }))
+      return {
+        ...weapon,
+        profiles,
+      }
+    })
+  }
+
+  const fistsIndex = sourceWeapons.findIndex((weapon) => isFistsWeapon(weapon))
+  if (fistsIndex >= 0) {
+    return sourceWeapons.map((weapon, index) =>
+      index === fistsIndex ? equipmentWeapon : weapon,
+    )
+  }
+
+  return [...sourceWeapons, equipmentWeapon]
+}
 
 function Game() {
   const navigate = useNavigate()
@@ -237,8 +330,14 @@ function Game() {
   const hasHydratedRef = useRef(false)
   const hydratedKillteamRef = useRef(null)
   const opponentStorageKey = useMemo(
-    () => (roomCode && playerId ? `kt-opponent-${roomCode}-${playerId}` : null),
-    [roomCode, playerId],
+    () => {
+      if (!roomCode || !playerId) return null
+      const activeGameId = gameId || localStorage.getItem('kt-game-id') || ''
+      return activeGameId
+        ? `kt-opponent-${roomCode}-${playerId}-${activeGameId}`
+        : `kt-opponent-${roomCode}-${playerId}`
+    },
+    [roomCode, playerId, gameId],
   )
   const selectedTacOp = killteamId ? selectedTacOpsByTeam[killteamId] : null
   const selectedPrimaryOp = killteamId
@@ -311,7 +410,10 @@ function Game() {
           key={`rule-token-${tokenIndex}`}
           type="button"
           className="weapon-rule weapon-rule-button"
-          onClick={() => onRuleClick(token.ruleName)}
+          onClick={(event) => {
+            event.stopPropagation()
+            onRuleClick(token.ruleName)
+          }}
         >
           {token.value}
         </button>
@@ -363,6 +465,15 @@ function Game() {
       localStorage.removeItem(storageKey)
     }
     localStorage.removeItem(`kt-strat-ploys-active-${killteamId}`)
+    const stratPloyPrefix = `kt-strat-ploys-active-${killteamId}-`
+    const stratPloyKeysToRemove = []
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index)
+      if (key && key.startsWith(stratPloyPrefix)) {
+        stratPloyKeysToRemove.push(key)
+      }
+    }
+    stratPloyKeysToRemove.forEach((key) => localStorage.removeItem(key))
     localStorage.removeItem('kt-drop-zone')
     localStorage.removeItem('kt-drop-zone-opponent')
     window.dispatchEvent(new CustomEvent('kt-dropzone-update'))
@@ -599,6 +710,18 @@ function Game() {
       ),
     [killteam, selectedEquipmentIds],
   )
+  const yaegirPlasmaKnifeEquipmentWeapon = useMemo(() => {
+    if (killteamId !== 'VOT-HKY') return null
+    for (const equipment of selectedEquipment) {
+      const weaponRows = parseEquipmentWeaponEffects(equipment.effects)
+      const plasmaKnifeRow = weaponRows.find((row) =>
+        /plasma\s*knife/i.test(String(row.name ?? '')),
+      )
+      if (!plasmaKnifeRow) continue
+      return buildEquipmentWeapon(equipment, plasmaKnifeRow)
+    }
+    return null
+  }, [killteamId, selectedEquipment])
   const getStratOpsForTp = (tp, teamId) =>
     stratOpsByTp[tp]?.[teamId] ?? []
   const ploys = killteam.ploys ?? []
@@ -646,20 +769,33 @@ function Game() {
     .filter((unit) => selectedUnits.has(unit.key))
     .map((unit) => {
       const selection = selectedWeaponsByUnit[unit.key]
-      if (!Array.isArray(selection)) return unit
-      const selectedSet = new Set(selection)
-      const filteredWeapons = (unit.opType.weapons ?? []).filter(
-        (weapon, weaponIndex) =>
-          selectedSet.has(
-            weapon.wepId ?? `${weapon.wepName ?? 'weapon'}-${weaponIndex}`,
-          ),
-      )
+      const selectedSet = Array.isArray(selection) ? new Set(selection) : null
+      const baseWeapons = selectedSet
+        ? (unit.opType.weapons ?? []).filter(
+            (weapon, weaponIndex) =>
+              selectedSet.has(
+                weapon.wepId ?? `${weapon.wepName ?? 'weapon'}-${weaponIndex}`,
+              ),
+          )
+        : (unit.opType.weapons ?? [])
+      const equipmentAdjustedWeapons =
+        killteamId === 'VOT-HKY'
+          ? applyYaegirPlasmaKnifeEquipment(
+              baseWeapons,
+              yaegirPlasmaKnifeEquipmentWeapon,
+            )
+          : baseWeapons
       return {
         ...unit,
         opType: {
           ...unit.opType,
-          weapons: filteredWeapons,
+          weapons: equipmentAdjustedWeapons,
         },
+        assignedEquipment: buildAssignedEquipmentForUnit({
+          unit,
+          selectedEquipment,
+          killteamId,
+        }),
       }
     })
   const legionaryMarkByUnit = legionaryMarksByTeam[killteamId] ?? {}
@@ -1096,13 +1232,16 @@ function Game() {
   useEffect(() => {
     if (!killteamId) return
     try {
-      const storageKey = `kt-strat-ploys-active-${killteamId}`
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify({ tp: tpCount, ploys: activeStratPloys }),
-      )
+      const activeGameId = gameId || localStorage.getItem('kt-game-id') || ''
+      const payload = JSON.stringify({ tp: tpCount, ploys: activeStratPloys })
+      localStorage.setItem(`kt-strat-ploys-active-${killteamId}`, payload)
+      if (activeGameId) {
+        localStorage.setItem(
+          `kt-strat-ploys-active-${killteamId}-${activeGameId}`,
+          payload,
+        )
+      }
       if (roomCode && playerId) {
-        const activeGameId = gameId || localStorage.getItem('kt-game-id') || ''
         const roomKey = `kt-room-player-strat-ploys-${roomCode}-${playerId}`
         localStorage.setItem(roomKey, JSON.stringify(activeStratPloys))
         if (activeGameId) {
@@ -1561,15 +1700,22 @@ function Game() {
                 <div className="game-stratops-list">
                   {stratPloys.length ? (
                     stratPloys.map((ploy) => (
-                      <button
-                        type="button"
+                      <div
                         key={ploy.ployId}
+                        role="button"
+                        tabIndex={0}
                         className={`game-stratops-item${
                           getStratOpsForTp(tpCount, killteamId).includes(ploy.ployId)
                             ? ' is-selected'
                             : ''
                         }`}
                         onClick={() => toggleStratOp(tpCount, killteamId, ploy.ployId)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            toggleStratOp(tpCount, killteamId, ploy.ployId)
+                          }
+                        }}
                       >
                         <div className="game-stratops-item-header">
                           <span className="game-stratops-item-title">
@@ -1589,7 +1735,7 @@ function Game() {
                               </span>
                             ))}
                         </div>
-                      </button>
+                      </div>
                     ))
                   ) : (
                     <div className="game-stratops-empty">No strat ploys.</div>
@@ -1666,6 +1812,7 @@ function Game() {
                         : undefined
                     }
                     stance={stance}
+                    assignedEquipment={orderedUnits[index].assignedEquipment ?? []}
                     onStanceChange={(nextStance) =>
                       setStanceByUnit((prev) => ({
                         ...prev,
