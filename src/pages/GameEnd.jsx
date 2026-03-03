@@ -1,7 +1,15 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { useSelection } from '../state/SelectionContext.jsx'
 import KillOp from '../components/KillOp.jsx'
+import { resolveWsUrl } from '../state/wsUrl.js'
+import {
+  getGameId,
+  getPlayerId,
+  getPlayerName,
+  getRoomCode,
+  writeFinalResult,
+} from '../state/finalResults.js'
 import './GameEnd.css'
 
 const scoreRows = [
@@ -17,7 +25,10 @@ const primarySourceByIndex = {
   '03': 'tacOp',
 }
 
+const WS_URL = resolveWsUrl()
+
 function GameEnd() {
+  const navigate = useNavigate()
   const { selectedTacOpsByTeam, selectedPrimaryOpsByTeam } = useSelection()
   const storedKillteamId =
     typeof window !== 'undefined'
@@ -95,6 +106,64 @@ function GameEnd() {
       ...prev,
       [key]: Math.min(6, Math.max(0, (prev[key] ?? 0) + delta)),
     }))
+  }
+
+  const handleImmortaliseResults = () => {
+    const roomCode = getRoomCode()
+    const playerId = getPlayerId()
+    const gameId = getGameId()
+    const playerName = getPlayerName()
+
+    const resultPayload = {
+      playerName,
+      scores: {
+        ...scores,
+        primaryOp: computedPrimaryOp,
+      },
+      totalVp,
+      lockedAt: Date.now(),
+    }
+
+    if (roomCode && playerId) {
+      try {
+        writeFinalResult({
+          roomCode,
+          playerId,
+          gameId,
+          result: resultPayload,
+        })
+      } catch (error) {
+        console.warn('Failed to store final results.', error)
+      }
+
+      try {
+        const socket = new WebSocket(WS_URL)
+        socket.addEventListener('open', () => {
+          socket.send(
+            JSON.stringify({
+              type: 'sync_state',
+              code: roomCode,
+              playerId,
+              state: {
+                playerId,
+                finalResults: resultPayload,
+              },
+            }),
+          )
+          setTimeout(() => {
+            try {
+              socket.close()
+            } catch {
+              // no-op
+            }
+          }, 150)
+        })
+      } catch (error) {
+        console.warn('Failed to sync final results.', error)
+      }
+    }
+
+    navigate('/results')
   }
 
   const renderPreview = (key, label) => {
@@ -194,9 +263,13 @@ function GameEnd() {
                 <span className="game-end-total-value">{totalVp}</span>
               </div>
             </div>
-            <Link className="game-end-next" to="/">
+            <button
+              type="button"
+              className="game-end-next"
+              onClick={handleImmortaliseResults}
+            >
               Emortalize results?
-            </Link>
+            </button>
           </div>
         </section>
       </main>

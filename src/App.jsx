@@ -13,6 +13,7 @@ import Scouting from './pages/Scouting.jsx'
 import SelectPrimaryOp from './pages/SelectPrimaryOp.jsx'
 import GameEnd from './pages/GameEnd.jsx'
 import Game from './pages/Game.jsx'
+import Results from './pages/Results.jsx'
 import { SelectionProvider } from './state/SelectionContext.jsx'
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
         <Route path="/scouting" element={<Scouting />} />
         <Route path="/select-primary-op" element={<SelectPrimaryOp />} />
         <Route path="/game-end" element={<GameEnd />} />
+        <Route path="/results" element={<Results />} />
         <Route path="/game/:killteamId" element={<Game />} />
       </Routes>
     </SelectionProvider>
