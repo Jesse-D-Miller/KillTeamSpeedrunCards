@@ -980,18 +980,29 @@ function Board({
   )
 
   const renderTacOpCard = (tacOpCard, isRevealed) => {
-    const hasTacCard = Boolean(tacOpCard?.src)
-    const imageSrc = hasTacCard
-      ? isRevealed
-        ? tacOpCard.src
-        : HIDDEN_TAC_OP_SRC
-      : HIDDEN_TAC_OP_SRC
-    const altText = hasTacCard && isRevealed
+    const revealedImageSrc =
+      tacOpCard?.src ||
+      tacOpCard?.imageSrc ||
+      tacOpCard?.image ||
+      tacOpCard?.cardSrc ||
+      ''
+    const hasTacCard = Boolean(revealedImageSrc)
+    const revealedSrc = hasTacCard ? revealedImageSrc : HIDDEN_TAC_OP_SRC
+    const revealedAltText = hasTacCard
       ? tacOpCard.label || 'Selected Tac Op'
       : 'Hidden Tac Op'
     return (
-      <div className="board-side__tacop-card">
-        <img src={imageSrc} alt={altText} loading="lazy" />
+      <div className="board-side__tacop-shell">
+        <div className={`board-side__tacop-card${isRevealed ? ' is-revealed' : ''}`}>
+          <div className="board-side__tacop-flipper">
+            <div className="board-side__tacop-face board-side__tacop-face--front">
+              <img src={HIDDEN_TAC_OP_SRC} alt="Hidden Tac Op" loading="lazy" />
+            </div>
+            <div className="board-side__tacop-face board-side__tacop-face--back">
+              <img src={revealedSrc} alt={revealedAltText} loading="lazy" />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -2749,10 +2760,23 @@ function Board({
                 y2={board.height / 2}
               />
               {(activeArrangement?.objectives ?? []).map((objective) => {
-                const radius = objective.radius ?? objectiveDefaultRadius
+                const baseRadius = objective.radius ?? objectiveDefaultRadius
+                const radius = baseRadius * 1.5
+                const outerMarkerRadius = radius + 1
                 return (
                   <g key={objective.id} className="board-objective">
-                    <circle cx={objective.x} cy={objective.y} r={radius} />
+                    <circle
+                      className="board-objective-range"
+                      cx={objective.x}
+                      cy={objective.y}
+                      r={outerMarkerRadius}
+                    />
+                    <circle
+                      className="board-objective-core"
+                      cx={objective.x}
+                      cy={objective.y}
+                      r={radius}
+                    />
                     <line
                       className="board-objective-slice"
                       x1={objective.x - radius}

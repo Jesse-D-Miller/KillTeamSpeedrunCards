@@ -189,8 +189,8 @@
   overflow: hidden;
 }
 
-.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-card,
-.board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-shell,
+.board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-shell {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -204,11 +204,11 @@
   transform-origin: center;
 }
 
-.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-shell {
   transform: translate(-50%, -50%) rotate(90deg);
 }
 
-.board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+.board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-shell {
   transform: translate(-50%, -50%) rotate(-90deg);
 }
 
@@ -319,7 +319,7 @@
   overflow: hidden;
 }
 
-.board-op-group.is-map-02.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+.board-op-group.is-map-02.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-shell {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -398,7 +398,7 @@
   overflow: hidden;
 }
 
-.board-op-group.is-map-02.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+.board-op-group.is-map-02.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-shell {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -876,10 +876,17 @@
 }
 
 
-.board-objective circle {
+.board-objective-core {
   fill: rgba(220, 60, 60, 0.9);
   stroke: rgba(0, 0, 0, 0.95);
   stroke-width: 0.08;
+}
+
+.board-objective-range {
+  fill: none;
+  stroke: rgba(220, 60, 60, 0.95);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
 }
 
 .board-objective-slice {
@@ -988,6 +995,7 @@
   text-shadow: none;
   padding: 0;
   overflow: hidden;
+  perspective: 1200px;
 }
 
 .board-side__placeholder--cat.is-filled {
@@ -1126,8 +1134,8 @@
   transform: none;
 }
 
-.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-card,
-.board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-shell,
+.board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-shell {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -1141,11 +1149,11 @@
   transform-origin: center;
 }
 
-.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-shell {
   transform: translate(-50%, -50%) rotate(90deg);
 }
 
-.board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+.board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-shell {
   transform: translate(-50%, -50%) rotate(-90deg);
 }
 
