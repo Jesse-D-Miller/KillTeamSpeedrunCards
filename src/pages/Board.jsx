@@ -872,14 +872,20 @@ function Board({
           }
         }
 
-        const playerSelectedUnits = roomCode
+        const roomPlayerSelectedUnits = roomCode
           ? getRoomSelectedUnits(playerRoomId)
+          : []
+        const playerSelectedUnits = roomPlayerSelectedUnits.length
+          ? roomPlayerSelectedUnits
           : (playerTeamId && selectedUnitsByTeam[playerTeamId]) || []
 
+        const roomOpponentSelectedUnits = getRoomSelectedUnits(opponentRoomId)
         const resolvedOpponentSelectedUnits =
           opponentSelectedUnits.length
             ? opponentSelectedUnits
-            : getRoomSelectedUnits(opponentRoomId)
+            : roomOpponentSelectedUnits.length
+              ? roomOpponentSelectedUnits
+              : (opponentTeamId && selectedUnitsByTeam[opponentTeamId]) || []
         const gamePlayerDeadUnits = getGameDeadUnits(playerTeamId)
         const playerDeadUnits = Object.keys(gamePlayerDeadUnits).length
           ? gamePlayerDeadUnits
@@ -905,9 +911,11 @@ function Board({
     const handleSelectionUpdate = () => readKillOpCounts()
     window.addEventListener('storage', handleSelectionUpdate)
     window.addEventListener('kt-strat-ploys-update', handleSelectionUpdate)
+    window.addEventListener('kt-killop-update', handleSelectionUpdate)
     return () => {
       window.removeEventListener('storage', handleSelectionUpdate)
       window.removeEventListener('kt-strat-ploys-update', handleSelectionUpdate)
+      window.removeEventListener('kt-killop-update', handleSelectionUpdate)
     }
   }, [])
 

@@ -409,7 +409,7 @@ function Game() {
   const [ruleModal, setRuleModal] = useState(null)
   const [isTacOpRevealed, setIsTacOpRevealed] = useState(false)
   const [tpCount, setTpCount] = useState(1)
-  const [cpCount, setCpCount] = useState(2)
+  const [cpCount, setCpCount] = useState(3)
   const [vpCount, setVpCount] = useState(0)
   const [spCount, setSpCount] = useState(0)
   const [stratOpsModalOpen, setStratOpsModalOpen] = useState(true)
@@ -451,6 +451,7 @@ function Game() {
     [ruleModal, ruleDetails],
   )
   const menuDrawerRef = useRef(null)
+  const previousRowByUnitRef = useRef({})
 
   useEffect(() => {
     if (!killteamId) return
@@ -573,7 +574,7 @@ function Game() {
     setStatusesByUnit({})
     setAplAdjustByUnit({})
     setTpCount(1)
-    setCpCount(2)
+    setCpCount(3)
     setVpCount(0)
     setSpCount(0)
     setStratOpsByTp({})
@@ -603,6 +604,34 @@ function Game() {
     hydratedKillteamRef.current = null
     localStorage.setItem(resetKey, gameId)
   }, [killteamId, gameId, setLegionaryMarks, storageKey])
+
+  useEffect(() => {
+    if (!roomCode || !playerId) return
+    try {
+      const activeGameId = gameId || localStorage.getItem('kt-game-id') || ''
+
+      const selectedUnitsBaseKey = `kt-room-player-selected-units-${roomCode}-${playerId}`
+      const selectedUnitsPayload = JSON.stringify(selectedUnitKeys)
+      localStorage.setItem(selectedUnitsBaseKey, selectedUnitsPayload)
+      if (activeGameId) {
+        localStorage.setItem(
+          `${selectedUnitsBaseKey}-${activeGameId}`,
+          selectedUnitsPayload,
+        )
+      }
+
+      const deadUnitsBaseKey = `kt-room-player-dead-units-${roomCode}-${playerId}`
+      const deadUnitsPayload = JSON.stringify(deadUnits)
+      localStorage.setItem(deadUnitsBaseKey, deadUnitsPayload)
+      if (activeGameId) {
+        localStorage.setItem(`${deadUnitsBaseKey}-${activeGameId}`, deadUnitsPayload)
+      }
+
+      window.dispatchEvent(new CustomEvent('kt-killop-update'))
+    } catch (error) {
+      console.warn('Failed to persist room selected/dead units.', error)
+    }
+  }, [roomCode, playerId, gameId, selectedUnitKeys, deadUnits])
 
   useEffect(() => {
     if (!tacOpRevealStorageKey) return
@@ -1369,6 +1398,22 @@ function Game() {
         [key]: nextState,
       }
     })
+
+    setDetailsOpenByUnit((prev) => {
+      const current = prev[key] ?? false
+      const currentState = unitStates[key] ?? 'ready'
+      const nextState =
+        currentState === 'ready'
+          ? 'active'
+          : currentState === 'active'
+            ? 'expended'
+            : 'ready'
+      if (nextState !== 'expended' || !current) return prev
+      return {
+        ...prev,
+        [key]: false,
+      }
+    })
   }
 
   const setDeadState = (key, isDead) => {
@@ -1376,7 +1421,73 @@ function Game() {
       ...prev,
       [key]: isDead,
     }))
+
+    if (isDead) {
+      setDetailsOpenByUnit((prev) => {
+        if (!(prev[key] ?? false)) return prev
+        return {
+          ...prev,
+          [key]: false,
+        }
+      })
+    }
   }
+
+  useEffect(() => {
+    if (!orderedUnits.length) return
+
+    const nextRowByUnit = {}
+    orderedUnits.forEach((unit, index) => {
+      nextRowByUnit[unit.key] = Math.floor(index / 2)
+    })
+
+    setDetailsOpenByUnit((prev) => {
+      const next = { ...prev }
+      let hasChanges = false
+
+      for (let index = 0; index < orderedUnits.length; index += 2) {
+        const firstUnit = orderedUnits[index]
+        const secondUnit = orderedUnits[index + 1]
+        if (!firstUnit || !secondUnit) continue
+
+        const firstKey = firstUnit.key
+        const secondKey = secondUnit.key
+        const rowIndex = Math.floor(index / 2)
+
+        const firstStayed = previousRowByUnitRef.current[firstKey] === rowIndex
+        const secondStayed = previousRowByUnitRef.current[secondKey] === rowIndex
+
+        const firstCurrent = Boolean(prev[firstKey])
+        const secondCurrent = Boolean(prev[secondKey])
+
+        const baseRowState = firstStayed && !secondStayed
+          ? firstCurrent
+          : secondStayed && !firstStayed
+            ? secondCurrent
+            : firstCurrent
+
+        const firstTarget = deadUnits[firstKey] || unitStates[firstKey] === 'expended'
+          ? false
+          : baseRowState
+        const secondTarget = deadUnits[secondKey] || unitStates[secondKey] === 'expended'
+          ? false
+          : baseRowState
+
+        if (firstCurrent !== firstTarget) {
+          next[firstKey] = firstTarget
+          hasChanges = true
+        }
+        if (secondCurrent !== secondTarget) {
+          next[secondKey] = secondTarget
+          hasChanges = true
+        }
+      }
+
+      return hasChanges ? next : prev
+    })
+
+    previousRowByUnitRef.current = nextRowByUnit
+  }, [orderedUnits, deadUnits, unitStates])
 
   const resetStates = () => {
     setUnitStates((prev) => {
