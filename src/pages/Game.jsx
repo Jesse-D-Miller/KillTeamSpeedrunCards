@@ -1006,7 +1006,89 @@ function Game() {
     })
   const legionaryMarkByUnit = legionaryMarksByTeam[killteamId] ?? {}
   const isMultiplayer = Boolean(roomCode)
-  const opponentRenderState = opponentSnapshot ?? opponentState
+  const opponentFallbackState = useMemo(() => {
+    if (!roomCode || !playerId) return null
+
+    try {
+      const activeGameId = gameId || localStorage.getItem('kt-game-id') || ''
+      const storedPlayers = localStorage.getItem(`kt-room-players-${roomCode}`)
+      const roomPlayers = storedPlayers ? JSON.parse(storedPlayers) : []
+      const opponentPlayer = (Array.isArray(roomPlayers) ? roomPlayers : []).find(
+        (player) =>
+          player?.id &&
+          player.id !== playerId &&
+          String(player?.name || '').trim().toUpperCase() !== 'MAP',
+      )
+
+      if (!opponentPlayer?.id) return null
+
+      const opponentId = opponentPlayer.id
+      const opponentName =
+        localStorage.getItem(`kt-room-player-name-${roomCode}-${opponentId}`) ||
+        opponentPlayer.name ||
+        'Opponent'
+
+      const opponentKillteamId =
+        (activeGameId &&
+          localStorage.getItem(
+            `kt-room-player-killteam-${roomCode}-${opponentId}-${activeGameId}`,
+          )) ||
+        localStorage.getItem(`kt-room-player-killteam-${roomCode}-${opponentId}`) ||
+        ''
+
+      const selectedUnitsBaseKey = `kt-room-player-selected-units-${roomCode}-${opponentId}`
+      const selectedUnitsStored = activeGameId
+        ? localStorage.getItem(`${selectedUnitsBaseKey}-${activeGameId}`) ||
+          localStorage.getItem(selectedUnitsBaseKey)
+        : localStorage.getItem(selectedUnitsBaseKey)
+      const selectedUnits = selectedUnitsStored ? JSON.parse(selectedUnitsStored) : []
+
+      const deadUnitsBaseKey = `kt-room-player-dead-units-${roomCode}-${opponentId}`
+      const deadUnitsStored = activeGameId
+        ? localStorage.getItem(`${deadUnitsBaseKey}-${activeGameId}`) ||
+          localStorage.getItem(deadUnitsBaseKey)
+        : localStorage.getItem(deadUnitsBaseKey)
+      const deadUnits =
+        deadUnitsStored && typeof JSON.parse(deadUnitsStored) === 'object'
+          ? JSON.parse(deadUnitsStored)
+          : {}
+
+      return {
+        name: opponentName,
+        playerId: opponentId,
+        killteamId: opponentKillteamId,
+        selectedUnits: Array.isArray(selectedUnits) ? selectedUnits : [],
+        deadUnits,
+      }
+    } catch (error) {
+      console.warn('Failed to derive opponent fallback state.', error)
+      return null
+    }
+  }, [roomCode, playerId, gameId])
+
+  const opponentLiveState = opponentSnapshot ?? opponentState
+  const opponentRenderState = useMemo(() => {
+    if (!opponentFallbackState) return opponentLiveState
+    if (!opponentLiveState) return opponentFallbackState
+
+    return {
+      ...opponentFallbackState,
+      ...opponentLiveState,
+      name: opponentLiveState.name || opponentFallbackState.name,
+      killteamId: opponentLiveState.killteamId || opponentFallbackState.killteamId,
+      selectedUnits:
+        Array.isArray(opponentLiveState.selectedUnits) &&
+        opponentLiveState.selectedUnits.length
+          ? opponentLiveState.selectedUnits
+          : opponentFallbackState.selectedUnits,
+      deadUnits:
+        opponentLiveState.deadUnits &&
+        typeof opponentLiveState.deadUnits === 'object' &&
+        Object.keys(opponentLiveState.deadUnits).length
+          ? opponentLiveState.deadUnits
+          : opponentFallbackState.deadUnits,
+    }
+  }, [opponentLiveState, opponentFallbackState])
   const opponentKillteam = useMemo(() => {
     if (!opponentRenderState?.killteamId) return null
     return getKillteamById(opponentRenderState.killteamId)

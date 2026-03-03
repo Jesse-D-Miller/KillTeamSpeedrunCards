@@ -76,11 +76,16 @@
 }
 
 .game-end-preview-killop .killop {
-  --killop-y-label-width: 15%;
-  --killop-y-values-width: 15%;
-  --killop-grid-width: 70%;
+  --killop-y-label-width: 18%;
+  --killop-y-values-width: 22%;
+  --killop-grid-width: 60%;
   width: 100%;
   height: 100%;
+}
+
+.game-end-preview-killop .killop__axis-col .killop__axis-value {
+  font-size: clamp(0.5rem, 1vw, 0.72rem);
+  line-height: 1;
 }
 
 .game-end-preview-empty {

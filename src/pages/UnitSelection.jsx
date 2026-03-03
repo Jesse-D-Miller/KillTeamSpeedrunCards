@@ -239,6 +239,22 @@ function UnitSelection() {
   }, [wsReady, killteamId, selectedUnitsByTeam])
 
   useEffect(() => {
+    if (!roomCode || !playerId || !killteamId) return
+    try {
+      const activeGameId = localStorage.getItem('kt-game-id') || ''
+      const baseKey = `kt-room-player-selected-units-${roomCode}-${playerId}`
+      const payload = JSON.stringify(selectedUnitsByTeam[killteamId] ?? [])
+      localStorage.setItem(baseKey, payload)
+      if (activeGameId) {
+        localStorage.setItem(`${baseKey}-${activeGameId}`, payload)
+      }
+      window.dispatchEvent(new CustomEvent('kt-killop-update'))
+    } catch (error) {
+      console.warn('Failed to persist room selected units from unit selection.', error)
+    }
+  }, [roomCode, playerId, killteamId, selectedUnitsByTeam])
+
+  useEffect(() => {
     if (!killteamId || didInitRef.current.has(killteamId)) return
     if (selectedUnitsByTeam[killteamId]?.length) {
       didInitRef.current.add(killteamId)
