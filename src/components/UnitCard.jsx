@@ -699,22 +699,6 @@ function UnitCard({
         </div>
       </div>
       <div className="game-card-status">
-        {readOnly ? (
-          <span className={`stance-pill stance-${stance}`}>{stance}</span>
-        ) : (
-          <button
-            type="button"
-            className={`stance-pill stance-${stance}`}
-            onClick={() =>
-              onStanceChange?.(stance === 'engage' ? 'conceal' : 'engage')
-            }
-            aria-label={`Set stance to ${
-              stance === 'engage' ? 'conceal' : 'engage'
-            }`}
-          >
-            {stance}
-          </button>
-        )}
         {isLegionary ? (
           readOnly ? (
             <span

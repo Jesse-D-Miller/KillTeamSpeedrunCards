@@ -797,6 +797,108 @@
   pointer-events: none;
 }
 
+.board-rules-nav {
+  position: absolute;
+  left: 0.12in;
+  top: 0.12in;
+  display: grid;
+  grid-template-columns: auto 25em auto;
+  align-items: stretch;
+  gap: 6px;
+  z-index: 12;
+  pointer-events: none;
+}
+
+.board-rules-overlay {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  width: 25em;
+  min-width: 25em;
+  max-width: 25em;
+  padding: 10px 12px;
+  background: rgba(12, 12, 12, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: rgba(245, 245, 245, 0.95);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.board-rules-nav__arrow {
+  pointer-events: auto;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(12, 12, 12, 0.78);
+  color: rgba(245, 245, 245, 0.95);
+  width: 5em;
+  min-width: 5em;
+  max-width: 5em;
+  padding: 6px 5px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.board-rules-nav__glyph {
+  font-size: 1.35rem;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.board-rules-nav__label {
+  font-size: 0.46rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.board-rules-overlay__section {
+  display: grid;
+  gap: 4px;
+}
+
+.board-rules-overlay__title {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.board-rules-overlay__item {
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+}
+
+.board-rules-overlay__item--list {
+  display: grid;
+  gap: 2px;
+}
+
+.board-rules-overlay__item--list strong {
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.board-rules-overlay__item--list ul {
+  margin: 0;
+  padding-left: 14px;
+  display: grid;
+  gap: 1px;
+}
+
+.board-rules-overlay__item--list li {
+  margin: 0;
+}
+
 .board-wind-canvas {
   position: absolute;
   inset: 0;
@@ -866,6 +968,13 @@
   font-weight: 600;
   text-anchor: start;
   dominant-baseline: hanging;
+  pointer-events: none;
+}
+
+.board-terrain-vantage-label {
+  fill: rgba(235, 235, 235, 0.96);
+  font-weight: 800;
+  letter-spacing: 0.03em;
   pointer-events: none;
 }
 

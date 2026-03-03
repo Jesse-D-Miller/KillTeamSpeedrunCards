@@ -14,6 +14,70 @@ import { resolveWsUrl } from '../state/wsUrl.js'
 import './Board.css'
 
 const HIDDEN_TAC_OP_SRC = '/images/tacOps/hidden-tac-op.png'
+const OBJECTIVE_MARKER_RADIUS_IN = 20 / 25.4
+const MAP_RULE_ENTRIES = [
+  {
+    title: 'Vantage',
+    bullets: [
+      'VANTAGE 2" grants ACCURATE 1 when shooting against operatives with an Engage order.',
+      'VANTAGE 4" grants ACCURATE 2 when shooting against operatives with an Engage order.',
+      'Can target Concealed operatives in Light Cover (they still get cover saves).',
+      'If the target is Concealed and in Cover, they may retain their cover save as a Critical Save, or retain 2 normal saves.',
+    ],
+  },
+  {
+    title: 'Obscured',
+    bullets: [
+      'An operative is obscured if there is intervening HEAVY terrain outside the target’s control range (1").',
+      'The attacker must discard one success instead of retaining it.',
+      'The attacker’s critical successes are retained as normal successes.',
+    ],
+  },
+  {
+    title: 'Assisted',
+    bullets: [
+      'For each additional friendly operative within control range of the target, improve HIT by 1.',
+      'This only applies if that friendly operative is not within control range of another enemy.',
+    ],
+  },
+  {
+    title: 'Cover',
+    bullets: [
+      'In cover if terrain is within control range (1").',
+      'Effect: +1 Cover Save.',
+      'Not in cover if an enemy is within 2".',
+      'Not in cover if, from the attacker’s perspective, a valid sightline can be drawn without crossing intervening terrain.',
+    ],
+  },
+  {
+    title: 'Condensed Stronghold',
+    bullets: [
+      'Applies to weapons with BLAST, TORRENT, and DEVASTATING X".',
+      'The target must be in Stronghold terrain (A/B).',
+      'The target must be on the killzone floor.',
+      'Effect: the weapon gains LETHAL 5+.',
+    ],
+  },
+  {
+    title: 'Garrisoned Stronghold',
+    bullets: [
+      'The retaliating operative must be in a stronghold.',
+      'The opposing operative must not be in a stronghold.',
+      'Effect: the defender resolves attack dice first.',
+    ],
+  },
+  {
+    title: 'Door Fight',
+    bullets: [
+      'COST: 1AP.',
+      'Action type: Fight action.',
+      'Must be in contact with a door.',
+      'Select a target within 2" of the door and on the other side.',
+      'Treat operatives as within control range for the duration of the action.',
+      'Cannot perform this action if within control range of an enemy operative.',
+    ],
+  },
+]
 
 function Board({
   dropZoneSelectionEnabled = false,
@@ -55,6 +119,8 @@ function Board({
         const activeGameId = localStorage.getItem('kt-game-id') || ''
   const boardOverlayRef = useRef(null)
   const [toolMode, setToolMode] = useState('none')
+  const [showMapTooltips, setShowMapTooltips] = useState(true)
+  const [currentRuleIndex, setCurrentRuleIndex] = useState(0)
   const [selectedCardIndex, setSelectedCardIndex] = useState(0)
   const shouldRotateZones = activeMap?.id === 'map_02'
         const isMapUser = storedPlayerName.trim().toUpperCase() === 'MAP'
@@ -160,6 +226,22 @@ function Board({
       )
       return isBombSquig ? total : total + 1
     }, 0)
+  }
+
+  const totalRules = MAP_RULE_ENTRIES.length
+  const currentRule = MAP_RULE_ENTRIES[currentRuleIndex] || MAP_RULE_ENTRIES[0]
+  const previousRuleIndex =
+    (currentRuleIndex - 1 + totalRules) % totalRules
+  const nextRuleIndex = (currentRuleIndex + 1) % totalRules
+  const previousRuleTitle = MAP_RULE_ENTRIES[previousRuleIndex]?.title || ''
+  const nextRuleTitle = MAP_RULE_ENTRIES[nextRuleIndex]?.title || ''
+
+  const goToPreviousRule = () => {
+    setCurrentRuleIndex((prev) => (prev - 1 + totalRules) % totalRules)
+  }
+
+  const goToNextRule = () => {
+    setCurrentRuleIndex((prev) => (prev + 1) % totalRules)
   }
 
   useEffect(() => {
@@ -2537,7 +2619,46 @@ function Board({
       if (event.key === 'Escape' && !isEditableTarget(event.target)) {
         event.preventDefault()
         window.dispatchEvent(new CustomEvent('kt-clear-tools'))
+        if (toolMode === 'measure' || toolMode === 'sight' || toolMode === 'fov') {
+          return
+        }
         setToolMode('none')
+        return
+      }
+      if (
+        event.code === 'Slash' &&
+        !event.repeat &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !isEditableTarget(event.target)
+      ) {
+        event.preventDefault()
+        setShowMapTooltips((prev) => !prev)
+        return
+      }
+      if (
+        !event.repeat &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !isEditableTarget(event.target) &&
+        (event.code === 'Comma' || event.key === ',' || event.key === '<')
+      ) {
+        event.preventDefault()
+        setCurrentRuleIndex((prev) => (prev - 1 + totalRules) % totalRules)
+        return
+      }
+      if (
+        !event.repeat &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !isEditableTarget(event.target) &&
+        (event.code === 'Period' || event.key === '.' || event.key === '>')
+      ) {
+        event.preventDefault()
+        setCurrentRuleIndex((prev) => (prev + 1) % totalRules)
         return
       }
       if (event.key !== 'Shift' || event.repeat || isEditableTarget(event.target)) {
@@ -2553,7 +2674,7 @@ function Board({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [toolMode, totalRules])
 
   const transformPoint = ([x, y], placement) => {
     const offsetX = placement?.x || 0
@@ -2575,6 +2696,48 @@ function Board({
         return `${x},${y}`
       })
       .join(' ')
+
+  const getPolygonCentroid = (points) => {
+    if (!Array.isArray(points) || points.length < 3) return null
+    let signedArea = 0
+    let centroidX = 0
+    let centroidY = 0
+
+    for (let index = 0; index < points.length; index += 1) {
+      const [x0, y0] = points[index]
+      const [x1, y1] = points[(index + 1) % points.length]
+      const cross = x0 * y1 - x1 * y0
+      signedArea += cross
+      centroidX += (x0 + x1) * cross
+      centroidY += (y0 + y1) * cross
+    }
+
+    if (Math.abs(signedArea) < 1e-6) {
+      const total = points.length
+      const average = points.reduce(
+        (accumulator, [x, y]) => {
+          return { x: accumulator.x + x, y: accumulator.y + y }
+        },
+        { x: 0, y: 0 },
+      )
+      return { x: average.x / total, y: average.y / total }
+    }
+
+    const factor = 1 / (3 * signedArea)
+    return {
+      x: centroidX * factor,
+      y: centroidY * factor,
+    }
+  }
+
+  const getVantageText = (piece, areaIndex) => {
+    const source = String(piece?.id || piece?.name || '')
+    const match = source.match(/volkus_([A-D])$/i)
+    if (!match) return null
+    const letter = match[1].toUpperCase()
+    if (letter === 'B' && areaIndex === 1) return 'VANTAGE 4"'
+    return 'VANTAGE 2"'
+  }
 
   const getPieceAreas = (piece) => {
     if (piece?.areas?.length) return piece.areas
@@ -2634,40 +2797,14 @@ function Board({
       console.warn('Failed to store crit op selection.', error)
     }
   }, [selectedCritOpsCard])
-  const map1OpClass =
-    selectedCritOpsCard?.opNumber === 4
-      ? ' is-op-04'
-      : selectedCritOpsCard?.opNumber === 5
-        ? ' is-op-05'
-        : selectedCritOpsCard?.opNumber === 6
-          ? ' is-op-06'
-          : selectedCritOpsCard?.opNumber === 7
-            ? ' is-op-07'
-            : selectedCritOpsCard?.opNumber === 8
-              ? ' is-op-08'
-              : selectedCritOpsCard?.opNumber === 9
-                ? ' is-op-09'
-                : ''
-  const map2OpClass =
-    selectedCritOpsCard?.opNumber === 1
-      ? ' is-op-01'
-      : selectedCritOpsCard?.opNumber === 2
-        ? ' is-op-02'
-        : selectedCritOpsCard?.opNumber === 3
-          ? ' is-op-03'
-          : selectedCritOpsCard?.opNumber === 4
-            ? ' is-op-04'
-            : selectedCritOpsCard?.opNumber === 5
-              ? ' is-op-05'
-              : selectedCritOpsCard?.opNumber === 6
-                ? ' is-op-06'
-                : selectedCritOpsCard?.opNumber === 7
-                  ? ' is-op-07'
-                  : selectedCritOpsCard?.opNumber === 8
-                    ? ' is-op-08'
-                  : selectedCritOpsCard?.opNumber === 9
-                    ? ' is-op-09'
-                    : ''
+  const toOpClass = (opNumber) => {
+    if (!opNumber) return ''
+    const padded = String(opNumber).padStart(2, '0')
+    return ` is-op-${padded}`
+  }
+
+  const map1OpClass = toOpClass(selectedCritOpsCard?.opNumber)
+  const map2OpClass = toOpClass(selectedCritOpsCard?.opNumber)
 
   return (
     <div className="board-view">
@@ -2684,6 +2821,40 @@ function Board({
           ) : null}
           {toolWatermark ? (
             <div className="board-tool-watermark">{toolWatermark}</div>
+          ) : null}
+          {showMapTooltips ? (
+            <div className="board-rules-nav">
+              <button
+                type="button"
+                className="board-rules-nav__arrow board-rules-nav__arrow--prev"
+                onClick={goToPreviousRule}
+                aria-label={`Show previous rule: ${previousRuleTitle}`}
+              >
+                <span className="board-rules-nav__glyph">&lt;</span>
+                <span className="board-rules-nav__label">{previousRuleTitle}</span>
+              </button>
+              <div className="board-rules-overlay">
+                <div className="board-rules-overlay__section">
+                  <div className="board-rules-overlay__item board-rules-overlay__item--list">
+                    <strong>{currentRule.title}</strong>
+                    <ul>
+                      {(currentRule.bullets ?? []).map((bullet) => (
+                        <li key={`${currentRule.title}-${bullet}`}>{bullet}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="board-rules-nav__arrow board-rules-nav__arrow--next"
+                onClick={goToNextRule}
+                aria-label={`Show next rule: ${nextRuleTitle}`}
+              >
+                <span className="board-rules-nav__glyph">&gt;</span>
+                <span className="board-rules-nav__label">{nextRuleTitle}</span>
+              </button>
+            </div>
           ) : null}
           <canvas ref={boardTextureRef} className="board-texture-canvas" />
           <canvas ref={boardWindRef} className="board-wind-canvas" />
@@ -2760,8 +2931,7 @@ function Board({
                 y2={board.height / 2}
               />
               {(activeArrangement?.objectives ?? []).map((objective) => {
-                const baseRadius = objective.radius ?? objectiveDefaultRadius
-                const radius = baseRadius * 1.5
+                const radius = OBJECTIVE_MARKER_RADIUS_IN
                 const outerMarkerRadius = radius + 1
                 return (
                   <g key={objective.id} className="board-objective">
@@ -2807,17 +2977,38 @@ function Board({
                   <g className="board-terrain" key={entry.id || piece.id}>
                     {getPieceAreas(piece)
                       .filter((area) => area?.points?.length)
-                      .map((area, areaIndex) => (
-                        <polygon
-                          key={`${entry.id || piece.id}-area-${areaIndex}`}
-                          className="board-terrain-fill"
-                          points={renderPoints(
-                            area.points,
-                            placement,
-                          )}
-                        />
-                      ))}
-                    {label ? (
+                      .map((area, areaIndex) => {
+                        const centroid = getPolygonCentroid(area.points)
+                        const vantageText = getVantageText(piece, areaIndex)
+                        const transformedCentroid = centroid
+                          ? transformPoint([centroid.x, centroid.y], placement)
+                          : null
+                        return (
+                          <g key={`${entry.id || piece.id}-area-${areaIndex}`}>
+                            <polygon
+                              className="board-terrain-fill"
+                              points={renderPoints(
+                                area.points,
+                                placement,
+                              )}
+                            />
+                            {showMapTooltips && transformedCentroid && vantageText ? (
+                              <text
+                                className="board-terrain-vantage-label"
+                                fontSize={0.26}
+                                x={transformedCentroid[0]}
+                                y={-transformedCentroid[1]}
+                                transform="scale(1,-1)"
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                              >
+                                {vantageText}
+                              </text>
+                            ) : null}
+                          </g>
+                        )
+                      })}
+                    {showMapTooltips && label ? (
                       <text
                         className="board-terrain-label"
                         fontSize={0.375}

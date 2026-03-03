@@ -10,16 +10,6 @@
   height: 100%;
 }
 
-.game-card.stance-engage {
-  border-color: var(--border);
-  box-shadow: var(--shadow-soft), 0 0 0 2px rgba(255, 122, 58, 0.35);
-}
-
-.game-card.stance-conceal {
-  border-color: var(--border);
-  box-shadow: var(--shadow-soft), 0 0 0 2px rgba(90, 167, 255, 0.35);
-}
-
 .game-card.is-dimmed {
   opacity: 0.6;
   filter: grayscale(0.2);
@@ -238,19 +228,6 @@
   margin-top: auto;
 }
 
-.stance-pill {
-  border-radius: 999px;
-  padding: 3px 10px;
-  border: 1px solid transparent;
-  font-size: 0.65rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-weight: 600;
-  cursor: pointer;
-  background: var(--panel-2);
-  color: var(--text);
-}
-
 .legionary-pill {
   border-radius: 999px;
   padding: 6px 12px;
@@ -301,18 +278,6 @@
   background: #1f2329;
   border-color: #6b727a;
   color: #b7bdc6;
-}
-
-.stance-pill.stance-engage {
-  background: color-mix(in srgb, #ff7a3a 25%, transparent);
-  border-color: color-mix(in srgb, #ff7a3a 60%, transparent);
-  color: #ff7a3a;
-}
-
-.stance-pill.stance-conceal {
-  background: color-mix(in srgb, #5aa7ff 25%, transparent);
-  border-color: color-mix(in srgb, #5aa7ff 60%, transparent);
-  color: #5aa7ff;
 }
 
 .status-pill-list {
