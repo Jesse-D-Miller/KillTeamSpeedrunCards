@@ -123,8 +123,27 @@
 }
 
 .board-op-group.is-map-01 {
+  gap: 0.5em;
   height: fit-content;
   align-content: start;
+  justify-items: stretch;
+  grid-template-columns: 220px;
+}
+
+.board-op-group.is-map-01 .board-side__slot--card,
+.board-op-group.is-map-01 .board-side__slot--killop,
+.board-op-group.is-map-01 .board-side__placeholder--tac.is-filled,
+.board-op-group.is-map-01 .board-side__placeholder--cat.is-filled {
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+}
+
+.board-op-group.is-map-01 .board-side__slot--card .board-card-overlay,
+.board-op-group.is-map-01 .board-side__slot--killop .board-killop-overlay {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
 }
 
 .board-op-group .board-side__slot--killop {
@@ -155,8 +174,42 @@
   justify-content: flex-end;
 }
 
+.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled,
 .board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled {
-  transform: rotate(180deg);
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  height: 120px;
+  min-height: 120px;
+  max-height: 120px;
+  aspect-ratio: auto;
+  display: block;
+  transform: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-card,
+.board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+  height: 220px;
+  min-height: 220px;
+  max-height: 220px;
+  aspect-ratio: auto;
+  transform-origin: center;
+}
+
+.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+  transform: translate(-50%, -50%) rotate(-90deg);
 }
 
 .board-op-group.is-map-01 .board-killop-overlay {
@@ -182,6 +235,18 @@
   grid-row: 1;
 }
 
+.board-op-group.is-map-01 .board-side__slot--card .board-side__inner {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  place-items: stretch;
+}
+
+.board-op-group.is-map-01 .board-side__slot--card .critops-card {
+  width: 100%;
+  min-width: 100%;
+  max-width: 100%;
+}
+
 .board-op-group.is-map-01.is-left .board-side__slot--primary {
   grid-row: 3;
 }
@@ -204,6 +269,26 @@
 
 .board-op-group.is-map-01.is-right .board-side__placeholder--cat {
   grid-row: 4;
+}
+
+.board-op-group.is-map-01 .board-side__placeholder--cat.is-filled {
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  height: 220px;
+  min-height: 220px;
+  max-height: 220px;
+}
+
+.board-op-group.is-map-01 .board-side__placeholder--cat.is-filled .board-side__strat-ploys {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.board-op-group.is-map-01.is-right .board-side__placeholder--cat.is-filled .board-side__strat-ploys {
+  transform: rotate(180deg);
+  transform-origin: center;
 }
 
 .board-op-group.is-map-02.is-left .board-side__slot--secondary {
@@ -269,6 +354,28 @@
 
 .board-op-group.is-map-02.is-right .board-side__placeholder--cat {
   grid-row: 1;
+}
+
+.board-op-group.is-map-02.is-right .board-side__placeholder--cat.is-filled {
+  width: 226px;
+  min-width: 226px;
+  max-width: 226px;
+  height: 226px;
+  min-height: 226px;
+  max-height: 226px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  justify-self: end;
+  align-self: start;
+}
+
+.board-op-group.is-map-02.is-right .board-side__placeholder--cat.is-filled .board-side__strat-ploys {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: 100%;
+  margin: 0;
 }
 
 .board-op-group.is-map-02.is-right .board-side__placeholder--tac {
@@ -521,21 +628,23 @@
     ),
     calc(70mm * var(--inch-scale) * 2.4)
   );
-  height: var(--map1-card-height);
-  min-height: var(--map1-card-height);
+  height: fit-content;
+  min-height: 0;
   max-height: none;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .board-card-overlay.is-map-01 .critops-card {
-  height: 100%;
-  min-height: 100%;
+  height: auto;
+  min-height: 0;
   max-height: none;
   overflow: hidden;
 }
 
 .board-card-overlay.is-map-01 .critops-card__body {
   grid-template-rows: auto auto auto;
+  padding-left: 1%;
+  padding-right: 1%;
   padding-bottom: calc(2.5% + 0.5rem);
   overflow: hidden;
 }
@@ -566,6 +675,10 @@
 
 .board-card-overlay.is-map-01.is-op-08 {
   --map1-card-height: calc(var(--card-height) + 2.35in);
+}
+
+.board-card-overlay.is-map-01.is-op-08 .critops-card__body {
+  padding-bottom: calc(2.5% + 0.8rem);
 }
 
 .board-killop-overlay.is-map-01.is-left {
@@ -996,4 +1109,63 @@
   letter-spacing: 0.08em;
   line-height: 1.1;
   text-transform: uppercase;
+}
+
+.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled,
+.board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled {
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  height: 120px;
+  min-height: 120px;
+  max-height: 120px;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
+  transform: none;
+}
+
+.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-card,
+.board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+  height: 220px;
+  min-height: 220px;
+  max-height: 220px;
+  margin: 0;
+  transform-origin: center;
+}
+
+.board-op-group.is-map-01.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.board-op-group.is-map-01.is-right .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+
+.board-op-group.is-map-01 .board-side__placeholder--cat.is-filled {
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+  height: 220px;
+  min-height: 220px;
+  max-height: 220px;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: block;
+}
+
+.board-op-group.is-map-01 .board-side__placeholder--cat.is-filled .board-side__strat-ploys {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: 100%;
+  margin: 0;
 }
