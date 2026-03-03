@@ -203,9 +203,9 @@ function Board({
     const count = selectedUnits.reduce((total, unitKey) => {
       const opTypeId = toOpTypeId(unitKey)
       const opType = opTypeById.get(opTypeId)
-      const isBombSquig = /\bBOMB\s+SQUIG\b/i.test(
-        String(opType?.opTypeName ?? ''),
-      )
+      const isBombSquig =
+        opTypeId === 'ORK-KOM-SQUIG' ||
+        /\bBOMB\s+SQUIG\b/i.test(String(opType?.opTypeName ?? ''))
       return isBombSquig ? total : total + 1
     }, 0)
     if (count < 5 || count > 14) return null
@@ -221,9 +221,9 @@ function Board({
       if (!isDead) return total
       const opTypeId = toOpTypeId(unitKey)
       const opType = opTypeById.get(opTypeId)
-      const isBombSquig = /\bBOMB\s+SQUIG\b/i.test(
-        String(opType?.opTypeName ?? ''),
-      )
+      const isBombSquig =
+        opTypeId === 'ORK-KOM-SQUIG' ||
+        /\bBOMB\s+SQUIG\b/i.test(String(opType?.opTypeName ?? ''))
       if (isBombSquig) return total
       return total + 1
     }, 0)
@@ -813,7 +813,8 @@ function Board({
           if (!roomCode || !id) return []
           const baseKey = `kt-room-player-selected-units-${roomCode}-${id}`
           const stored = activeGameId
-            ? localStorage.getItem(`${baseKey}-${activeGameId}`)
+            ? localStorage.getItem(`${baseKey}-${activeGameId}`) ||
+              localStorage.getItem(baseKey)
             : localStorage.getItem(baseKey)
           return parseRoomSelectedUnits(stored)
         }
@@ -821,7 +822,8 @@ function Board({
           if (!roomCode || !id) return {}
           const baseKey = `kt-room-player-dead-units-${roomCode}-${id}`
           const stored = activeGameId
-            ? localStorage.getItem(`${baseKey}-${activeGameId}`)
+            ? localStorage.getItem(`${baseKey}-${activeGameId}`) ||
+              localStorage.getItem(baseKey)
             : localStorage.getItem(baseKey)
           return parseRoomDeadUnits(stored)
         }
