@@ -218,8 +218,53 @@
   grid-row: 3;
 }
 
+.board-op-group.is-map-02.is-left .board-side__placeholder--tac.is-filled {
+  width: 226px;
+  min-width: 226px;
+  max-width: 226px;
+  height: 120px;
+  min-height: 120px;
+  max-height: 120px;
+  aspect-ratio: auto;
+  display: block;
+  justify-self: start;
+  align-self: start;
+  transform: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.board-op-group.is-map-02.is-left .board-side__placeholder--tac.is-filled .board-side__tacop-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+  height: 226px;
+  min-height: 226px;
+  max-height: 226px;
+  aspect-ratio: auto;
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center;
+}
+
 .board-op-group.is-map-02.is-left .board-side__placeholder--cat {
   grid-row: 4;
+}
+
+.board-op-group.is-map-02.is-left .board-side__placeholder--cat.is-filled {
+  width: 226px;
+  min-width: 226px;
+  max-width: 226px;
+  height: 226px;
+  min-height: 226px;
+  max-height: 226px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  justify-self: end;
+  align-self: start;
 }
 
 .board-op-group.is-map-02.is-right .board-side__placeholder--cat {
@@ -283,7 +328,7 @@
 
 .board-op-group.is-map-02.is-left .board-side__slot--killop {
   justify-self: end !important;
-  width: 100%;
+  width: fit-content;
   display: flex;
   justify-content: flex-end !important;
   align-items: flex-start;
@@ -291,12 +336,7 @@
   height: var(--killop-card-width);
   min-height: var(--killop-card-width);
   max-height: var(--killop-card-width);
-  translate: 0 0;
-}
-
-.board-op-group.is-map-02.is-left .board-side__slot--killop .board-killop-overlay {
-  margin-left: auto;
-  margin-right: 0;
+  translate: -9px 0;
 }
 
 .board-op-group.is-map-02.is-left .board-side__placeholder {
@@ -548,12 +588,6 @@
   margin-bottom: 0;
 }
 
-.board-op-group.is-map-02.is-left .board-killop-overlay,
-.board-op-group.is-map-02.is-right .board-killop-overlay {
-  translate: 0 0;
-}
-
-
 .board-op-group .board-card-overlay,
 .board-op-group .board-killop-overlay {
   position: relative;
@@ -613,14 +647,6 @@
   transform-origin: top left;
   translate: 0 100%;
 }
-
-.board-op-group.is-map-02.is-left .board-side__inner--killop.is-left {
-  translate: 0 0;
-}
-
-
-
-
 
 .board-frame {
   position: relative;
@@ -877,6 +903,7 @@
 
 .board-side__strat-ploys {
   display: grid;
+  grid-template-rows: 18px 1fr;
   gap: 0;
   width: 226px;
   min-width: 226px;
@@ -903,15 +930,20 @@
 }
 
 .board-side__strat-ploys-list {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 3px;
-  padding: 4px 8px 6px;
+  padding: 2px 0 6px;
+  justify-content: flex-start;
+  align-items: stretch;
   overflow: hidden auto;
 }
 
 .board-side__strat-ploys-item {
   display: grid;
   gap: 2px;
+  width: 100%;
+  margin: 0;
   font-size: 0.6rem;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -921,13 +953,14 @@
 .board-side__strat-ploys-text {
   display: grid;
   gap: 2px;
+  width: 100%;
 }
 
 .board-side__strat-ploys-row {
   display: flex;
   justify-content: space-between;
   gap: 6px;
-  margin: 0 3px;
+  margin: 0;
   padding: 1px 6px;
   background: #a61e1e;
   color: #ffffff;
@@ -940,6 +973,10 @@
 }
 
 .board-side__strat-ploys-rule {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 6px;
   font-size: 0.55rem;
   font-weight: 600;
   letter-spacing: 0.01em;

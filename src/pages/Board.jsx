@@ -980,9 +980,13 @@ function Board({
   )
 
   const renderTacOpCard = (tacOpCard, isRevealed) => {
-    if (!tacOpCard?.src) return null
-    const imageSrc = isRevealed ? tacOpCard.src : HIDDEN_TAC_OP_SRC
-    const altText = isRevealed
+    const hasTacCard = Boolean(tacOpCard?.src)
+    const imageSrc = hasTacCard
+      ? isRevealed
+        ? tacOpCard.src
+        : HIDDEN_TAC_OP_SRC
+      : HIDDEN_TAC_OP_SRC
+    const altText = hasTacCard && isRevealed
       ? tacOpCard.label || 'Selected Tac Op'
       : 'Hidden Tac Op'
     return (
