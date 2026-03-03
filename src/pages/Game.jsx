@@ -761,6 +761,33 @@ function Game() {
         }
         return
       }
+      if (message.type === 'sync_state') {
+        const incomingState = message.state || null
+        const incomingPlayerId = message.playerId || incomingState?.playerId || ''
+        if (!incomingState || !incomingPlayerId || incomingPlayerId === playerId) {
+          return
+        }
+
+        setOpponentState(incomingState)
+        setOpponentDebug((prev) => ({
+          ...prev,
+          lastOpponentAt: Date.now(),
+          lastOpponentSource: 'sync_state',
+          lastOpponentSummary: {
+            name: incomingState.name,
+            killteamId: incomingState.killteamId,
+            selectedUnits: incomingState.selectedUnits?.length || 0,
+          },
+        }))
+
+        if (opponentStorageKey) {
+          localStorage.setItem(
+            opponentStorageKey,
+            JSON.stringify({ state: incomingState, at: Date.now() }),
+          )
+        }
+        return
+      }
       if (message.type === 'opponent_state') {
         setOpponentState(message.state)
         setOpponentDebug((prev) => ({

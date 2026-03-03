@@ -11,6 +11,7 @@ import SightLine from '../components/SightLine'
 import MovementMeasure from '../components/MovementMeasure'
 import FieldOfVision from '../components/FieldOfVision'
 import { resolveWsUrl } from '../state/wsUrl.js'
+import { deriveDeadCount, deriveKillOpCount } from '../state/killOpCounts.js'
 import './Board.css'
 
 const HIDDEN_TAC_OP_SRC = '/images/tacOps/hidden-tac-op.png'
@@ -186,48 +187,6 @@ function Board({
   )
 
   const toPercent = (value, max) => `${(value / max) * 100}%`
-  const toOpTypeId = (unitKey) => {
-    if (typeof unitKey !== 'string') return ''
-    const lastDashIndex = unitKey.lastIndexOf('-')
-    if (lastDashIndex <= 0) return unitKey
-    return unitKey.slice(0, lastDashIndex)
-  }
-  const deriveKillOpCount = (killteamId, selectedUnits) => {
-    if (!killteamId || !Array.isArray(selectedUnits) || !selectedUnits.length) {
-      return null
-    }
-    const killteam = getKillteamById(killteamId)
-    const opTypeById = new Map(
-      (killteam?.opTypes ?? []).map((opType) => [opType.opTypeId, opType]),
-    )
-    const count = selectedUnits.reduce((total, unitKey) => {
-      const opTypeId = toOpTypeId(unitKey)
-      const opType = opTypeById.get(opTypeId)
-      const isBombSquig =
-        opTypeId === 'ORK-KOM-SQUIG' ||
-        /\bBOMB\s+SQUIG\b/i.test(String(opType?.opTypeName ?? ''))
-      return isBombSquig ? total : total + 1
-    }, 0)
-    if (count < 5 || count > 14) return null
-    return count
-  }
-  const deriveDeadCount = (killteamId, deadUnits) => {
-    if (!killteamId || !deadUnits || typeof deadUnits !== 'object') return 0
-    const killteam = getKillteamById(killteamId)
-    const opTypeById = new Map(
-      (killteam?.opTypes ?? []).map((opType) => [opType.opTypeId, opType]),
-    )
-    return Object.entries(deadUnits).reduce((total, [unitKey, isDead]) => {
-      if (!isDead) return total
-      const opTypeId = toOpTypeId(unitKey)
-      const opType = opTypeById.get(opTypeId)
-      const isBombSquig =
-        opTypeId === 'ORK-KOM-SQUIG' ||
-        /\bBOMB\s+SQUIG\b/i.test(String(opType?.opTypeName ?? ''))
-      if (isBombSquig) return total
-      return total + 1
-    }, 0)
-  }
 
   const totalRules = MAP_RULE_ENTRIES.length
   const currentRule = MAP_RULE_ENTRIES[currentRuleIndex] || MAP_RULE_ENTRIES[0]
@@ -777,6 +736,14 @@ function Board({
           const parsed = JSON.parse(payload)
           return parsed && typeof parsed === 'object' ? parsed : {}
         }
+        const pickLargestUnitList = (...lists) =>
+          lists.reduce(
+            (best, candidate) =>
+              Array.isArray(candidate) && candidate.length > best.length
+                ? candidate
+                : best,
+            [],
+          )
         const storedPlayerName =
           sessionStorage.getItem('kt-player-name') ||
           localStorage.getItem('kt-player-name') ||
@@ -839,6 +806,16 @@ function Board({
             ? parsed.deadUnits
             : {}
         }
+        const getGameSelectedUnits = (teamId) => {
+          if (!teamId) return []
+          const gameKey = activeGameId
+            ? `kt-game-${teamId}-${activeGameId}`
+            : `kt-game-${teamId}`
+          const stored = localStorage.getItem(gameKey)
+          if (!stored) return []
+          const parsed = JSON.parse(stored)
+          return Array.isArray(parsed?.selectedUnits) ? parsed.selectedUnits : []
+        }
 
         const playerRoomId = isMapUser
           ? nonMapPlayers[0]?.id
@@ -880,24 +857,22 @@ function Board({
           : []
         const selectionPlayerUnits =
           (playerTeamId && selectedUnitsByTeam[playerTeamId]) || []
-        const playerSelectedUnits =
-          selectionPlayerUnits.length > roomPlayerSelectedUnits.length
-            ? selectionPlayerUnits
-            : roomPlayerSelectedUnits
+        const gamePlayerSelectedUnits = getGameSelectedUnits(playerTeamId)
+        const playerSelectedUnits = pickLargestUnitList(
+          roomPlayerSelectedUnits,
+          selectionPlayerUnits,
+          gamePlayerSelectedUnits,
+        )
 
         const roomOpponentSelectedUnits = getRoomSelectedUnits(opponentRoomId)
         const selectionOpponentUnits =
           (opponentTeamId && selectedUnitsByTeam[opponentTeamId]) || []
-        const resolvedOpponentSelectedUnits = [
+        const gameOpponentSelectedUnits = getGameSelectedUnits(opponentTeamId)
+        const resolvedOpponentSelectedUnits = pickLargestUnitList(
           opponentSelectedUnits,
           roomOpponentSelectedUnits,
           selectionOpponentUnits,
-        ].reduce(
-          (best, candidate) =>
-            Array.isArray(candidate) && candidate.length > best.length
-              ? candidate
-              : best,
-          [],
+          gameOpponentSelectedUnits,
         )
         const gamePlayerDeadUnits = getGameDeadUnits(playerTeamId)
         const playerDeadUnits = Object.keys(gamePlayerDeadUnits).length

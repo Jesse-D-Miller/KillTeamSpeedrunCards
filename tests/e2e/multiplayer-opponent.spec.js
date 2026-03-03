@@ -123,6 +123,13 @@ const closeStratOpsModal = async (page) => {
   const startTpButton = page.getByRole('button', { name: 'Start TP' })
   if (await startTpButton.isVisible()) {
     await startTpButton.click()
+    await page.locator('.game-stratops-backdrop').waitFor({ state: 'hidden' })
+    return
+  }
+  const modalClose = page.locator('.game-stratops-close')
+  if (await modalClose.isVisible()) {
+    await modalClose.click()
+    await page.locator('.game-stratops-backdrop').waitFor({ state: 'hidden' })
   }
 }
 
@@ -178,4 +185,159 @@ test('opponent view shows synced units', async ({ browser }) => {
 
   await hostContext.close()
   await guestContext.close()
+})
+
+test('opponent refresh shows updated wounds and dead state', async ({ browser }) => {
+  const hostContext = await browser.newContext()
+  const guestContext = await browser.newContext()
+  const hostPage = await hostContext.newPage()
+  const guestPage = await guestContext.newPage()
+
+  await startMatch(hostPage, 'Host')
+  const roomCode = await hostPage.locator('.room-code').innerText()
+
+  await joinMatch(guestPage, 'Guest', roomCode)
+
+  await hostPage.getByRole('button', { name: 'Start Game' }).click()
+  await guestPage.getByRole('button', { name: 'Start Game' }).click()
+  await Promise.race([
+    hostPage.waitForURL('**/select-army'),
+    expect(hostPage.getByRole('button', { name: 'Ready' })).toBeVisible(),
+  ])
+  await Promise.race([
+    guestPage.waitForURL('**/select-army'),
+    expect(guestPage.getByRole('button', { name: 'Ready' })).toBeVisible(),
+  ])
+  await hostPage.waitForURL('**/select-army')
+  await guestPage.waitForURL('**/select-army')
+
+  await selectFirstTeamAndStart(hostPage)
+  await selectFirstTeamAndStart(guestPage)
+
+  await closeStratOpsModal(hostPage)
+  await closeStratOpsModal(guestPage)
+
+  const guestSyncSeed = await guestPage.evaluate(() => {
+    const roomCode =
+      sessionStorage.getItem('kt-room-code') ||
+      localStorage.getItem('kt-room-code') ||
+      ''
+    const playerId =
+      sessionStorage.getItem('kt-player-id') ||
+      localStorage.getItem('kt-player-id') ||
+      ''
+    const playerName =
+      sessionStorage.getItem('kt-player-name') ||
+      localStorage.getItem('kt-player-name') ||
+      'Guest'
+    const killteamId =
+      window.location.pathname.split('/game/')[1] ||
+      localStorage.getItem('kt-last-killteam') ||
+      ''
+    const selectionRaw = localStorage.getItem('kt-selection-state')
+    const selectionParsed = selectionRaw ? JSON.parse(selectionRaw) : {}
+    const selectedUnits = Array.isArray(selectionParsed?.selectedUnitsByTeam?.[killteamId])
+      ? selectionParsed.selectedUnitsByTeam[killteamId]
+      : []
+    return { roomCode, playerId, playerName, killteamId, selectedUnits }
+  })
+
+  expect(guestSyncSeed.roomCode).toBeTruthy()
+  expect(guestSyncSeed.playerId).toBeTruthy()
+  expect(guestSyncSeed.killteamId).toBeTruthy()
+  expect(guestSyncSeed.selectedUnits.length).toBeGreaterThan(0)
+
+  await guestContext.close()
+
+  await hostPage.evaluate(
+    ({ wsPort, seed }) =>
+      new Promise((resolve, reject) => {
+        const deadUnits = Object.fromEntries(
+          seed.selectedUnits.map((key) => [key, true]),
+        )
+        const woundsByUnit = Object.fromEntries(
+          seed.selectedUnits.map((key) => [key, 0]),
+        )
+
+        const payloadState = {
+          name: seed.playerName,
+          playerId: seed.playerId,
+          killteamId: seed.killteamId,
+          selectedUnits: seed.selectedUnits,
+          selectedEquipment: [],
+          activeStratPloys: [],
+          tpCount: 1,
+          cpCount: 0,
+          initiativeByTp: {},
+          unitStates: {},
+          deadUnits,
+          woundsByUnit,
+          stanceByUnit: {},
+          statusesByUnit: {},
+          aplAdjustByUnit: {},
+          legionaryMarkByUnit: {},
+        }
+
+        const ws = new WebSocket(`ws://127.0.0.1:${wsPort}`)
+        const cleanup = () => {
+          try {
+            ws.close()
+          } catch {
+            // noop
+          }
+        }
+        const timeout = window.setTimeout(() => {
+          cleanup()
+          reject(new Error('Injected sync_state timed out'))
+        }, 10000)
+
+        ws.addEventListener('open', () => {
+          ws.send(
+            JSON.stringify({
+              type: 'sync_init',
+              code: seed.roomCode,
+              name: seed.playerName,
+              playerId: seed.playerId,
+            }),
+          )
+          ws.send(
+            JSON.stringify({
+              type: 'sync_state',
+              code: seed.roomCode,
+              playerId: seed.playerId,
+              state: payloadState,
+            }),
+          )
+          window.setTimeout(() => {
+            window.clearTimeout(timeout)
+            cleanup()
+            resolve()
+          }, 300)
+        })
+
+        ws.addEventListener('error', () => {
+          window.clearTimeout(timeout)
+          cleanup()
+          reject(new Error('Injected sync_state socket error'))
+        })
+      }),
+    { wsPort: WS_PORT, seed: guestSyncSeed },
+  )
+
+  await hostPage.getByRole('button', { name: 'Opponent' }).click()
+  const opponentPanel = hostPage.locator('.opponent-panel')
+  await opponentPanel.waitFor({ state: 'visible' })
+  await opponentPanel.getByRole('button', { name: 'Refresh' }).click()
+
+  const opponentCard = opponentPanel.locator('.game-card').first()
+
+  await expect(opponentCard).toBeVisible({ timeout: 15000 })
+  await expect(opponentCard.locator('.state-pill')).toHaveText(/dead/i, {
+    timeout: 15000,
+  })
+  await expect(opponentCard).toContainText(/0\/\d+/, {
+    timeout: 15000,
+  })
+
+  await hostContext.close()
 })
