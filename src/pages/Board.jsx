@@ -224,7 +224,8 @@ function Board({
       const isBombSquig = /\bBOMB\s+SQUIG\b/i.test(
         String(opType?.opTypeName ?? ''),
       )
-      return isBombSquig ? total : total + 1
+      if (isBombSquig) return total
+      return total + 1
     }, 0)
   }
 
@@ -875,17 +876,27 @@ function Board({
         const roomPlayerSelectedUnits = roomCode
           ? getRoomSelectedUnits(playerRoomId)
           : []
-        const playerSelectedUnits = roomPlayerSelectedUnits.length
-          ? roomPlayerSelectedUnits
-          : (playerTeamId && selectedUnitsByTeam[playerTeamId]) || []
+        const selectionPlayerUnits =
+          (playerTeamId && selectedUnitsByTeam[playerTeamId]) || []
+        const playerSelectedUnits =
+          selectionPlayerUnits.length > roomPlayerSelectedUnits.length
+            ? selectionPlayerUnits
+            : roomPlayerSelectedUnits
 
         const roomOpponentSelectedUnits = getRoomSelectedUnits(opponentRoomId)
-        const resolvedOpponentSelectedUnits =
-          opponentSelectedUnits.length
-            ? opponentSelectedUnits
-            : roomOpponentSelectedUnits.length
-              ? roomOpponentSelectedUnits
-              : (opponentTeamId && selectedUnitsByTeam[opponentTeamId]) || []
+        const selectionOpponentUnits =
+          (opponentTeamId && selectedUnitsByTeam[opponentTeamId]) || []
+        const resolvedOpponentSelectedUnits = [
+          opponentSelectedUnits,
+          roomOpponentSelectedUnits,
+          selectionOpponentUnits,
+        ].reduce(
+          (best, candidate) =>
+            Array.isArray(candidate) && candidate.length > best.length
+              ? candidate
+              : best,
+          [],
+        )
         const gamePlayerDeadUnits = getGameDeadUnits(playerTeamId)
         const playerDeadUnits = Object.keys(gamePlayerDeadUnits).length
           ? gamePlayerDeadUnits

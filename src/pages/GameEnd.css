@@ -72,18 +72,21 @@
 
 .game-end-preview-killop {
   aspect-ratio: 5 / 7;
-  max-width: none;
 }
 
 .game-end-preview-killop .killop {
-  --killop-y-label-width: 18%;
-  --killop-y-values-width: 22%;
-  --killop-grid-width: 60%;
   width: 100%;
   height: 100%;
 }
 
+.game-end-preview-killop .killop__axis-col {
+  width: 100%;
+}
+
 .game-end-preview-killop .killop__axis-col .killop__axis-value {
+  width: 100%;
+  display: grid;
+  place-items: center;
   font-size: clamp(0.5rem, 1vw, 0.72rem);
   line-height: 1;
 }
