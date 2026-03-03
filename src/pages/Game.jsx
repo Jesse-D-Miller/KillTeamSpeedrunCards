@@ -611,7 +611,9 @@ function Game() {
       const activeGameId = gameId || localStorage.getItem('kt-game-id') || ''
 
       const selectedUnitsBaseKey = `kt-room-player-selected-units-${roomCode}-${playerId}`
-      const selectedUnitsPayload = JSON.stringify(selectedUnitKeys)
+      const selectedUnitsPayload = JSON.stringify(
+        selectedUnitsByTeam[killteamId] ?? [],
+      )
       localStorage.setItem(selectedUnitsBaseKey, selectedUnitsPayload)
       if (activeGameId) {
         localStorage.setItem(
@@ -631,7 +633,7 @@ function Game() {
     } catch (error) {
       console.warn('Failed to persist room selected/dead units.', error)
     }
-  }, [roomCode, playerId, gameId, selectedUnitKeys, deadUnits])
+  }, [roomCode, playerId, gameId, killteamId, selectedUnitsByTeam, deadUnits])
 
   useEffect(() => {
     if (!tacOpRevealStorageKey) return
