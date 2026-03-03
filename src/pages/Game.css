@@ -213,6 +213,35 @@
   gap: 12px;
 }
 
+.game-stratops-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.game-stratops-cp-controls {
+  padding: 4px 6px;
+}
+
+.game-stratops-initiative {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.game-stratops-initiative input {
+  width: 16px;
+  height: 16px;
+}
+
 .game-stratops-header h2 {
   margin: 0;
   font-size: 1.2rem;
@@ -291,6 +320,10 @@
 .game-stratops-item.is-selected {
   border-color: rgba(88, 180, 110, 0.8);
   background: rgba(24, 80, 40, 0.45);
+}
+
+.game-stratops-item.is-unavailable {
+  opacity: 0.55;
 }
 
 .game-stratops-empty {

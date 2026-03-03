@@ -414,6 +414,7 @@ function Game() {
   const [spCount, setSpCount] = useState(0)
   const [stratOpsModalOpen, setStratOpsModalOpen] = useState(true)
   const [stratOpsByTp, setStratOpsByTp] = useState({})
+  const [initiativeByTp, setInitiativeByTp] = useState({})
   const [opponentPanelOpen, setOpponentPanelOpen] = useState(false)
   const [opponentState, setOpponentState] = useState(null)
   const [opponentSnapshot, setOpponentSnapshot] = useState(null)
@@ -576,6 +577,7 @@ function Game() {
     setVpCount(0)
     setSpCount(0)
     setStratOpsByTp({})
+    setInitiativeByTp({})
     setIsTacOpRevealed(false)
     setMenuOpen(false)
     setOpponentPanelOpen(false)
@@ -1049,6 +1051,13 @@ function Game() {
       setStanceByUnit(parsed.stanceByUnit ?? {})
       setStatusesByUnit(parsed.statusesByUnit ?? {})
       setAplAdjustByUnit(parsed.aplAdjustByUnit ?? {})
+      if (parsed.tpCount != null) {
+        setTpCount(Math.max(1, Number(parsed.tpCount) || 1))
+      }
+      if (parsed.cpCount != null) {
+        setCpCount(Math.max(0, Number(parsed.cpCount) || 0))
+      }
+      setInitiativeByTp(parsed.initiativeByTp ?? {})
       if (parsed.legionaryMarkByUnit && killteamId) {
         setLegionaryMarks(killteamId, (current) =>
           Object.keys(current).length ? current : parsed.legionaryMarkByUnit,
@@ -1199,6 +1208,9 @@ function Game() {
       stanceByUnit,
       statusesByUnit,
       aplAdjustByUnit,
+      tpCount,
+      cpCount,
+      initiativeByTp,
       legionaryMarkByUnit,
     }
     localStorage.setItem(storageKey, JSON.stringify(payload))
@@ -1213,6 +1225,9 @@ function Game() {
     stanceByUnit,
     statusesByUnit,
     aplAdjustByUnit,
+    tpCount,
+    cpCount,
+    initiativeByTp,
     legionaryMarkByUnit,
   ])
 
@@ -1227,6 +1242,9 @@ function Game() {
       selectedUnits: selectedUnitKeys,
       selectedEquipment: selectedEquipmentKeys,
       activeStratPloys,
+      tpCount,
+      cpCount,
+      initiativeByTp,
       unitStates,
       deadUnits,
       woundsByUnit,
@@ -1244,6 +1262,9 @@ function Game() {
     selectedUnitKeys,
     selectedEquipmentKeys,
     activeStratPloys,
+    tpCount,
+    cpCount,
+    initiativeByTp,
     unitStates,
     deadUnits,
     woundsByUnit,
@@ -1272,6 +1293,9 @@ function Game() {
         selectedUnits: selectedUnitKeys,
         selectedEquipment: selectedEquipmentKeys,
         activeStratPloys,
+        tpCount,
+        cpCount,
+        initiativeByTp,
         unitStates,
         deadUnits,
         woundsByUnit,
@@ -1300,6 +1324,9 @@ function Game() {
     legionaryMarkByUnit,
     selectedEquipmentKeys,
     activeStratPloys,
+    tpCount,
+    cpCount,
+    initiativeByTp,
     unitStates,
     deadUnits,
     woundsByUnit,
@@ -1379,6 +1406,9 @@ function Game() {
 
   const toggleStratOp = (tp, teamId, ployId) => {
     if (!teamId) return
+    const isAlreadySelected = getStratOpsForTp(tp, teamId).includes(ployId)
+    if (!isAlreadySelected && cpCount <= 0) return
+
     setStratOpsByTp((prev) => {
       const tpEntry = prev[tp] ?? {}
       const current = tpEntry[teamId] ?? []
@@ -1393,6 +1423,10 @@ function Game() {
         },
       }
     })
+
+    setCpCount((prevCp) =>
+      isAlreadySelected ? prevCp + 1 : Math.max(0, prevCp - 1),
+    )
   }
 
   const prevTpRef = useRef(tpCount)
@@ -1406,9 +1440,27 @@ function Game() {
     }
     if (tpCount > prevTpRef.current) {
       setStratOpsModalOpen(true)
+      setCpCount((prev) => prev + 1)
     }
     prevTpRef.current = tpCount
   }, [tpCount])
+
+  const hasInitiative = Boolean(initiativeByTp[tpCount])
+  const initiativeBonusEnabled = tpCount > 1
+
+  const toggleInitiative = () => {
+    if (!initiativeBonusEnabled) return
+    const currentlyChecked = Boolean(initiativeByTp[tpCount])
+
+    setInitiativeByTp((prev) => ({
+      ...prev,
+      [tpCount]: !currentlyChecked,
+    }))
+
+    setCpCount((prev) =>
+      currentlyChecked ? Math.max(0, prev - 1) : prev + 1,
+    )
+  }
 
   useEffect(() => {
     if (!killteamId) return
@@ -1878,33 +1930,74 @@ function Game() {
           <div className="game-stratops-modal">
             <div className="game-stratops-header">
               <h2>Turning Point {tpCount}: Strat Ops</h2>
-              <button
-                type="button"
-                className="game-stratops-close"
-                onClick={() => setStratOpsModalOpen(false)}
-              >
-                Start TP
-              </button>
+              <div className="game-stratops-header-actions">
+                <div className="game-nav-stat-controls game-stratops-cp-controls">
+                  <span className="game-nav-stat-label">CP</span>
+                  <button
+                    type="button"
+                    className="game-nav-stat-button"
+                    onClick={() => setCpCount((prev) => Math.max(0, prev - 1))}
+                    aria-label="Decrease command points"
+                  >
+                    −
+                  </button>
+                  <span className="game-nav-stat-value">{cpCount}</span>
+                  <button
+                    type="button"
+                    className="game-nav-stat-button"
+                    onClick={() => setCpCount((prev) => prev + 1)}
+                    aria-label="Increase command points"
+                  >
+                    +
+                  </button>
+                </div>
+                <label className="game-stratops-initiative">
+                  <input
+                    type="checkbox"
+                    checked={hasInitiative}
+                    disabled={!initiativeBonusEnabled}
+                    onChange={toggleInitiative}
+                  />
+                  <span>Initiative {initiativeBonusEnabled ? '(+1 CP)' : '(TP2+)'}</span>
+                </label>
+                <button
+                  type="button"
+                  className="game-stratops-close"
+                  onClick={() => setStratOpsModalOpen(false)}
+                >
+                  Start TP
+                </button>
+              </div>
             </div>
             <div className="game-stratops-columns">
               <section className="game-stratops-column">
                 <h3>{killteam?.killteamName || 'Team A'}</h3>
                 <div className="game-stratops-list">
                   {stratPloys.length ? (
-                    stratPloys.map((ploy) => (
+                    stratPloys.map((ploy) => {
+                      const isSelected = getStratOpsForTp(tpCount, killteamId).includes(
+                        ploy.ployId,
+                      )
+                      const isUnavailable = !isSelected && cpCount <= 0
+
+                      return (
                       <div
                         key={ploy.ployId}
                         role="button"
                         tabIndex={0}
                         className={`game-stratops-item${
-                          getStratOpsForTp(tpCount, killteamId).includes(ploy.ployId)
-                            ? ' is-selected'
-                            : ''
+                          isSelected ? ' is-selected' : ''
+                        }${
+                          isUnavailable ? ' is-unavailable' : ''
                         }`}
-                        onClick={() => toggleStratOp(tpCount, killteamId, ploy.ployId)}
+                        onClick={() => {
+                          if (isUnavailable) return
+                          toggleStratOp(tpCount, killteamId, ploy.ployId)
+                        }}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault()
+                            if (isUnavailable) return
                             toggleStratOp(tpCount, killteamId, ploy.ployId)
                           }
                         }}
@@ -1928,7 +2021,7 @@ function Game() {
                             ))}
                         </div>
                       </div>
-                    ))
+                    )})
                   ) : (
                     <div className="game-stratops-empty">No strat ploys.</div>
                   )}
