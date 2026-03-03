@@ -17,6 +17,10 @@ function OpponentPanel({
 }) {
   const [openDetailsByUnit, setOpenDetailsByUnit] = useState({})
   const hasDebug = debugInfo && Object.keys(debugInfo).length > 0
+  const selectedUnitSet = new Set(opponentRenderState?.selectedUnits ?? [])
+  const visibleOpponentUnits = selectedUnitSet.size
+    ? opponentAllUnits.filter((unit) => selectedUnitSet.has(unit.key))
+    : opponentAllUnits
   return (
     <>
       <div
@@ -61,14 +65,17 @@ function OpponentPanel({
             </p>
           ) : null}
           {opponentKillteam ? (
-            opponentAllUnits.length ? (
+            visibleOpponentUnits.length ? (
               <div className="game-grid opponent-grid">
-                {opponentAllUnits.map(
+                {visibleOpponentUnits.map(
                   ({ opType, instance, instanceCount, key }) => {
                     const maxWounds = Number.parseInt(opType.WOUNDS, 10)
                     const safeMax = Number.isNaN(maxWounds) ? 0 : maxWounds
+                    const isDeadMarked = Boolean(opponentRenderState?.deadUnits?.[key])
                     const currentWounds =
-                      opponentRenderState?.woundsByUnit?.[key] == null
+                      isDeadMarked
+                        ? 0
+                        : opponentRenderState?.woundsByUnit?.[key] == null
                         ? safeMax
                         : opponentRenderState.woundsByUnit[key]
                     const detailsOpen = Boolean(openDetailsByUnit[key])
