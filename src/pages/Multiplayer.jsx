@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { persistMultiplayerIdentity } from '../state/multiplayerStorage.js'
+import { clearSharedMapSocket, setSharedMapSocket } from '../state/mapSocketBridge.js'
 import { resolveWsUrl } from '../state/wsUrl.js'
 import './Multiplayer.css'
 
@@ -54,8 +55,19 @@ function Multiplayer() {
       if (socketRef.current) {
         socketRef.current.close()
       }
+      clearSharedMapSocket()
     }
   }, [])
+
+  const detachSocketHandlers = (socket) => {
+    if (!socket) return
+    const handlers = socket.ktHandlers || {}
+    if (handlers.open) socket.removeEventListener('open', handlers.open)
+    if (handlers.message) socket.removeEventListener('message', handlers.message)
+    if (handlers.close) socket.removeEventListener('close', handlers.close)
+    if (handlers.error) socket.removeEventListener('error', handlers.error)
+    socket.ktHandlers = null
+  }
 
   const sendMessage = (payload) => {
     const socket = socketRef.current
@@ -205,7 +217,9 @@ function Multiplayer() {
 
   const connectAndSend = (payload) => {
     setError('')
+    clearSharedMapSocket()
     if (socketRef.current) {
+      detachSocketHandlers(socketRef.current)
       socketRef.current.close()
     }
 
@@ -213,20 +227,30 @@ function Multiplayer() {
     socketRef.current = socket
     setStatus('connecting')
 
-    socket.addEventListener('open', () => {
+    const handleOpen = () => {
       setStatus('connected')
       socket.send(JSON.stringify(payload))
-    })
+    }
 
-    socket.addEventListener('message', handleMessage)
-
-    socket.addEventListener('close', () => {
+    const handleClose = () => {
       setStatus('disconnected')
-    })
+    }
 
-    socket.addEventListener('error', () => {
+    const handleError = () => {
       setError('Unable to reach the multiplayer server.')
-    })
+    }
+
+    socket.ktHandlers = {
+      open: handleOpen,
+      message: handleMessage,
+      close: handleClose,
+      error: handleError,
+    }
+
+    socket.addEventListener('open', handleOpen)
+    socket.addEventListener('message', handleMessage)
+    socket.addEventListener('close', handleClose)
+    socket.addEventListener('error', handleError)
   }
 
   const handleCreate = () => {
@@ -291,7 +315,9 @@ function Multiplayer() {
     setPlayerId('')
     setHostId('')
     setStatus('disconnected')
+    clearSharedMapSocket()
     if (socketRef.current) {
+      detachSocketHandlers(socketRef.current)
       socketRef.current.close()
       socketRef.current = null
     }
@@ -300,6 +326,12 @@ function Multiplayer() {
   useEffect(() => {
     if (!isMapUser) return
     if (readyNonMapPlayers >= 2) {
+      const socket = socketRef.current
+      if (socket) {
+        detachSocketHandlers(socket)
+        setSharedMapSocket(socket)
+        socketRef.current = null
+      }
       navigate('/board')
     }
   }, [isMapUser, readyNonMapPlayers, navigate])

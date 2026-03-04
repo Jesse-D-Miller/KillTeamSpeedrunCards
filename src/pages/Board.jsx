@@ -11,6 +11,7 @@ import SightLine from '../components/SightLine'
 import MovementMeasure from '../components/MovementMeasure'
 import FieldOfVision from '../components/FieldOfVision'
 import { resolveWsUrl } from '../state/wsUrl.js'
+import { takeSharedMapSocket } from '../state/mapSocketBridge.js'
 import { deriveDeadCount, deriveKillOpCount } from '../state/killOpCounts.js'
 import './Board.css'
 
@@ -708,7 +709,30 @@ function Board({
     let reconnectTimer = null
     let isCleaningUp = false
 
-    const socket = new WebSocket(WS_URL)
+    let socket = takeSharedMapSocket()
+    if (socket) {
+      const sharedRoomCode = String(socket.ktRoomCode || '').trim()
+      const sharedPlayerId = String(socket.ktPlayerId || '').trim()
+      const hasSameIdentity =
+        sharedRoomCode === roomCode &&
+        sharedPlayerId === playerId
+      const isReusable =
+        socket.readyState === WebSocket.OPEN ||
+        socket.readyState === WebSocket.CONNECTING
+      if (!hasSameIdentity || !isReusable) {
+        try {
+          socket.close()
+        } catch {
+          // noop
+        }
+        socket = null
+      }
+    }
+    if (!socket) {
+      socket = new WebSocket(WS_URL)
+      socket.ktRoomCode = roomCode
+      socket.ktPlayerId = playerId
+    }
     socket.ktRoomCode = roomCode
     socket.ktPlayerId = playerId
     mapSocketRef.current = socket
