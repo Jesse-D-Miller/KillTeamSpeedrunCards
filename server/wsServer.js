@@ -161,6 +161,13 @@ wss.on('connection', (socket) => {
       }
       const isMap = isMapName(name) || message.isMap === true
       const resolvedName = isMap ? 'MAP' : name
+      if (isMap && getNonMapPlayers(room).length === 0) {
+        sendMessage(socket, {
+          type: 'error',
+          message: 'Map can only join after at least one player has joined.',
+        })
+        return
+      }
       if (isMap && hasMapPlayer(room)) {
         sendMessage(socket, { type: 'error', message: 'Map already joined.' })
         return
@@ -225,6 +232,13 @@ wss.on('connection', (socket) => {
       const room = rooms.get(code)
       if (!room) {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
+        return
+      }
+      if (isMap && getNonMapPlayers(room).length === 0) {
+        sendMessage(socket, {
+          type: 'error',
+          message: 'Map can only join after at least one player has joined.',
+        })
         return
       }
       let player = room.players.get(playerId) || null
