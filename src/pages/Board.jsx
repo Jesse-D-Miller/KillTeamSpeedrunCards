@@ -562,18 +562,6 @@ function Board({
           }
         }
         keysToRemove.forEach((key) => localStorage.removeItem(key))
-        const currentName =
-          sessionStorage.getItem('kt-player-name') ||
-          localStorage.getItem('kt-player-name') ||
-          ''
-        if (String(currentName).trim().toUpperCase() === 'MAP') {
-          localStorage.removeItem('kt-room-code')
-          sessionStorage.removeItem('kt-room-code')
-          localStorage.removeItem('kt-player-id')
-          sessionStorage.removeItem('kt-player-id')
-          localStorage.removeItem('kt-player-name')
-          sessionStorage.removeItem('kt-player-name')
-        }
       } catch (error) {
         console.warn('Failed to clear stale map room data.', error)
       }
@@ -627,7 +615,6 @@ function Board({
                 'kt-map-socket-error',
                 'Map-only room payload rejected.',
               )
-              clearStaleMapRoom(roomCode)
               return
             }
             localStorage.setItem(
@@ -681,7 +668,6 @@ function Board({
                 'kt-map-socket-error',
                 'Map-only room payload rejected.',
               )
-              clearStaleMapRoom(roomCode)
               return
             }
             localStorage.setItem(

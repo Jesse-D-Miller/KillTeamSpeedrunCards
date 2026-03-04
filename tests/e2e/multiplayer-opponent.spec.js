@@ -341,3 +341,58 @@ test('opponent refresh shows updated wounds and dead state', async ({ browser })
 
   await hostContext.close()
 })
+
+test('MAP username is blocked for normal create/join flow', async ({ page }) => {
+  await page.goto('/multiplayer')
+
+  await page.getByRole('button', { name: 'Create' }).click()
+  await page.getByLabel('Username').fill('MAP')
+  await page.getByRole('button', { name: 'Create Room' }).click()
+  await expect(page.locator('.multiplayer-error')).toContainText(
+    'Use the Map button to join as MAP.',
+  )
+  await expect(page.locator('.multiplayer-lobby')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Back' }).click()
+  await page.getByRole('button', { name: 'Join' }).click()
+  await page.getByLabel('Username').fill('MAP')
+  await page.getByLabel('Room code').fill('ABC123')
+  await page.getByRole('button', { name: 'Join Room' }).click()
+  await expect(page.locator('.multiplayer-error')).toContainText(
+    'Use the Map button to join as MAP.',
+  )
+  await expect(page.locator('.multiplayer-lobby')).toHaveCount(0)
+})
+
+test('map join does not become host', async ({ browser }) => {
+  const hostContext = await browser.newContext()
+  const mapContext = await browser.newContext()
+  const hostPage = await hostContext.newPage()
+  const mapPage = await mapContext.newPage()
+
+  await startMatch(hostPage, 'Jesse')
+  const roomCode = await hostPage.locator('.room-code').innerText()
+
+  await mapPage.goto('/multiplayer')
+  await mapPage.getByRole('button', { name: 'Map' }).click()
+  await mapPage.getByLabel('Game code').fill(roomCode)
+  await mapPage.getByRole('button', { name: 'Join as Map' }).click()
+  await mapPage.locator('.multiplayer-lobby').waitFor({ state: 'visible' })
+
+  const hostMetadata = await mapPage.evaluate((code) => {
+    const playersRaw = localStorage.getItem(`kt-room-players-${code}`) || '[]'
+    const players = JSON.parse(playersRaw)
+    const hostId = localStorage.getItem(`kt-room-host-${code}`) || ''
+    const hostPlayer = players.find((player) => player?.id === hostId) || null
+    return {
+      hostId,
+      hostName: hostPlayer?.name || '',
+    }
+  }, roomCode)
+
+  expect(hostMetadata.hostId).toBeTruthy()
+  expect(hostMetadata.hostName).not.toBe('MAP')
+
+  await hostContext.close()
+  await mapContext.close()
+})
