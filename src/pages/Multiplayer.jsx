@@ -8,6 +8,18 @@ const WS_URL = resolveWsUrl()
 
 const normalizeCode = (value) => value.replace(/\s+/g, '').toUpperCase()
 const normalizeName = (value) => (value || '').trim().toUpperCase()
+const resolveEffectiveHostId = (host, roomPlayers) => {
+  const players = Array.isArray(roomPlayers) ? roomPlayers : []
+  const nonMapPlayers = players.filter(
+    (player) => normalizeName(player?.name) !== 'MAP',
+  )
+  const incomingHost = String(host || '').trim()
+  const incomingHostPlayer = players.find((player) => player?.id === incomingHost)
+  if (incomingHost && normalizeName(incomingHostPlayer?.name) !== 'MAP') {
+    return incomingHost
+  }
+  return String(nonMapPlayers[0]?.id || '').trim()
+}
 
 function Multiplayer() {
   const navigate = useNavigate()
@@ -55,12 +67,13 @@ function Multiplayer() {
   const persistRoomMetadata = (code, host, roomPlayers) => {
     if (!code) return
     try {
+      const effectiveHostId = resolveEffectiveHostId(host, roomPlayers)
       localStorage.setItem(
         `kt-room-players-${code}`,
         JSON.stringify(roomPlayers || []),
       )
-      if (host) {
-        localStorage.setItem(`kt-room-host-${code}`, host)
+      if (effectiveHostId) {
+        localStorage.setItem(`kt-room-host-${code}`, effectiveHostId)
       }
       const activeGameId = localStorage.getItem('kt-game-id') || ''
       ;(roomPlayers || []).forEach((player) => {
@@ -111,7 +124,7 @@ function Multiplayer() {
       setRoomCode(message.code)
       setPlayers(message.players || [])
       setPlayerId(message.playerId)
-      setHostId(message.hostId)
+      setHostId(resolveEffectiveHostId(message.hostId, message.players || []))
       setMode('lobby')
       setError('')
       try {
@@ -134,7 +147,7 @@ function Multiplayer() {
 
     if (message.type === 'room_update') {
       setPlayers(message.players || [])
-      setHostId(message.hostId || '')
+      setHostId(resolveEffectiveHostId(message.hostId, message.players || []))
       if (roomCode) {
         persistRoomMetadata(roomCode, message.hostId, message.players || [])
       }

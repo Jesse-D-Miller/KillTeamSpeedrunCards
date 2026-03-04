@@ -396,3 +396,48 @@ test('map join does not become host', async ({ browser }) => {
   await hostContext.close()
   await mapContext.close()
 })
+
+test('host reassigns to non-map player when host disconnects', async ({ browser }) => {
+  const hostContext = await browser.newContext()
+  const guestContext = await browser.newContext()
+  const mapContext = await browser.newContext()
+  const hostPage = await hostContext.newPage()
+  const guestPage = await guestContext.newPage()
+  const mapPage = await mapContext.newPage()
+
+  await startMatch(hostPage, 'Jesse')
+  const roomCode = await hostPage.locator('.room-code').innerText()
+  await joinMatch(guestPage, 'Rachel', roomCode)
+
+  await mapPage.goto('/multiplayer')
+  await mapPage.getByRole('button', { name: 'Map' }).click()
+  await mapPage.getByLabel('Game code').fill(roomCode)
+  await mapPage.getByRole('button', { name: 'Join as Map' }).click()
+  await mapPage.locator('.multiplayer-lobby').waitFor({ state: 'visible' })
+
+  await hostContext.close()
+
+  await expect
+    .poll(
+      async () =>
+        mapPage.evaluate((code) => {
+          const playersRaw = localStorage.getItem(`kt-room-players-${code}`) || '[]'
+          const players = JSON.parse(playersRaw)
+          const hostId = localStorage.getItem(`kt-room-host-${code}`) || ''
+          const hostPlayer = players.find((player) => player?.id === hostId) || null
+          return {
+            hostId,
+            hostName: hostPlayer?.name || '',
+          }
+        }, roomCode),
+      { timeout: 5000 },
+    )
+    .toEqual(
+      expect.objectContaining({
+        hostName: expect.not.stringMatching(/^MAP$/i),
+      }),
+    )
+
+  await guestContext.close()
+  await mapContext.close()
+})

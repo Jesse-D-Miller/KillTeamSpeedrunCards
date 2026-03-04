@@ -23,17 +23,6 @@ const createCode = () => {
   return code
 }
 
-const serializeRoom = (room) => ({
-  code: room.code,
-  hostId: room.hostId,
-  players: Array.from(room.players.values()).map((player) => ({
-    id: player.id,
-    name: player.name,
-    ready: Boolean(player.ready),
-    killteamId: player.killteamId || '',
-  })),
-})
-
 const isMapName = (name) => String(name || '').trim().toUpperCase() === 'MAP'
 
 const getNonMapPlayers = (room) =>
@@ -50,6 +39,22 @@ const resolveHostId = (room) => {
   const fallback = room.players.values().next().value
   return fallback?.id || ''
 }
+
+const normalizeHostId = (room) => {
+  room.hostId = resolveHostId(room) || ''
+  return room.hostId
+}
+
+const serializeRoom = (room) => ({
+  code: room.code,
+  hostId: normalizeHostId(room),
+  players: Array.from(room.players.values()).map((player) => ({
+    id: player.id,
+    name: player.name,
+    ready: Boolean(player.ready),
+    killteamId: player.killteamId || '',
+  })),
+})
 
 const broadcastRoom = (room) => {
   const payload = JSON.stringify({
@@ -78,12 +83,7 @@ const removePlayer = (room, playerId) => {
     rooms.delete(room.code)
     return
   }
-  if (room.hostId === playerId) {
-    const nextHostId = resolveHostId(room)
-    if (nextHostId) {
-      room.hostId = nextHostId
-    }
-  }
+  if (room.hostId === playerId) normalizeHostId(room)
   broadcastRoom(room)
 }
 
@@ -385,6 +385,7 @@ wss.on('connection', (socket) => {
         sendMessage(socket, { type: 'error', message: 'Player not found.' })
         return
       }
+      normalizeHostId(room)
       if (room.hostId !== player.id) {
         sendMessage(socket, {
           type: 'error',

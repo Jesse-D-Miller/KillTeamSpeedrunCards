@@ -595,6 +595,22 @@ function Board({
       })
     }
 
+    const resolveEffectiveHostId = (hostId, players = []) => {
+      const normalizedPlayers = Array.isArray(players) ? players : []
+      const incomingHostId = String(hostId || '').trim()
+      const incomingHost = normalizedPlayers.find(
+        (player) => String(player?.id || '').trim() === incomingHostId,
+      )
+      const incomingHostName = String(incomingHost?.name || '').trim().toUpperCase()
+      if (incomingHostId && incomingHostName !== 'MAP') {
+        return incomingHostId
+      }
+      const fallback = normalizedPlayers.find(
+        (player) => String(player?.name || '').trim().toUpperCase() !== 'MAP',
+      )
+      return String(fallback?.id || '').trim()
+    }
+
     const handleMessage = (event) => {
       const message = JSON.parse(event.data)
       const clearMapSocketError = () => {
@@ -638,8 +654,12 @@ function Board({
             )
             requestAllPlayerStates(message.players)
           }
-          if (message.hostId) {
-            localStorage.setItem(`kt-room-host-${roomCode}`, message.hostId)
+          const effectiveHostId = resolveEffectiveHostId(
+            message.hostId,
+            message.players,
+          )
+          if (effectiveHostId) {
+            localStorage.setItem(`kt-room-host-${roomCode}`, effectiveHostId)
           }
         } catch (error) {
           console.warn('Failed to persist map room update metadata.', error)
@@ -687,8 +707,12 @@ function Board({
               JSON.stringify(message.players),
             )
           }
-          if (message.hostId) {
-            localStorage.setItem(`kt-room-host-${roomCode}`, message.hostId)
+          const effectiveHostId = resolveEffectiveHostId(
+            message.hostId,
+            message.players,
+          )
+          if (effectiveHostId) {
+            localStorage.setItem(`kt-room-host-${roomCode}`, effectiveHostId)
           }
         } catch (error) {
           console.warn('Failed to persist map sync room metadata.', error)
