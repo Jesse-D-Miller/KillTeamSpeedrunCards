@@ -174,6 +174,7 @@ function Board({
     opponentCache: false,
     updatedAt: 0,
   })
+  const [syncDebugCopied, setSyncDebugCopied] = useState(false)
   const mapSocketRef = useRef(null)
   const textureStyles = useMemo(
     () => [
@@ -3083,55 +3084,64 @@ function Board({
 
   const map1OpClass = toOpClass(selectedCritOpsCard?.opNumber)
   const map2OpClass = toOpClass(selectedCritOpsCard?.opNumber)
+  const syncDebugLines = [
+    `room: ${syncDebug.roomCode || 'n/a'}`,
+    `playerId: ${syncDebug.playerId || 'n/a'}`,
+    `name: ${syncDebug.playerName || 'n/a'}`,
+    `gameId: ${syncDebug.activeGameId || 'n/a'}`,
+    `isMap: ${syncDebug.isMapUser ? 'yes' : 'no'}`,
+    `hostId: ${syncDebug.hostId || 'n/a'}`,
+    `players: ${syncDebug.players.length
+      ? syncDebug.players
+          .map((player) => `${player.name || 'unknown'}(${player.id.slice(0, 6)})`)
+          .join(', ')
+      : 'none'}`,
+    `teams: ${Object.keys(syncDebug.teamIds).length
+      ? Object.entries(syncDebug.teamIds)
+          .map(([id, teamId]) => `${id.slice(0, 6)}:${teamId || '-'}`)
+          .join(', ')
+      : 'none'}`,
+    `ploys: ${Object.keys(syncDebug.ploysByPlayerId).length
+      ? Object.entries(syncDebug.ploysByPlayerId)
+          .map(([id, count]) => `${id.slice(0, 6)}:${count}`)
+          .join(', ')
+      : 'none'}`,
+    `zones stored: ${syncDebug.storedZones.player || '-'} / ${syncDebug.storedZones.opponent || '-'}`,
+    `zones assigned: ${syncDebug.assignedZones.player || '-'} / ${syncDebug.assignedZones.opponent || '-'}`,
+    `opponent cache: ${syncDebug.opponentCache ? 'yes' : 'no'}`,
+    `updated: ${
+      syncDebug.updatedAt
+        ? new Date(syncDebug.updatedAt).toLocaleTimeString()
+        : 'n/a'
+    }`,
+  ]
+  const syncDebugText = syncDebugLines.join('\n')
+
+  const handleCopySyncDebug = async () => {
+    try {
+      await navigator.clipboard.writeText(syncDebugText)
+      setSyncDebugCopied(true)
+      window.setTimeout(() => setSyncDebugCopied(false), 1500)
+    } catch {
+      setSyncDebugCopied(false)
+    }
+  }
 
   return (
     <div className="board-view">
       {syncDebug.enabled ? (
         <aside className="board-sync-debug" aria-live="polite">
-          <div className="board-sync-debug__title">Sync Debug</div>
-          <div>room: {syncDebug.roomCode || 'n/a'}</div>
-          <div>playerId: {syncDebug.playerId || 'n/a'}</div>
-          <div>name: {syncDebug.playerName || 'n/a'}</div>
-          <div>gameId: {syncDebug.activeGameId || 'n/a'}</div>
-          <div>isMap: {syncDebug.isMapUser ? 'yes' : 'no'}</div>
-          <div>hostId: {syncDebug.hostId || 'n/a'}</div>
-          <div>
-            players:{' '}
-            {syncDebug.players.length
-              ? syncDebug.players
-                  .map((player) => `${player.name || 'unknown'}(${player.id.slice(0, 6)})`)
-                  .join(', ')
-              : 'none'}
+          <div className="board-sync-debug__header">
+            <div className="board-sync-debug__title">Sync Debug</div>
+            <button
+              type="button"
+              className="board-sync-debug__copy"
+              onClick={handleCopySyncDebug}
+            >
+              {syncDebugCopied ? 'Copied' : 'Copy'}
+            </button>
           </div>
-          <div>
-            teams:{' '}
-            {Object.keys(syncDebug.teamIds).length
-              ? Object.entries(syncDebug.teamIds)
-                  .map(([id, teamId]) => `${id.slice(0, 6)}:${teamId || '-'}`)
-                  .join(', ')
-              : 'none'}
-          </div>
-          <div>
-            ploys:{' '}
-            {Object.keys(syncDebug.ploysByPlayerId).length
-              ? Object.entries(syncDebug.ploysByPlayerId)
-                  .map(([id, count]) => `${id.slice(0, 6)}:${count}`)
-                  .join(', ')
-              : 'none'}
-          </div>
-          <div>
-            zones stored: {syncDebug.storedZones.player || '-'} / {syncDebug.storedZones.opponent || '-'}
-          </div>
-          <div>
-            zones assigned: {syncDebug.assignedZones.player || '-'} / {syncDebug.assignedZones.opponent || '-'}
-          </div>
-          <div>opponent cache: {syncDebug.opponentCache ? 'yes' : 'no'}</div>
-          <div>
-            updated:{' '}
-            {syncDebug.updatedAt
-              ? new Date(syncDebug.updatedAt).toLocaleTimeString()
-              : 'n/a'}
-          </div>
+          <pre className="board-sync-debug__text">{syncDebugText}</pre>
         </aside>
       ) : null}
       <div
