@@ -1,5 +1,6 @@
 import { createServer } from 'http'
 import { randomUUID } from 'crypto'
+import { createClient } from 'redis'
 import { WebSocket, WebSocketServer } from 'ws'
 
 const PORT = Number(process.env.PORT || 8080)
@@ -12,12 +13,128 @@ const wss = new WebSocketServer({ server })
 const DEBUG_WS = process.env.DEBUG_WS === '1'
 const SERVER_INSTANCE_ID =
   process.env.INSTANCE_ID || randomUUID().replace(/-/g, '').slice(0, 8)
+const REDIS_URL = String(process.env.REDIS_URL || '').trim()
+const REDIS_TTL_SECONDS = Number(process.env.REDIS_TTL_SECONDS || 6 * 60 * 60)
 
 const rooms = new Map()
+let redisClient = null
 
-const createCode = () => {
+if (REDIS_URL) {
+  const candidate = createClient({ url: REDIS_URL })
+  candidate.on('error', (error) => {
+    console.warn('Redis client error:', error?.message || error)
+  })
+  try {
+    await candidate.connect()
+    redisClient = candidate
+    console.log('Redis room store enabled.')
+  } catch (error) {
+    console.warn('Failed to connect to Redis. Falling back to in-memory rooms.')
+    redisClient = null
+  }
+}
+
+const getRoomKey = (code) => `kt:room:${code}`
+
+const toPlainObject = (map) => Object.fromEntries(map.entries())
+
+const roomToSnapshot = (room) => ({
+  code: room.code,
+  hostId: room.hostId,
+  started: Boolean(room.started),
+  dropZoneState: room.dropZoneState || null,
+  players: Array.from(room.players.values()).map((player) => ({
+    id: player.id,
+    name: player.name,
+    ready: Boolean(player.ready),
+    killteamId: player.killteamId || '',
+  })),
+  stateByPlayerId: toPlainObject(room.stateByPlayerId),
+  stratPloysByPlayerId: toPlainObject(room.stratPloysByPlayerId),
+  selectionReadyByPlayerId: toPlainObject(room.selectionReadyByPlayerId),
+})
+
+const mergeRoomSnapshot = (snapshot, existingRoom = null) => {
+  const existingPlayers = existingRoom?.players || new Map()
+  const room = {
+    code: snapshot.code,
+    hostId: snapshot.hostId || '',
+    players: new Map(),
+    stateByPlayerId: new Map(Object.entries(snapshot.stateByPlayerId || {})),
+    stratPloysByPlayerId: new Map(Object.entries(snapshot.stratPloysByPlayerId || {})),
+    selectionReadyByPlayerId: new Map(
+      Object.entries(snapshot.selectionReadyByPlayerId || {}),
+    ),
+    dropZoneState: snapshot.dropZoneState || null,
+    started: Boolean(snapshot.started),
+  }
+  ;(snapshot.players || []).forEach((player) => {
+    const existingPlayer = existingPlayers.get(player.id)
+    room.players.set(player.id, {
+      id: player.id,
+      name: player.name,
+      ready: Boolean(player.ready),
+      killteamId: player.killteamId || '',
+      socket: existingPlayer?.socket || null,
+    })
+  })
+  return room
+}
+
+const persistRoomSnapshot = async (room) => {
+  if (!redisClient || !room?.code) return
+  try {
+    await redisClient.set(getRoomKey(room.code), JSON.stringify(roomToSnapshot(room)), {
+      EX: REDIS_TTL_SECONDS,
+    })
+  } catch (error) {
+    console.warn('Failed to persist room snapshot to Redis.', error)
+  }
+}
+
+const deleteRoomSnapshot = async (code) => {
+  if (!redisClient || !code) return
+  try {
+    await redisClient.del(getRoomKey(code))
+  } catch (error) {
+    console.warn('Failed to delete room snapshot from Redis.', error)
+  }
+}
+
+const getRoom = async (code) => {
+  const normalizedCode = String(code || '').toUpperCase()
+  if (!normalizedCode) return null
+  if (redisClient) {
+    try {
+      const raw = await redisClient.get(getRoomKey(normalizedCode))
+      if (!raw) return null
+      const snapshot = JSON.parse(raw)
+      const merged = mergeRoomSnapshot(snapshot, rooms.get(normalizedCode) || null)
+      rooms.set(normalizedCode, merged)
+      return merged
+    } catch (error) {
+      console.warn('Failed to load room snapshot from Redis.', error)
+      return rooms.get(normalizedCode) || null
+    }
+  }
+  return rooms.get(normalizedCode) || null
+}
+
+const roomCodeExists = async (code) => {
+  const normalizedCode = String(code || '').toUpperCase()
+  if (!normalizedCode) return false
+  if (rooms.has(normalizedCode)) return true
+  if (!redisClient) return false
+  try {
+    return await redisClient.exists(getRoomKey(normalizedCode))
+  } catch {
+    return false
+  }
+}
+
+const createCode = async () => {
   let code = ''
-  while (!code || rooms.has(code)) {
+  while (!code || (await roomCodeExists(code))) {
     code = Array.from({ length: CODE_LENGTH })
       .map(() => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)])
       .join('')
@@ -81,21 +198,24 @@ const sendMessage = (socket, payload) => {
   }
 }
 
-const removePlayer = (room, playerId) => {
+const removePlayer = async (room, playerId) => {
   const player = room.players.get(playerId)
   room.players.delete(playerId)
   room.stateByPlayerId.delete(playerId)
   room.selectionReadyByPlayerId.delete(playerId)
+  room.stratPloysByPlayerId.delete(playerId)
   if (room.players.size === 0) {
     rooms.delete(room.code)
+    await deleteRoomSnapshot(room.code)
     return
   }
   if (room.hostId === playerId) normalizeHostId(room)
+  await persistRoomSnapshot(room)
   broadcastRoom(room)
 }
 
 wss.on('connection', (socket) => {
-  socket.on('message', (raw) => {
+  socket.on('message', async (raw) => {
     let message
     try {
       message = JSON.parse(raw.toString())
@@ -120,7 +240,7 @@ wss.on('connection', (socket) => {
         })
         return
       }
-      const code = createCode()
+      const code = await createCode()
       const playerId = randomUUID()
       const room = {
         code,
@@ -143,6 +263,7 @@ wss.on('connection', (socket) => {
       socket.playerId = playerId
       socket.roomCode = code
       rooms.set(code, room)
+      await persistRoomSnapshot(room)
       sendMessage(socket, {
         type: 'room_created',
         playerId,
@@ -161,7 +282,7 @@ wss.on('connection', (socket) => {
         })
         return
       }
-      const room = rooms.get(code)
+      const room = await getRoom(code)
       if (!room) {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
         return
@@ -201,6 +322,7 @@ wss.on('connection', (socket) => {
       }
       socket.playerId = playerId
       socket.roomCode = code
+      await persistRoomSnapshot(room)
       sendMessage(socket, {
         type: 'room_joined',
         playerId,
@@ -236,7 +358,7 @@ wss.on('connection', (socket) => {
         })
         return
       }
-      const room = rooms.get(code)
+      const room = await getRoom(code)
       if (!room) {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
         return
@@ -282,6 +404,7 @@ wss.on('connection', (socket) => {
       }
       socket.playerId = playerId
       socket.roomCode = code
+      await persistRoomSnapshot(room)
       sendMessage(socket, {
         type: 'sync_ready',
         playerId: player.id,
@@ -320,7 +443,7 @@ wss.on('connection', (socket) => {
       const code = String(message.code || '').toUpperCase()
       const playerId = String(message.playerId || '').trim()
       const killteamId = String(message.killteamId || '').trim()
-      const room = rooms.get(code)
+      const room = await getRoom(code)
       if (!room) {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
         return
@@ -345,6 +468,7 @@ wss.on('connection', (socket) => {
           killteamId,
         })
       })
+      await persistRoomSnapshot(room)
       broadcastRoom(room)
       return
     }
@@ -352,7 +476,7 @@ wss.on('connection', (socket) => {
     if (message.type === 'set_strat_ploys') {
       const code = String(message.code || '').toUpperCase()
       const playerId = String(message.playerId || '').trim()
-      const room = rooms.get(code)
+      const room = await getRoom(code)
       if (!room) {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
         return
@@ -375,6 +499,7 @@ wss.on('connection', (socket) => {
           ploys,
         })
       })
+      await persistRoomSnapshot(room)
       return
     }
 
@@ -382,7 +507,7 @@ wss.on('connection', (socket) => {
       const code = String(message.code || '').toUpperCase()
       const playerId = String(message.playerId || '').trim()
       const zone = String(message.zone || '').toUpperCase()
-      const room = rooms.get(code)
+      const room = await getRoom(code)
       if (!room) {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
         return
@@ -423,12 +548,13 @@ wss.on('connection', (socket) => {
           ...room.dropZoneState,
         })
       })
+      await persistRoomSnapshot(room)
       return
     }
 
     if (message.type === 'request_drop_zone') {
       const code = String(message.code || '').toUpperCase()
-      const room = rooms.get(code)
+      const room = await getRoom(code)
       if (!room) {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
         return
@@ -448,7 +574,7 @@ wss.on('connection', (socket) => {
     if (message.type === 'set_ready') {
       const code = String(message.code || '').toUpperCase()
       const playerId = String(message.playerId || '').trim()
-      const room = rooms.get(code)
+      const room = await getRoom(code)
       if (!room) {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
         return
@@ -459,6 +585,7 @@ wss.on('connection', (socket) => {
         return
       }
       player.ready = Boolean(message.ready)
+      await persistRoomSnapshot(room)
       broadcastRoom(room)
 
       const nonMapPlayers = getNonMapPlayers(room)
@@ -476,13 +603,14 @@ wss.on('connection', (socket) => {
         room.players.forEach((candidate) => {
           sendMessage(candidate.socket, payload)
         })
+        await persistRoomSnapshot(room)
       }
     }
 
     if (message.type === 'select_ready') {
       const incomingPlayerId = String(message.playerId || '').trim()
       const incomingCode = String(message.code || '').toUpperCase()
-      const room = rooms.get(incomingCode)
+      const room = await getRoom(incomingCode)
       if (!room) {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
         return
@@ -518,6 +646,7 @@ wss.on('connection', (socket) => {
           })
         })
       }
+      await persistRoomSnapshot(room)
     }
 
     if (message.type === 'sync_state') {
@@ -529,7 +658,7 @@ wss.on('connection', (socket) => {
       }
       const code = String(message.code || '').toUpperCase()
       const playerId = String(message.playerId || '').trim()
-      const room = rooms.get(code)
+      const room = await getRoom(code)
       if (!room) {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
         return
@@ -565,12 +694,13 @@ wss.on('connection', (socket) => {
           })
         })
       }
+      await persistRoomSnapshot(room)
     }
 
     if (message.type === 'request_opponent_state') {
       const code = String(message.code || '').toUpperCase()
       const playerId = String(message.playerId || '').trim()
-      const room = rooms.get(code)
+      const room = await getRoom(code)
       if (!room) {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
         return
@@ -612,7 +742,7 @@ wss.on('connection', (socket) => {
       const code = String(message.code || '').toUpperCase()
       const requesterId = String(message.requesterId || '').trim()
       const targetPlayerId = String(message.targetPlayerId || '').trim()
-      const room = rooms.get(code)
+      const room = await getRoom(code)
       if (!room) {
         sendMessage(socket, { type: 'error', message: 'Room not found.' })
         return
@@ -656,16 +786,17 @@ wss.on('connection', (socket) => {
     }
   })
 
-  socket.on('close', () => {
+  socket.on('close', async () => {
     const room = socket.roomCode ? rooms.get(socket.roomCode) : null
     if (!room) return
     const player = socket.playerId ? room.players.get(socket.playerId) : null
     if (!player) return
     if (room.started) {
       player.socket = null
+      await persistRoomSnapshot(room)
       return
     }
-    removePlayer(room, player.id)
+    await removePlayer(room, player.id)
   })
 })
 

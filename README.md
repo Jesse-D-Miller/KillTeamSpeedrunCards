@@ -14,3 +14,19 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+## Multiplayer WebSocket server
+
+The multiplayer server is in `server/wsServer.js` and can run with in-memory room state (default) or Redis-backed shared room state.
+
+### Environment variables
+
+- `PORT` (default `8080`)
+- `DEBUG_WS=1` to log sync events
+- `INSTANCE_ID` optional stable instance tag for diagnostics
+- `REDIS_URL` enables shared room state across instances
+- `REDIS_TTL_SECONDS` optional room snapshot TTL (default 21600 seconds)
+
+### Multi-instance production recommendation
+
+Set `REDIS_URL` in production so room/state lookup is shared across instances. Without Redis, room state is process-local and can fail when clients connect to different websocket instances.
