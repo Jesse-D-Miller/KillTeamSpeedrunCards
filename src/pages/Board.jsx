@@ -167,6 +167,7 @@ function Board({
   })
   const [syncDebugCopied, setSyncDebugCopied] = useState(false)
   const mapSocketRef = useRef(null)
+  const [mapSocketEpoch, setMapSocketEpoch] = useState(0)
   const textureStyles = useMemo(
     () => [
       {
@@ -539,6 +540,8 @@ function Board({
     if (mapSocketRef.current) return undefined
 
     const mapSocketErrorKey = `kt-map-socket-error-${roomCode}`
+    let reconnectTimer = null
+    let isCleaningUp = false
 
     const socket = new WebSocket(WS_URL)
     mapSocketRef.current = socket
@@ -766,6 +769,12 @@ function Board({
     }
 
     socket.addEventListener('open', () => {
+      try {
+        localStorage.removeItem(mapSocketErrorKey)
+        localStorage.removeItem('kt-map-socket-error')
+      } catch {
+        // noop
+      }
       socket.send(
         JSON.stringify({
           type: 'sync_init',
@@ -789,22 +798,66 @@ function Board({
 
     const refreshInterval = window.setInterval(() => {
       try {
+        if (socket.readyState !== WebSocket.OPEN) return
         const storedPlayers = localStorage.getItem(`kt-room-players-${roomCode}`)
-        if (!storedPlayers) return
+        if (!storedPlayers) {
+          socket.send(
+            JSON.stringify({
+              type: 'sync_init',
+              code: roomCode,
+              name: storedPlayerName || 'MAP',
+              playerId,
+              isMap: true,
+            }),
+          )
+          return
+        }
         const parsedPlayers = JSON.parse(storedPlayers)
+        if (!Array.isArray(parsedPlayers) || parsedPlayers.length === 0) {
+          socket.send(
+            JSON.stringify({
+              type: 'sync_init',
+              code: roomCode,
+              name: storedPlayerName || 'MAP',
+              playerId,
+              isMap: true,
+            }),
+          )
+          return
+        }
         requestAllPlayerStates(parsedPlayers)
       } catch {
         // noop
       }
     }, 1200)
 
+    socket.addEventListener('error', () => {
+      try {
+        localStorage.setItem(mapSocketErrorKey, 'Map socket connection failed.')
+      } catch {
+        // noop
+      }
+    })
+
+    socket.addEventListener('close', () => {
+      mapSocketRef.current = null
+      if (isCleaningUp) return
+      reconnectTimer = window.setTimeout(() => {
+        setMapSocketEpoch((current) => current + 1)
+      }, 500)
+    })
+
     return () => {
+      isCleaningUp = true
       socket.removeEventListener('message', handleMessage)
       window.clearInterval(refreshInterval)
+      if (reconnectTimer) {
+        window.clearTimeout(reconnectTimer)
+      }
       socket.close()
       mapSocketRef.current = null
     }
-  }, [WS_URL])
+  }, [WS_URL, mapSocketEpoch])
 
   useEffect(() => {
     const readTacOps = () => {
