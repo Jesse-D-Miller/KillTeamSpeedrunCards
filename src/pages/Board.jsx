@@ -588,6 +588,13 @@ function Board({
 
     const handleMessage = (event) => {
       const message = JSON.parse(event.data)
+      const clearMapSocketError = () => {
+        try {
+          localStorage.removeItem('kt-map-socket-error')
+        } catch {
+          // noop
+        }
+      }
       if (message.type === 'error') {
         try {
           const errorMessage = String(message.message || 'Unknown map socket error')
@@ -617,6 +624,7 @@ function Board({
               )
               return
             }
+            clearMapSocketError()
             localStorage.setItem(
               `kt-room-players-${roomCode}`,
               JSON.stringify(message.players),
@@ -652,11 +660,7 @@ function Board({
         return
       }
       if (message.type === 'sync_ready') {
-        try {
-          localStorage.removeItem('kt-map-socket-error')
-        } catch {
-          // noop
-        }
+        clearMapSocketError()
         try {
           if (Array.isArray(message.players)) {
             const nonMapCount = message.players.filter(
@@ -670,6 +674,7 @@ function Board({
               )
               return
             }
+            clearMapSocketError()
             localStorage.setItem(
               `kt-room-players-${roomCode}`,
               JSON.stringify(message.players),

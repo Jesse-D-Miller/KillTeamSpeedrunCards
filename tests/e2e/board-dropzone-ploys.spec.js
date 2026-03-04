@@ -351,6 +351,14 @@ test('map shows names, armies, and strat ploys on correct sides', async ({ brows
   await mapPage.reload()
   await mapPage.waitForLoadState('domcontentloaded')
 
+  await expect
+    .poll(
+      async () =>
+        mapPage.evaluate(() => localStorage.getItem('kt-map-socket-error') || ''),
+      { timeout: 5000 },
+    )
+    .not.toBe('Map-only room payload rejected.')
+
   const hostPloy = await pickStratPloy(hostPage, 0)
   const guestPloy = await pickStratPloy(guestPage, 1)
 
