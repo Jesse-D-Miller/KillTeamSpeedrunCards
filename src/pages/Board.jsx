@@ -180,12 +180,27 @@ function Board({
     mapSocketLastOutboundType: '',
     mapSocketOutboundCount: 0,
     mapSocketLastOutboundAt: 0,
+    mapSocketBoundRoom: '',
+    mapSocketBoundPlayerId: '',
     mapSocketError: '',
     updatedAt: 0,
   })
   const [syncDebugCopied, setSyncDebugCopied] = useState(false)
   const mapSocketRef = useRef(null)
   const [mapSocketEpoch, setMapSocketEpoch] = useState(0)
+  const mapSyncPlayerName =
+    sessionStorage.getItem('kt-player-name') ||
+    localStorage.getItem('kt-player-name') ||
+    ''
+  const mapSyncRoomCode =
+    sessionStorage.getItem('kt-room-code') ||
+    localStorage.getItem('kt-room-code') ||
+    ''
+  const mapSyncPlayerId =
+    sessionStorage.getItem('kt-player-id') ||
+    localStorage.getItem('kt-player-id') ||
+    ''
+  const isMapSyncIdentity = mapSyncPlayerName.trim().toUpperCase() === 'MAP'
   const textureStyles = useMemo(
     () => [
       {
@@ -446,6 +461,10 @@ function Board({
               ? localStorage.getItem(mapSocketLastOutboundAtKey) || '0'
               : '0',
           ),
+          mapSocketBoundRoom:
+            String(mapSocketRef.current?.ktRoomCode || '').trim() || '',
+          mapSocketBoundPlayerId:
+            String(mapSocketRef.current?.ktPlayerId || '').trim() || '',
           mapSocketError,
           updatedAt: Date.now(),
         })
@@ -624,21 +643,27 @@ function Board({
   }, [])
 
   useEffect(() => {
-    const storedPlayerName =
-      sessionStorage.getItem('kt-player-name') ||
-      localStorage.getItem('kt-player-name') ||
-      ''
-    const isMapUser = storedPlayerName.trim().toUpperCase() === 'MAP'
-    const roomCode =
-      sessionStorage.getItem('kt-room-code') ||
-      localStorage.getItem('kt-room-code') ||
-      ''
-    const playerId =
-      sessionStorage.getItem('kt-player-id') ||
-      localStorage.getItem('kt-player-id') ||
-      ''
+    const storedPlayerName = mapSyncPlayerName
+    const isMapUser = isMapSyncIdentity
+    const roomCode = mapSyncRoomCode
+    const playerId = mapSyncPlayerId
     if (!isMapUser || !roomCode || !playerId) return undefined
-    if (mapSocketRef.current) return undefined
+    const existingSocket = mapSocketRef.current
+    if (existingSocket) {
+      const existingRoomCode = String(existingSocket.ktRoomCode || '').trim()
+      const existingPlayerId = String(existingSocket.ktPlayerId || '').trim()
+      const sameIdentity =
+        existingRoomCode === roomCode &&
+        existingPlayerId === playerId &&
+        existingSocket.readyState !== WebSocket.CLOSED
+      if (sameIdentity) return undefined
+      try {
+        existingSocket.close()
+      } catch {
+        // noop
+      }
+      mapSocketRef.current = null
+    }
 
     const mapSocketErrorKey = `kt-map-socket-error-${roomCode}`
     const mapSocketLastTypeKey = `kt-map-socket-last-type-${roomCode}`
@@ -655,6 +680,8 @@ function Board({
     let isCleaningUp = false
 
     const socket = new WebSocket(WS_URL)
+    socket.ktRoomCode = roomCode
+    socket.ktPlayerId = playerId
     mapSocketRef.current = socket
 
     const clearStaleMapRoom = (code) => {
@@ -1054,7 +1081,14 @@ function Board({
       socket.close()
       mapSocketRef.current = null
     }
-  }, [WS_URL, mapSocketEpoch])
+  }, [
+    WS_URL,
+    isMapSyncIdentity,
+    mapSyncPlayerName,
+    mapSyncRoomCode,
+    mapSyncPlayerId,
+    mapSocketEpoch,
+  ])
 
   useEffect(() => {
     const readTacOps = () => {
@@ -3560,6 +3594,8 @@ function Board({
       : 'none'}`,
     `mapSocketState: ${syncDebug.mapSocketState || 'n/a'}`,
     `mapSocketEpoch: ${syncDebug.mapSocketEpoch}`,
+    `mapSocketBoundRoom: ${syncDebug.mapSocketBoundRoom || 'n/a'}`,
+    `mapSocketBoundPlayer: ${syncDebug.mapSocketBoundPlayerId || 'n/a'}`,
     `mapSocketLastType: ${syncDebug.mapSocketLastType || 'n/a'}`,
     `mapSocketMsgs: ${syncDebug.mapSocketMessageCount}`,
     `mapSocketLastOutboundType: ${syncDebug.mapSocketLastOutboundType || 'n/a'}`,
