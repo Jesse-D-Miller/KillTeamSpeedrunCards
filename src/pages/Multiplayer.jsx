@@ -52,6 +52,40 @@ function Multiplayer() {
     return true
   }
 
+  const persistRoomMetadata = (code, host, roomPlayers) => {
+    if (!code) return
+    try {
+      localStorage.setItem(
+        `kt-room-players-${code}`,
+        JSON.stringify(roomPlayers || []),
+      )
+      if (host) {
+        localStorage.setItem(`kt-room-host-${code}`, host)
+      }
+      const activeGameId = localStorage.getItem('kt-game-id') || ''
+      ;(roomPlayers || []).forEach((player) => {
+        const id = String(player?.id || '').trim()
+        if (!id) return
+        const playerName = String(player?.name || '').trim()
+        const killteamId = String(player?.killteamId || '').trim()
+        if (playerName) {
+          localStorage.setItem(`kt-room-player-name-${code}-${id}`, playerName)
+        }
+        if (killteamId) {
+          localStorage.setItem(`kt-room-player-killteam-${code}-${id}`, killteamId)
+          if (activeGameId) {
+            localStorage.setItem(
+              `kt-room-player-killteam-${code}-${id}-${activeGameId}`,
+              killteamId,
+            )
+          }
+        }
+      })
+    } catch (storageError) {
+      console.warn('Failed to persist room players.', storageError)
+    }
+  }
+
   const handleMessage = (event) => {
     const message = JSON.parse(event.data)
 
@@ -70,16 +104,7 @@ function Multiplayer() {
       setError('')
       try {
         if (message.code) {
-          localStorage.setItem(
-            `kt-room-players-${message.code}`,
-            JSON.stringify(message.players || []),
-          )
-          if (message.hostId) {
-            localStorage.setItem(
-              `kt-room-host-${message.code}`,
-              message.hostId,
-            )
-          }
+          persistRoomMetadata(message.code, message.hostId, message.players || [])
         }
         const resolvedName =
           message.players?.find((player) => player.id === message.playerId)
@@ -99,20 +124,30 @@ function Multiplayer() {
       setPlayers(message.players || [])
       setHostId(message.hostId || '')
       if (roomCode) {
-        try {
+        persistRoomMetadata(roomCode, message.hostId, message.players || [])
+      }
+      return
+    }
+
+    if (message.type === 'killteam_update') {
+      const code = message.code || roomCode
+      const incomingPlayerId = String(message.playerId || '').trim()
+      const incomingKillteamId = String(message.killteamId || '').trim()
+      if (!code || !incomingPlayerId || !incomingKillteamId) return
+      try {
+        localStorage.setItem(
+          `kt-room-player-killteam-${code}-${incomingPlayerId}`,
+          incomingKillteamId,
+        )
+        const activeGameId = localStorage.getItem('kt-game-id') || ''
+        if (activeGameId) {
           localStorage.setItem(
-            `kt-room-players-${roomCode}`,
-            JSON.stringify(message.players || []),
+            `kt-room-player-killteam-${code}-${incomingPlayerId}-${activeGameId}`,
+            incomingKillteamId,
           )
-          if (message.hostId) {
-            localStorage.setItem(
-              `kt-room-host-${roomCode}`,
-              message.hostId,
-            )
-          }
-        } catch (storageError) {
-          console.warn('Failed to persist room players.', storageError)
         }
+      } catch (error) {
+        console.warn('Failed to persist killteam update.', error)
       }
       return
     }

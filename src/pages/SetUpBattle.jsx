@@ -14,7 +14,8 @@ const checklistItems = [
 function SetUpBattle() {
   const WS_URL = resolveWsUrl()
   const location = useLocation()
-  const killteamId = location.state?.killteamId
+  const killteamId =
+    location.state?.killteamId || localStorage.getItem('kt-last-killteam') || ''
   const [selectedDropZone, setSelectedDropZone] = useState('')
   const [isHost, setIsHost] = useState(true)
   const socketRef = useRef(null)
@@ -191,8 +192,70 @@ function SetUpBattle() {
 
     const handleMessage = (event) => {
       const message = JSON.parse(event.data)
+      if (message.type === 'sync_ready') {
+        try {
+          if (roomCode && Array.isArray(message.players)) {
+            localStorage.setItem(
+              `kt-room-players-${roomCode}`,
+              JSON.stringify(message.players),
+            )
+            if (message.hostId) {
+              localStorage.setItem(`kt-room-host-${roomCode}`, message.hostId)
+            }
+            const { gameId } = getRoomContext()
+            message.players.forEach((player) => {
+              const id = String(player?.id || '').trim()
+              if (!id) return
+              const incomingName = String(player?.name || '').trim()
+              const incomingKillteamId = String(player?.killteamId || '').trim()
+              if (incomingName) {
+                localStorage.setItem(
+                  `kt-room-player-name-${roomCode}-${id}`,
+                  incomingName,
+                )
+              }
+              if (incomingKillteamId) {
+                localStorage.setItem(
+                  `kt-room-player-killteam-${roomCode}-${id}`,
+                  incomingKillteamId,
+                )
+                if (gameId) {
+                  localStorage.setItem(
+                    `kt-room-player-killteam-${roomCode}-${id}-${gameId}`,
+                    incomingKillteamId,
+                  )
+                }
+              }
+            })
+          }
+        } catch (error) {
+          console.warn('Failed to persist setup room metadata.', error)
+        }
+        return
+      }
       if (message.type === 'drop_zone_update') {
         applyDropZoneUpdate(message)
+        return
+      }
+      if (message.type === 'killteam_update') {
+        try {
+          const incomingPlayerId = String(message.playerId || '').trim()
+          const incomingKillteamId = String(message.killteamId || '').trim()
+          if (!incomingPlayerId || !incomingKillteamId) return
+          const { gameId } = getRoomContext()
+          localStorage.setItem(
+            `kt-room-player-killteam-${roomCode}-${incomingPlayerId}`,
+            incomingKillteamId,
+          )
+          if (gameId) {
+            localStorage.setItem(
+              `kt-room-player-killteam-${roomCode}-${incomingPlayerId}-${gameId}`,
+              incomingKillteamId,
+            )
+          }
+        } catch (error) {
+          console.warn('Failed to persist killteam update in setup.', error)
+        }
         return
       }
       if (message.type === 'opponent_state' && message.state) {

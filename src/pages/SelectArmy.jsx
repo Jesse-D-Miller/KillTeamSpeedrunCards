@@ -27,13 +27,23 @@ function SelectArmy() {
         ? selection.selectedUnitsByTeam[killteamId]
         : []
       const socket = new WebSocket(WS_URL)
+      let shouldClose = false
+      const closeSocket = () => {
+        if (shouldClose) return
+        shouldClose = true
+        try {
+          socket.close()
+        } catch {
+          // noop
+        }
+      }
       socket.addEventListener('open', () => {
         socket.send(
           JSON.stringify({
-            type: 'sync_init',
+            type: 'set_killteam',
             code: roomCode,
-            name: playerName || '',
             playerId,
+            killteamId,
           }),
         )
         socket.send(
@@ -58,20 +68,27 @@ function SelectArmy() {
             },
           }),
         )
-        window.setTimeout(() => {
-          try {
-            socket.close()
-          } catch {
-            // noop
-          }
-        }, 150)
+        window.setTimeout(closeSocket, 2000)
       })
-      socket.addEventListener('error', () => {
+      socket.addEventListener('message', (event) => {
         try {
-          socket.close()
+          const message = JSON.parse(event.data)
+          if (message.type === 'error') {
+            closeSocket()
+            return
+          }
+          if (
+            message.type === 'killteam_update' &&
+            String(message.playerId || '') === String(playerId)
+          ) {
+            closeSocket()
+          }
         } catch {
           // noop
         }
+      })
+      socket.addEventListener('error', () => {
+        closeSocket()
       })
     } catch (error) {
       console.warn('Failed to sync killteam selection.', error)

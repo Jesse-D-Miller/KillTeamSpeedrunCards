@@ -760,6 +760,31 @@ function Game() {
             if (message.hostId) {
               localStorage.setItem(`kt-room-host-${roomCode}`, message.hostId)
             }
+            const activeGameId = localStorage.getItem('kt-game-id') || ''
+            message.players.forEach((player) => {
+              const id = String(player?.id || '').trim()
+              if (!id) return
+              const incomingName = String(player?.name || '').trim()
+              const incomingKillteamId = String(player?.killteamId || '').trim()
+              if (incomingName) {
+                localStorage.setItem(
+                  `kt-room-player-name-${roomCode}-${id}`,
+                  incomingName,
+                )
+              }
+              if (incomingKillteamId) {
+                localStorage.setItem(
+                  `kt-room-player-killteam-${roomCode}-${id}`,
+                  incomingKillteamId,
+                )
+                if (activeGameId) {
+                  localStorage.setItem(
+                    `kt-room-player-killteam-${roomCode}-${id}-${activeGameId}`,
+                    incomingKillteamId,
+                  )
+                }
+              }
+            })
             if (!playerName) {
               const localPlayer = message.players.find(
                 (candidate) => candidate?.id === playerId,
@@ -1728,6 +1753,17 @@ function Game() {
         if (activeGameId) {
           const roomGameKey = `${roomKey}-${activeGameId}`
           localStorage.setItem(roomGameKey, JSON.stringify(activeStratPloys))
+        }
+        const socket = socketRef.current
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(
+            JSON.stringify({
+              type: 'set_strat_ploys',
+              code: roomCode,
+              playerId,
+              ploys: activeStratPloys,
+            }),
+          )
         }
       }
       window.dispatchEvent(new CustomEvent('kt-strat-ploys-update'))

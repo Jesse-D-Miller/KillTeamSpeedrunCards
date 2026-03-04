@@ -9,6 +9,34 @@
   overflow: hidden;
 }
 
+.board-sync-debug {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  z-index: 30;
+  width: min(420px, calc(100vw - 20px));
+  max-height: 45vh;
+  overflow: auto;
+  padding: 8px 10px;
+  background: rgba(9, 12, 16, 0.9);
+  border: 1px solid rgba(160, 176, 197, 0.45);
+  color: #d4dee8;
+  font-size: 12px;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  backdrop-filter: blur(2px);
+}
+
+.board-sync-debug__title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #98ffba;
+  margin-bottom: 4px;
+}
+
 
 .board-toolbar {
   padding: 16px 18px 0;

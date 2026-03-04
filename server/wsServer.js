@@ -26,7 +26,12 @@ const createCode = () => {
 const serializeRoom = (room) => ({
   code: room.code,
   hostId: room.hostId,
-  players: Array.from(room.players.values()),
+  players: Array.from(room.players.values()).map((player) => ({
+    id: player.id,
+    name: player.name,
+    ready: Boolean(player.ready),
+    killteamId: player.killteamId || '',
+  })),
 })
 
 const isMapName = (name) => String(name || '').trim().toUpperCase() === 'MAP'
@@ -99,6 +104,7 @@ wss.on('connection', (socket) => {
         hostId: playerId,
         players: new Map(),
         stateByPlayerId: new Map(),
+        stratPloysByPlayerId: new Map(),
         selectionReadyByPlayerId: new Map(),
         dropZoneState: null,
         started: false,
@@ -107,6 +113,7 @@ wss.on('connection', (socket) => {
         id: playerId,
         name,
         ready: false,
+        killteamId: '',
         socket,
       })
       room.selectionReadyByPlayerId.set(playerId, false)
@@ -155,6 +162,7 @@ wss.on('connection', (socket) => {
         id: playerId,
         name: resolvedName,
         ready: false,
+        killteamId: '',
         socket,
       })
       room.selectionReadyByPlayerId.set(playerId, false)
@@ -214,6 +222,7 @@ wss.on('connection', (socket) => {
           id: playerId,
           name: resolvedName || 'Player',
           ready: false,
+          killteamId: '',
           socket,
         }
         room.players.set(playerId, player)
@@ -223,6 +232,10 @@ wss.on('connection', (socket) => {
         if (name) {
           player.name = resolvedName
         }
+      }
+      const incomingKillteamId = String(message.killteamId || '').trim()
+      if (incomingKillteamId) {
+        player.killteamId = incomingKillteamId
       }
       socket.playerId = playerId
       socket.roomCode = code
@@ -257,6 +270,68 @@ wss.on('connection', (socket) => {
           ...room.dropZoneState,
         })
       }
+      return
+    }
+
+    if (message.type === 'set_killteam') {
+      const code = String(message.code || '').toUpperCase()
+      const playerId = String(message.playerId || '').trim()
+      const killteamId = String(message.killteamId || '').trim()
+      const room = rooms.get(code)
+      if (!room) {
+        sendMessage(socket, { type: 'error', message: 'Room not found.' })
+        return
+      }
+      const player = room.players.get(playerId)
+      if (!player) {
+        sendMessage(socket, { type: 'error', message: 'Player not found.' })
+        return
+      }
+      if (!killteamId) {
+        sendMessage(socket, { type: 'error', message: 'Kill team not found.' })
+        return
+      }
+      player.socket = socket
+      player.killteamId = killteamId
+
+      room.players.forEach((candidate) => {
+        sendMessage(candidate.socket, {
+          type: 'killteam_update',
+          code,
+          playerId: player.id,
+          killteamId,
+        })
+      })
+      broadcastRoom(room)
+      return
+    }
+
+    if (message.type === 'set_strat_ploys') {
+      const code = String(message.code || '').toUpperCase()
+      const playerId = String(message.playerId || '').trim()
+      const room = rooms.get(code)
+      if (!room) {
+        sendMessage(socket, { type: 'error', message: 'Room not found.' })
+        return
+      }
+      const player = room.players.get(playerId)
+      if (!player) {
+        sendMessage(socket, { type: 'error', message: 'Player not found.' })
+        return
+      }
+      const ploys = Array.isArray(message.ploys)
+        ? message.ploys.filter((entry) => entry && typeof entry === 'object')
+        : []
+      player.socket = socket
+      room.stratPloysByPlayerId.set(player.id, ploys)
+      room.players.forEach((candidate) => {
+        sendMessage(candidate.socket, {
+          type: 'strat_ploys_update',
+          code,
+          playerId: player.id,
+          ploys,
+        })
+      })
       return
     }
 
@@ -421,6 +496,10 @@ wss.on('connection', (socket) => {
         return
       }
       player.socket = socket
+      const syncKillteamId = String(message.state?.killteamId || '').trim()
+      if (syncKillteamId) {
+        player.killteamId = syncKillteamId
+      }
       room.stateByPlayerId.set(player.id, message.state)
       room.players.forEach((candidate) => {
         if (candidate.id !== player.id) {
@@ -431,6 +510,17 @@ wss.on('connection', (socket) => {
           })
         }
       })
+      if (Array.isArray(message.state?.activeStratPloys)) {
+        room.stratPloysByPlayerId.set(player.id, message.state.activeStratPloys)
+        room.players.forEach((candidate) => {
+          sendMessage(candidate.socket, {
+            type: 'strat_ploys_update',
+            code,
+            playerId: player.id,
+            ploys: message.state.activeStratPloys,
+          })
+        })
+      }
     }
 
     if (message.type === 'request_opponent_state') {
@@ -472,6 +562,53 @@ wss.on('connection', (socket) => {
         state: null,
         source: 'refresh',
       })
+    }
+
+    if (message.type === 'request_player_state') {
+      const code = String(message.code || '').toUpperCase()
+      const requesterId = String(message.requesterId || '').trim()
+      const targetPlayerId = String(message.targetPlayerId || '').trim()
+      const room = rooms.get(code)
+      if (!room) {
+        sendMessage(socket, { type: 'error', message: 'Room not found.' })
+        return
+      }
+      const requester = room.players.get(requesterId)
+      if (!requester) {
+        sendMessage(socket, { type: 'error', message: 'Player not found.' })
+        return
+      }
+      if (!targetPlayerId || targetPlayerId === requesterId) {
+        sendMessage(socket, {
+          type: 'opponent_state',
+          state: null,
+          source: 'targeted',
+        })
+        return
+      }
+      const targetState = room.stateByPlayerId.get(targetPlayerId) || null
+      if (targetState) {
+        sendMessage(socket, {
+          type: 'opponent_state',
+          state: targetState,
+          source: 'targeted',
+        })
+        return
+      }
+      const targetPlayer = room.players.get(targetPlayerId)
+      if (targetPlayer?.socket) {
+        sendMessage(targetPlayer.socket, {
+          type: 'request_sync_state',
+          code,
+          requesterId,
+        })
+      }
+      sendMessage(socket, {
+        type: 'opponent_state',
+        state: null,
+        source: 'targeted',
+      })
+      return
     }
   })
 

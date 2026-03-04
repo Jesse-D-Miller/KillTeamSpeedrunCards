@@ -152,6 +152,28 @@ function Board({
   const [opponentTacOpCard, setOpponentTacOpCard] = useState(null)
   const [playerTacOpRevealed, setPlayerTacOpRevealed] = useState(false)
   const [opponentTacOpRevealed, setOpponentTacOpRevealed] = useState(false)
+  const [syncDebug, setSyncDebug] = useState({
+    enabled: false,
+    roomCode: '',
+    playerId: '',
+    playerName: '',
+    activeGameId: '',
+    isMapUser: false,
+    players: [],
+    hostId: '',
+    teamIds: {},
+    assignedZones: {
+      player: '',
+      opponent: '',
+    },
+    storedZones: {
+      player: '',
+      opponent: '',
+    },
+    ploysByPlayerId: {},
+    opponentCache: false,
+    updatedAt: 0,
+  })
   const mapSocketRef = useRef(null)
   const textureStyles = useMemo(
     () => [
@@ -207,9 +229,9 @@ function Board({
   useEffect(() => {
     const readDropZone = () => {
       const stored = localStorage.getItem('kt-drop-zone') || ''
-      setStoredDropZone(stored)
+      setStoredDropZone((previous) => stored || previous)
       const opponentStored = localStorage.getItem('kt-drop-zone-opponent') || ''
-      setStoredOpponentDropZone(opponentStored)
+      setStoredOpponentDropZone((previous) => opponentStored || previous)
     }
     readDropZone()
     const handleDropZoneUpdate = () => readDropZone()
@@ -218,6 +240,130 @@ function Board({
     return () => {
       window.removeEventListener('kt-dropzone-update', handleDropZoneUpdate)
       window.removeEventListener('storage', handleDropZoneUpdate)
+    }
+  }, [])
+
+  useEffect(() => {
+    const readSyncDebug = () => {
+      try {
+        const params = new URLSearchParams(window.location.search)
+        const enabled =
+          params.get('syncDebug') === '1' ||
+          localStorage.getItem('kt-sync-debug') === '1'
+        if (!enabled) {
+          setSyncDebug((previous) => ({ ...previous, enabled: false }))
+          return
+        }
+        const roomCode =
+          sessionStorage.getItem('kt-room-code') ||
+          localStorage.getItem('kt-room-code') ||
+          ''
+        const playerId =
+          sessionStorage.getItem('kt-player-id') ||
+          localStorage.getItem('kt-player-id') ||
+          ''
+        const playerName =
+          sessionStorage.getItem('kt-player-name') ||
+          localStorage.getItem('kt-player-name') ||
+          ''
+        const activeGameId = localStorage.getItem('kt-game-id') || ''
+        const roomPlayersRaw = roomCode
+          ? localStorage.getItem(`kt-room-players-${roomCode}`)
+          : ''
+        const roomPlayersParsed = roomPlayersRaw ? JSON.parse(roomPlayersRaw) : []
+        const players = Array.isArray(roomPlayersParsed)
+          ? roomPlayersParsed
+              .filter((player) => player?.id)
+              .map((player) => ({
+                id: String(player.id),
+                name: String(player.name || ''),
+              }))
+          : []
+        const teamIds = {}
+        const ploysByPlayerId = {}
+        players.forEach((player) => {
+          const id = String(player.id || '').trim()
+          if (!id) return
+          teamIds[id] =
+            (activeGameId &&
+              localStorage.getItem(
+                `kt-room-player-killteam-${roomCode}-${id}-${activeGameId}`,
+              )) ||
+            localStorage.getItem(`kt-room-player-killteam-${roomCode}-${id}`) ||
+            ''
+          const ploysRaw =
+            (activeGameId &&
+              localStorage.getItem(
+                `kt-room-player-strat-ploys-${roomCode}-${id}-${activeGameId}`,
+              )) ||
+            localStorage.getItem(`kt-room-player-strat-ploys-${roomCode}-${id}`) ||
+            '[]'
+          const parsedPloys = JSON.parse(ploysRaw)
+          ploysByPlayerId[id] = Array.isArray(parsedPloys) ? parsedPloys.length : 0
+        })
+        const assignmentsKey = roomCode
+          ? `kt-drop-zone-assignments-${roomCode}`
+          : 'kt-drop-zone-assignments'
+        const assignmentsRaw = roomCode
+          ? (activeGameId && localStorage.getItem(`${assignmentsKey}-${activeGameId}`)) ||
+            localStorage.getItem(assignmentsKey)
+          : localStorage.getItem(assignmentsKey)
+        const assignments = assignmentsRaw ? JSON.parse(assignmentsRaw) : {}
+        const playerAssignments =
+          assignments?.playerAssignments &&
+          typeof assignments.playerAssignments === 'object'
+            ? assignments.playerAssignments
+            : {}
+        const opponentCache = Boolean(
+          roomCode &&
+            playerId &&
+            localStorage.getItem(`kt-opponent-${roomCode}-${playerId}`),
+        )
+        setSyncDebug({
+          enabled: true,
+          roomCode,
+          playerId,
+          playerName,
+          activeGameId,
+          isMapUser: playerName.trim().toUpperCase() === 'MAP',
+          players,
+          hostId: roomCode ? localStorage.getItem(`kt-room-host-${roomCode}`) || '' : '',
+          teamIds,
+          assignedZones: {
+            player:
+              (playerAssignments.A === playerId && 'A') ||
+              (playerAssignments.B === playerId && 'B') ||
+              '',
+            opponent:
+              (playerAssignments.A && playerAssignments.A !== playerId && 'A') ||
+              (playerAssignments.B && playerAssignments.B !== playerId && 'B') ||
+              '',
+          },
+          storedZones: {
+            player: localStorage.getItem('kt-drop-zone') || '',
+            opponent: localStorage.getItem('kt-drop-zone-opponent') || '',
+          },
+          ploysByPlayerId,
+          opponentCache,
+          updatedAt: Date.now(),
+        })
+      } catch (error) {
+        console.warn('Failed to read board sync debug data.', error)
+      }
+    }
+
+    readSyncDebug()
+    const interval = window.setInterval(readSyncDebug, 1000)
+    window.addEventListener('storage', readSyncDebug)
+    window.addEventListener('kt-strat-ploys-update', readSyncDebug)
+    window.addEventListener('kt-killop-update', readSyncDebug)
+    window.addEventListener('kt-dropzone-update', readSyncDebug)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('storage', readSyncDebug)
+      window.removeEventListener('kt-strat-ploys-update', readSyncDebug)
+      window.removeEventListener('kt-killop-update', readSyncDebug)
+      window.removeEventListener('kt-dropzone-update', readSyncDebug)
     }
   }, [])
 
@@ -328,8 +474,10 @@ function Board({
     readNames()
     const handleNameUpdate = () => readNames()
     window.addEventListener('storage', handleNameUpdate)
+    const interval = window.setInterval(readNames, 1200)
     return () => {
       window.removeEventListener('storage', handleNameUpdate)
+      window.clearInterval(interval)
     }
   }, [])
 
@@ -353,9 +501,81 @@ function Board({
     const socket = new WebSocket(WS_URL)
     mapSocketRef.current = socket
 
+    const requestAllPlayerStates = (players = []) => {
+      if (socket.readyState !== WebSocket.OPEN) return
+      const targets = (players || []).filter((candidate) => {
+        const candidateId = String(candidate?.id || '').trim()
+        const candidateName = String(candidate?.name || '').trim().toUpperCase()
+        return candidateId && candidateId !== playerId && candidateName !== 'MAP'
+      })
+      targets.forEach((candidate) => {
+        socket.send(
+          JSON.stringify({
+            type: 'request_player_state',
+            code: roomCode,
+            requesterId: playerId,
+            targetPlayerId: candidate.id,
+          }),
+        )
+      })
+    }
+
     const handleMessage = (event) => {
       const message = JSON.parse(event.data)
-      if (message.type === 'sync_ready') return
+      if (message.type === 'room_update') {
+        try {
+          if (Array.isArray(message.players)) {
+            localStorage.setItem(
+              `kt-room-players-${roomCode}`,
+              JSON.stringify(message.players),
+            )
+            requestAllPlayerStates(message.players)
+          }
+          if (message.hostId) {
+            localStorage.setItem(`kt-room-host-${roomCode}`, message.hostId)
+          }
+        } catch (error) {
+          console.warn('Failed to persist map room update metadata.', error)
+        }
+        return
+      }
+      if (message.type === 'strat_ploys_update') {
+        try {
+          const incomingPlayerId = String(message.playerId || '').trim()
+          if (!incomingPlayerId) return
+          const incomingPloys = Array.isArray(message.ploys) ? message.ploys : []
+          const activeGameId = localStorage.getItem('kt-game-id') || ''
+          const baseKey = `kt-room-player-strat-ploys-${roomCode}-${incomingPlayerId}`
+          localStorage.setItem(baseKey, JSON.stringify(incomingPloys))
+          if (activeGameId) {
+            localStorage.setItem(
+              `${baseKey}-${activeGameId}`,
+              JSON.stringify(incomingPloys),
+            )
+          }
+          window.dispatchEvent(new CustomEvent('kt-strat-ploys-update'))
+        } catch (error) {
+          console.warn('Failed to persist map strat ploys update.', error)
+        }
+        return
+      }
+      if (message.type === 'sync_ready') {
+        try {
+          if (Array.isArray(message.players)) {
+            localStorage.setItem(
+              `kt-room-players-${roomCode}`,
+              JSON.stringify(message.players),
+            )
+          }
+          if (message.hostId) {
+            localStorage.setItem(`kt-room-host-${roomCode}`, message.hostId)
+          }
+        } catch (error) {
+          console.warn('Failed to persist map sync room metadata.', error)
+        }
+        requestAllPlayerStates(message.players)
+        return
+      }
       if (message.type !== 'opponent_state') return
       const state = message.state
       const incomingPlayerId = state?.playerId || ''
@@ -438,11 +658,32 @@ function Board({
           isMap: true,
         }),
       )
+      const storedPlayers = localStorage.getItem(`kt-room-players-${roomCode}`)
+      if (storedPlayers) {
+        try {
+          const parsedPlayers = JSON.parse(storedPlayers)
+          requestAllPlayerStates(parsedPlayers)
+        } catch {
+          // noop
+        }
+      }
     })
     socket.addEventListener('message', handleMessage)
 
+    const refreshInterval = window.setInterval(() => {
+      try {
+        const storedPlayers = localStorage.getItem(`kt-room-players-${roomCode}`)
+        if (!storedPlayers) return
+        const parsedPlayers = JSON.parse(storedPlayers)
+        requestAllPlayerStates(parsedPlayers)
+      } catch {
+        // noop
+      }
+    }, 1200)
+
     return () => {
       socket.removeEventListener('message', handleMessage)
+      window.clearInterval(refreshInterval)
       socket.close()
       mapSocketRef.current = null
     }
@@ -486,6 +727,38 @@ function Board({
         const nonMapPlayers = roomPlayers.filter(
           (player) => String(player?.name || '').trim().toUpperCase() !== 'MAP',
         )
+        const assignmentsKey = roomCode
+          ? `kt-drop-zone-assignments-${roomCode}`
+          : 'kt-drop-zone-assignments'
+        const assignmentsStored = roomCode
+          ? (activeGameId &&
+              localStorage.getItem(`${assignmentsKey}-${activeGameId}`)) ||
+            localStorage.getItem(assignmentsKey)
+          : localStorage.getItem(assignmentsKey)
+        const assignments = assignmentsStored
+          ? JSON.parse(assignmentsStored)
+          : null
+        const playerAssignments =
+          assignments?.playerAssignments &&
+          typeof assignments.playerAssignments === 'object'
+            ? assignments.playerAssignments
+            : {}
+        const getAssignedPlayerId = (zone) => {
+          const id = String(playerAssignments?.[zone] || '').trim()
+          if (!id) return ''
+          return nonMapPlayers.some((player) => player?.id === id) ? id : ''
+        }
+        const mapRightPlayerId = getAssignedPlayerId('B')
+        const mapLeftPlayerId = getAssignedPlayerId('A')
+        const fallbackFirstPlayerId = nonMapPlayers[0]?.id || ''
+        const mapPrimaryPlayerId =
+          mapRightPlayerId || mapLeftPlayerId || fallbackFirstPlayerId
+        const mapSecondaryPlayerId =
+          mapLeftPlayerId ||
+          nonMapPlayers.find(
+            (player) => player?.id && player.id !== mapPrimaryPlayerId,
+          )?.id ||
+          ''
         const getRoomTeamId = (id) => {
           if (!roomCode || !id) return ''
           return (
@@ -629,10 +902,10 @@ function Board({
           return parseRoomPloys(stored)
         }
         const playerPloysId = isMapUser
-          ? nonMapPlayers[0]?.id
+          ? mapPrimaryPlayerId
           : playerId
         const opponentPloysId = isMapUser
-          ? nonMapPlayers[1]?.id
+          ? mapSecondaryPlayerId
           : nonMapPlayers.find(
               (player) => player?.id && player.id !== playerId,
             )?.id
@@ -656,22 +929,6 @@ function Board({
         if (!opponentTeamId && opponentPloysId) {
           opponentTeamId = getRoomTeamId(opponentPloysId)
         }
-        const assignmentsKey = roomCode
-          ? `kt-drop-zone-assignments-${roomCode}`
-          : 'kt-drop-zone-assignments'
-        const assignmentsStored = roomCode
-          ? (activeGameId &&
-              localStorage.getItem(`${assignmentsKey}-${activeGameId}`)) ||
-            localStorage.getItem(assignmentsKey)
-          : localStorage.getItem(assignmentsKey)
-        const assignments = assignmentsStored
-          ? JSON.parse(assignmentsStored)
-          : null
-        const playerAssignments =
-          assignments?.playerAssignments &&
-          typeof assignments.playerAssignments === 'object'
-            ? assignments.playerAssignments
-            : {}
         const resolveTeamZone = (teamId, fallbackPlayerId = '') => {
           if (!assignments) return ''
           if (teamId && assignments.A === teamId) return 'A'
@@ -682,8 +939,14 @@ function Board({
           }
           return ''
         }
-        setPlayerAssignedZone(resolveTeamZone(playerTeamId, playerPloysId))
-        setOpponentAssignedZone(resolveTeamZone(opponentTeamId, opponentPloysId))
+        const resolvedPlayerZone = resolveTeamZone(playerTeamId, playerPloysId)
+        const resolvedOpponentZone = resolveTeamZone(opponentTeamId, opponentPloysId)
+        if (resolvedPlayerZone) {
+          setPlayerAssignedZone(resolvedPlayerZone)
+        }
+        if (resolvedOpponentZone) {
+          setOpponentAssignedZone(resolvedOpponentZone)
+        }
         const playerStored = playerTeamId
           ? activeGameId
             ? localStorage.getItem(
@@ -702,15 +965,19 @@ function Board({
         const opponentRoomPloys = opponentPloysId
           ? getRoomPloys(opponentPloysId)
           : []
-        setPlayerStratPloys(
-          playerRoomPloys.length ? playerRoomPloys : parsePloys(playerStored),
-        )
-        setOpponentStratPloys(
+        const resolvedPlayerPloys =
+          playerRoomPloys.length ? playerRoomPloys : parsePloys(playerStored)
+        const resolvedOpponentPloys =
           opponentPloys.length
             ? opponentPloys
             : opponentRoomPloys.length
               ? opponentRoomPloys
-              : parsePloys(opponentStored),
+              : parsePloys(opponentStored)
+        setPlayerStratPloys((previous) =>
+          resolvedPlayerPloys.length ? resolvedPlayerPloys : previous,
+        )
+        setOpponentStratPloys((previous) =>
+          resolvedOpponentPloys.length ? resolvedOpponentPloys : previous,
         )
       } catch (error) {
         console.warn('Failed to read strat ploys selection.', error)
@@ -892,14 +1159,20 @@ function Board({
             ? opponentDeadUnits
             : getRoomDeadUnits(opponentRoomId)
 
-        setPlayerKillOpCount(deriveKillOpCount(playerTeamId, playerSelectedUnits))
-        setOpponentKillOpCount(
-          deriveKillOpCount(opponentTeamId, resolvedOpponentSelectedUnits),
-        )
-        setPlayerDeadCount(deriveDeadCount(playerTeamId, playerDeadUnits))
-        setOpponentDeadCount(
-          deriveDeadCount(opponentTeamId, resolvedOpponentDeadUnits),
-        )
+        if (playerTeamId) {
+          setPlayerKillOpCount(
+            deriveKillOpCount(playerTeamId, playerSelectedUnits),
+          )
+          setPlayerDeadCount(deriveDeadCount(playerTeamId, playerDeadUnits))
+        }
+        if (opponentTeamId) {
+          setOpponentKillOpCount(
+            deriveKillOpCount(opponentTeamId, resolvedOpponentSelectedUnits),
+          )
+          setOpponentDeadCount(
+            deriveDeadCount(opponentTeamId, resolvedOpponentDeadUnits),
+          )
+        }
       } catch (error) {
         console.warn('Failed to read kill op counts.', error)
       }
@@ -2813,6 +3086,54 @@ function Board({
 
   return (
     <div className="board-view">
+      {syncDebug.enabled ? (
+        <aside className="board-sync-debug" aria-live="polite">
+          <div className="board-sync-debug__title">Sync Debug</div>
+          <div>room: {syncDebug.roomCode || 'n/a'}</div>
+          <div>playerId: {syncDebug.playerId || 'n/a'}</div>
+          <div>name: {syncDebug.playerName || 'n/a'}</div>
+          <div>gameId: {syncDebug.activeGameId || 'n/a'}</div>
+          <div>isMap: {syncDebug.isMapUser ? 'yes' : 'no'}</div>
+          <div>hostId: {syncDebug.hostId || 'n/a'}</div>
+          <div>
+            players:{' '}
+            {syncDebug.players.length
+              ? syncDebug.players
+                  .map((player) => `${player.name || 'unknown'}(${player.id.slice(0, 6)})`)
+                  .join(', ')
+              : 'none'}
+          </div>
+          <div>
+            teams:{' '}
+            {Object.keys(syncDebug.teamIds).length
+              ? Object.entries(syncDebug.teamIds)
+                  .map(([id, teamId]) => `${id.slice(0, 6)}:${teamId || '-'}`)
+                  .join(', ')
+              : 'none'}
+          </div>
+          <div>
+            ploys:{' '}
+            {Object.keys(syncDebug.ploysByPlayerId).length
+              ? Object.entries(syncDebug.ploysByPlayerId)
+                  .map(([id, count]) => `${id.slice(0, 6)}:${count}`)
+                  .join(', ')
+              : 'none'}
+          </div>
+          <div>
+            zones stored: {syncDebug.storedZones.player || '-'} / {syncDebug.storedZones.opponent || '-'}
+          </div>
+          <div>
+            zones assigned: {syncDebug.assignedZones.player || '-'} / {syncDebug.assignedZones.opponent || '-'}
+          </div>
+          <div>opponent cache: {syncDebug.opponentCache ? 'yes' : 'no'}</div>
+          <div>
+            updated:{' '}
+            {syncDebug.updatedAt
+              ? new Date(syncDebug.updatedAt).toLocaleTimeString()
+              : 'n/a'}
+          </div>
+        </aside>
+      ) : null}
       <div
         ref={boardSurfaceRef}
         className="board-surface"

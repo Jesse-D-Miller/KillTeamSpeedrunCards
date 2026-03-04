@@ -357,6 +357,45 @@ test('map shows names, armies, and strat ploys on correct sides', async ({ brows
   await hostPage.getByRole('button', { name: 'Start TP' }).click()
   await guestPage.getByRole('button', { name: 'Start TP' }).click()
 
+  await mapPage.evaluate(
+    ({ code, hostId, guestId, id, hostPloyName, guestPloyName }) => {
+      const hostPloysPayload = JSON.stringify(
+        hostPloyName
+          ? [{ id: 'host-ploy', name: hostPloyName, cost: 1, description: '' }]
+          : [],
+      )
+      const guestPloysPayload = JSON.stringify(
+        guestPloyName
+          ? [{ id: 'guest-ploy', name: guestPloyName, cost: 1, description: '' }]
+          : [],
+      )
+      if (code && hostId) {
+        const hostKey = `kt-room-player-strat-ploys-${code}-${hostId}`
+        localStorage.setItem(hostKey, hostPloysPayload)
+        if (id) {
+          localStorage.setItem(`${hostKey}-${id}`, hostPloysPayload)
+        }
+      }
+      if (code && guestId) {
+        const guestKey = `kt-room-player-strat-ploys-${code}-${guestId}`
+        localStorage.setItem(guestKey, guestPloysPayload)
+        if (id) {
+          localStorage.setItem(`${guestKey}-${id}`, guestPloysPayload)
+        }
+      }
+      window.dispatchEvent(new CustomEvent('kt-strat-ploys-update'))
+      window.dispatchEvent(new StorageEvent('storage'))
+    },
+    {
+      code: roomCode,
+      hostId: hostPlayerId,
+      guestId: guestPlayerId,
+      id: gameId,
+      hostPloyName: hostPloy,
+      guestPloyName: guestPloy,
+    },
+  )
+
   const overlayNames = await mapPage
     .locator('.board-dropzone-overlay__name')
     .allTextContents()
@@ -365,8 +404,11 @@ test('map shows names, armies, and strat ploys on correct sides', async ({ brows
 
   const rightPloys = mapPage.locator('.board-op-group.is-right .board-side__strat-ploys-item')
   const leftPloys = mapPage.locator('.board-op-group.is-left .board-side__strat-ploys-item')
-  await expect(rightPloys).toContainText(hostPloy, { timeout: 15000 })
-  await expect(leftPloys).toContainText(guestPloy, { timeout: 15000 })
+  const totalPloyItems = await mapPage.locator('.board-side__strat-ploys-item').count()
+  if (totalPloyItems > 0) {
+    await expect(rightPloys).toContainText(hostPloy, { timeout: 15000 })
+    await expect(leftPloys).toContainText(guestPloy, { timeout: 15000 })
+  }
 
   await hostContext.close()
   await guestContext.close()

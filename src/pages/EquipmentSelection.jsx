@@ -114,6 +114,31 @@ function EquipmentSelection() {
             if (message.hostId) {
               localStorage.setItem(`kt-room-host-${roomCode}`, message.hostId)
             }
+            const activeGameId = localStorage.getItem('kt-game-id') || ''
+            message.players.forEach((player) => {
+              const id = String(player?.id || '').trim()
+              if (!id) return
+              const incomingName = String(player?.name || '').trim()
+              const incomingKillteamId = String(player?.killteamId || '').trim()
+              if (incomingName) {
+                localStorage.setItem(
+                  `kt-room-player-name-${roomCode}-${id}`,
+                  incomingName,
+                )
+              }
+              if (incomingKillteamId) {
+                localStorage.setItem(
+                  `kt-room-player-killteam-${roomCode}-${id}`,
+                  incomingKillteamId,
+                )
+                if (activeGameId) {
+                  localStorage.setItem(
+                    `kt-room-player-killteam-${roomCode}-${id}-${activeGameId}`,
+                    incomingKillteamId,
+                  )
+                }
+              }
+            })
           }
         } catch (error) {
           console.warn('Failed to persist equipment room metadata.', error)
