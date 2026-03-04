@@ -702,6 +702,8 @@ function Board({
     const mapSocketLastOutboundAtKey = `kt-map-socket-last-outbound-at-${roomCode}`
     const mapSocketRoomNotFoundCountKey =
       `kt-map-socket-room-not-found-count-${roomCode}`
+    const mapSocketLastRecoveryAtKey =
+      `kt-map-socket-last-recovery-at-${roomCode}`
     const mapSocketLastInstanceIdKey =
       `kt-map-socket-last-instance-id-${roomCode}`
     const mapSocketErrorInstanceIdKey =
@@ -752,6 +754,7 @@ function Board({
         localStorage.removeItem(`kt-map-socket-outbound-count-${code}`)
         localStorage.removeItem(`kt-map-socket-last-outbound-at-${code}`)
         localStorage.removeItem(`kt-map-socket-room-not-found-count-${code}`)
+        localStorage.removeItem(`kt-map-socket-last-recovery-at-${code}`)
         localStorage.removeItem(`kt-map-socket-last-instance-id-${code}`)
         localStorage.removeItem(`kt-map-socket-error-instance-id-${code}`)
         localStorage.removeItem(`kt-room-players-${code}`)
@@ -919,10 +922,12 @@ function Board({
               String(roomNotFoundCount),
             )
             if (roomNotFoundCount >= 2 && nonMapCount > 0) {
-              try {
-                socket.close()
-              } catch {
-                // noop
+              const now = Date.now()
+              const lastRecoveryAt =
+                Number(localStorage.getItem(mapSocketLastRecoveryAtKey) || '0')
+              if (now - lastRecoveryAt > 4000) {
+                localStorage.setItem(mapSocketLastRecoveryAtKey, String(now))
+                sendSyncInit()
               }
             }
             if (roomNotFoundCount >= 3 && nonMapCount === 0) {
@@ -1101,6 +1106,7 @@ function Board({
       stampSocketMeta(mapSocketLastTypeKey, 'open')
       stampSocketMeta(mapSocketLastAtKey, Date.now())
       localStorage.removeItem(mapSocketRoomNotFoundCountKey)
+      localStorage.removeItem(mapSocketLastRecoveryAtKey)
       try {
         localStorage.removeItem(mapSocketErrorKey)
         localStorage.removeItem('kt-map-socket-error')
@@ -1156,9 +1162,17 @@ function Board({
       stampSocketMeta(mapSocketLastAtKey, Date.now())
       mapSocketRef.current = null
       if (isCleaningUp) return
+      let reconnectDelay = 500
+      try {
+        const roomNotFoundCount =
+          Number(localStorage.getItem(mapSocketRoomNotFoundCountKey) || '0')
+        reconnectDelay = Math.min(500 * 2 ** Math.min(roomNotFoundCount, 4), 8000)
+      } catch {
+        reconnectDelay = 500
+      }
       reconnectTimer = window.setTimeout(() => {
         setMapSocketEpoch((current) => current + 1)
-      }, 500)
+      }, reconnectDelay)
     })
 
     return () => {
