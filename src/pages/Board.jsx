@@ -16,6 +16,12 @@ import './Board.css'
 
 const HIDDEN_TAC_OP_SRC = '/images/tacOps/hidden-tac-op.png'
 const OBJECTIVE_MARKER_RADIUS_IN = 20 / 25.4
+const WS_STATE_LABELS = {
+  0: 'CONNECTING',
+  1: 'OPEN',
+  2: 'CLOSING',
+  3: 'CLOSED',
+}
 const MAP_RULE_ENTRIES = [
   {
     title: 'Vantage',
@@ -162,6 +168,14 @@ function Board({
     },
     ploysByPlayerId: {},
     opponentCache: false,
+    mapSocketState: 'n/a',
+    mapSocketEpoch: 0,
+    mapSocketLastType: '',
+    mapSocketMessageCount: 0,
+    mapSocketOpenedAt: 0,
+    mapSocketClosedAt: 0,
+    mapSocketLastAt: 0,
+    mapSocketSyncInitAt: 0,
     mapSocketError: '',
     updatedAt: 0,
   })
@@ -315,9 +329,37 @@ function Board({
             playerId &&
             localStorage.getItem(`kt-opponent-${roomCode}-${playerId}`),
         )
-        const mapSocketError = roomCode
-          ? localStorage.getItem(`kt-map-socket-error-${roomCode}`) || ''
+        const mapSocketErrorKey = roomCode ? `kt-map-socket-error-${roomCode}` : ''
+        const mapSocketLastTypeKey = roomCode
+          ? `kt-map-socket-last-type-${roomCode}`
           : ''
+        const mapSocketMessageCountKey = roomCode
+          ? `kt-map-socket-message-count-${roomCode}`
+          : ''
+        const mapSocketOpenedAtKey = roomCode
+          ? `kt-map-socket-opened-at-${roomCode}`
+          : ''
+        const mapSocketClosedAtKey = roomCode
+          ? `kt-map-socket-closed-at-${roomCode}`
+          : ''
+        const mapSocketLastAtKey = roomCode
+          ? `kt-map-socket-last-at-${roomCode}`
+          : ''
+        const mapSocketSyncInitAtKey = roomCode
+          ? `kt-map-socket-sync-init-at-${roomCode}`
+          : ''
+        let mapSocketError = mapSocketErrorKey
+          ? localStorage.getItem(mapSocketErrorKey) || ''
+          : ''
+        if (
+          roomCode &&
+          nonMapCount > 0 &&
+          mapSocketError === 'Map-only room payload rejected.'
+        ) {
+          localStorage.removeItem(mapSocketErrorKey)
+          localStorage.removeItem('kt-map-socket-error')
+          mapSocketError = ''
+        }
         setSyncDebug({
           enabled: true,
           roomCode,
@@ -345,6 +387,39 @@ function Board({
           },
           ploysByPlayerId,
           opponentCache,
+          mapSocketState:
+            mapSocketRef.current && mapSocketRef.current.readyState in WS_STATE_LABELS
+              ? WS_STATE_LABELS[mapSocketRef.current.readyState]
+              : 'n/a',
+          mapSocketEpoch,
+          mapSocketLastType: mapSocketLastTypeKey
+            ? localStorage.getItem(mapSocketLastTypeKey) || ''
+            : '',
+          mapSocketMessageCount: Number(
+            mapSocketMessageCountKey
+              ? localStorage.getItem(mapSocketMessageCountKey) || '0'
+              : '0',
+          ),
+          mapSocketOpenedAt: Number(
+            mapSocketOpenedAtKey
+              ? localStorage.getItem(mapSocketOpenedAtKey) || '0'
+              : '0',
+          ),
+          mapSocketClosedAt: Number(
+            mapSocketClosedAtKey
+              ? localStorage.getItem(mapSocketClosedAtKey) || '0'
+              : '0',
+          ),
+          mapSocketLastAt: Number(
+            mapSocketLastAtKey
+              ? localStorage.getItem(mapSocketLastAtKey) || '0'
+              : '0',
+          ),
+          mapSocketSyncInitAt: Number(
+            mapSocketSyncInitAtKey
+              ? localStorage.getItem(mapSocketSyncInitAtKey) || '0'
+              : '0',
+          ),
           mapSocketError,
           updatedAt: Date.now(),
         })
@@ -366,7 +441,7 @@ function Board({
       window.removeEventListener('kt-killop-update', readSyncDebug)
       window.removeEventListener('kt-dropzone-update', readSyncDebug)
     }
-  }, [])
+  }, [mapSocketEpoch])
 
   useEffect(() => {
     const readNames = () => {
@@ -540,6 +615,12 @@ function Board({
     if (mapSocketRef.current) return undefined
 
     const mapSocketErrorKey = `kt-map-socket-error-${roomCode}`
+    const mapSocketLastTypeKey = `kt-map-socket-last-type-${roomCode}`
+    const mapSocketMessageCountKey = `kt-map-socket-message-count-${roomCode}`
+    const mapSocketOpenedAtKey = `kt-map-socket-opened-at-${roomCode}`
+    const mapSocketClosedAtKey = `kt-map-socket-closed-at-${roomCode}`
+    const mapSocketLastAtKey = `kt-map-socket-last-at-${roomCode}`
+    const mapSocketSyncInitAtKey = `kt-map-socket-sync-init-at-${roomCode}`
     let reconnectTimer = null
     let isCleaningUp = false
 
@@ -551,6 +632,12 @@ function Board({
       try {
         localStorage.removeItem(`kt-map-socket-error-${code}`)
         localStorage.removeItem('kt-map-socket-error')
+        localStorage.removeItem(`kt-map-socket-last-type-${code}`)
+        localStorage.removeItem(`kt-map-socket-message-count-${code}`)
+        localStorage.removeItem(`kt-map-socket-opened-at-${code}`)
+        localStorage.removeItem(`kt-map-socket-closed-at-${code}`)
+        localStorage.removeItem(`kt-map-socket-last-at-${code}`)
+        localStorage.removeItem(`kt-map-socket-sync-init-at-${code}`)
         localStorage.removeItem(`kt-room-players-${code}`)
         localStorage.removeItem(`kt-room-host-${code}`)
         localStorage.removeItem(`kt-drop-zone-assignments-${code}`)
@@ -574,6 +661,41 @@ function Board({
       } catch (error) {
         console.warn('Failed to clear stale map room data.', error)
       }
+    }
+
+    const stampSocketMeta = (key, value) => {
+      try {
+        localStorage.setItem(key, String(value))
+      } catch {
+        // noop
+      }
+    }
+
+    const markSocketMessage = (type) => {
+      const now = Date.now()
+      stampSocketMeta(mapSocketLastAtKey, now)
+      if (type) stampSocketMeta(mapSocketLastTypeKey, type)
+      let currentCount = 0
+      try {
+        currentCount = Number(localStorage.getItem(mapSocketMessageCountKey) || '0')
+      } catch {
+        currentCount = 0
+      }
+      stampSocketMeta(mapSocketMessageCountKey, currentCount + 1)
+    }
+
+    const sendSyncInit = () => {
+      if (socket.readyState !== WebSocket.OPEN) return
+      stampSocketMeta(mapSocketSyncInitAtKey, Date.now())
+      socket.send(
+        JSON.stringify({
+          type: 'sync_init',
+          code: roomCode,
+          name: storedPlayerName || 'MAP',
+          playerId,
+          isMap: true,
+        }),
+      )
     }
 
     const requestAllPlayerStates = (players = []) => {
@@ -613,6 +735,7 @@ function Board({
 
     const handleMessage = (event) => {
       const message = JSON.parse(event.data)
+      markSocketMessage(message?.type || 'unknown')
       const clearMapSocketError = () => {
         try {
           localStorage.removeItem(mapSocketErrorKey)
@@ -793,21 +916,17 @@ function Board({
     }
 
     socket.addEventListener('open', () => {
+      stampSocketMeta(mapSocketOpenedAtKey, Date.now())
+      stampSocketMeta(mapSocketMessageCountKey, 0)
+      stampSocketMeta(mapSocketLastTypeKey, 'open')
+      stampSocketMeta(mapSocketLastAtKey, Date.now())
       try {
         localStorage.removeItem(mapSocketErrorKey)
         localStorage.removeItem('kt-map-socket-error')
       } catch {
         // noop
       }
-      socket.send(
-        JSON.stringify({
-          type: 'sync_init',
-          code: roomCode,
-          name: storedPlayerName || 'MAP',
-          playerId,
-          isMap: true,
-        }),
-      )
+      sendSyncInit()
       const storedPlayers = localStorage.getItem(`kt-room-players-${roomCode}`)
       if (storedPlayers) {
         try {
@@ -825,28 +944,12 @@ function Board({
         if (socket.readyState !== WebSocket.OPEN) return
         const storedPlayers = localStorage.getItem(`kt-room-players-${roomCode}`)
         if (!storedPlayers) {
-          socket.send(
-            JSON.stringify({
-              type: 'sync_init',
-              code: roomCode,
-              name: storedPlayerName || 'MAP',
-              playerId,
-              isMap: true,
-            }),
-          )
+          sendSyncInit()
           return
         }
         const parsedPlayers = JSON.parse(storedPlayers)
         if (!Array.isArray(parsedPlayers) || parsedPlayers.length === 0) {
-          socket.send(
-            JSON.stringify({
-              type: 'sync_init',
-              code: roomCode,
-              name: storedPlayerName || 'MAP',
-              playerId,
-              isMap: true,
-            }),
-          )
+          sendSyncInit()
           return
         }
         requestAllPlayerStates(parsedPlayers)
@@ -858,12 +961,17 @@ function Board({
     socket.addEventListener('error', () => {
       try {
         localStorage.setItem(mapSocketErrorKey, 'Map socket connection failed.')
+        stampSocketMeta(mapSocketLastTypeKey, 'error')
+        stampSocketMeta(mapSocketLastAtKey, Date.now())
       } catch {
         // noop
       }
     })
 
     socket.addEventListener('close', () => {
+      stampSocketMeta(mapSocketClosedAtKey, Date.now())
+      stampSocketMeta(mapSocketLastTypeKey, 'close')
+      stampSocketMeta(mapSocketLastAtKey, Date.now())
       mapSocketRef.current = null
       if (isCleaningUp) return
       reconnectTimer = window.setTimeout(() => {
@@ -3367,6 +3475,11 @@ function Board({
 
   const map1OpClass = toOpClass(selectedCritOpsCard?.opNumber)
   const map2OpClass = toOpClass(selectedCritOpsCard?.opNumber)
+  const formatDebugTimestamp = (value) => {
+    const parsed = Number(value || 0)
+    if (!parsed) return 'n/a'
+    return new Date(parsed).toLocaleTimeString()
+  }
   const syncDebugLines = [
     `room: ${syncDebug.roomCode || 'n/a'}`,
     `playerId: ${syncDebug.playerId || 'n/a'}`,
@@ -3380,6 +3493,10 @@ function Board({
           .map((player) => `${player.name || 'unknown'}(${player.id.slice(0, 6)})`)
           .join(', ')
       : 'none'}`,
+    `mapSocketState: ${syncDebug.mapSocketState || 'n/a'}`,
+    `mapSocketEpoch: ${syncDebug.mapSocketEpoch}`,
+    `mapSocketLastType: ${syncDebug.mapSocketLastType || 'n/a'}`,
+    `mapSocketMsgs: ${syncDebug.mapSocketMessageCount}`,
     `teams: ${Object.keys(syncDebug.teamIds).length
       ? Object.entries(syncDebug.teamIds)
           .map(([id, teamId]) => `${id.slice(0, 6)}:${teamId || '-'}`)
@@ -3393,6 +3510,10 @@ function Board({
     `zones stored: ${syncDebug.storedZones.player || '-'} / ${syncDebug.storedZones.opponent || '-'}`,
     `zones assigned: ${syncDebug.assignedZones.player || '-'} / ${syncDebug.assignedZones.opponent || '-'}`,
     `opponent cache: ${syncDebug.opponentCache ? 'yes' : 'no'}`,
+    `mapSocketOpenedAt: ${formatDebugTimestamp(syncDebug.mapSocketOpenedAt)}`,
+    `mapSocketLastAt: ${formatDebugTimestamp(syncDebug.mapSocketLastAt)}`,
+    `mapSocketClosedAt: ${formatDebugTimestamp(syncDebug.mapSocketClosedAt)}`,
+    `mapSyncInitAt: ${formatDebugTimestamp(syncDebug.mapSocketSyncInitAt)}`,
     `mapSocketError: ${syncDebug.mapSocketError || 'n/a'}`,
     `updated: ${
       syncDebug.updatedAt
