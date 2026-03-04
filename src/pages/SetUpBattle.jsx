@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { resolveWsUrl } from '../state/wsUrl.js'
 import './SetUpBattle.css'
 
 const checklistItems = [
@@ -11,12 +12,14 @@ const checklistItems = [
 ]
 
 function SetUpBattle() {
+  const WS_URL = resolveWsUrl()
   const location = useLocation()
   const killteamId = location.state?.killteamId
   const [selectedDropZone, setSelectedDropZone] = useState('')
   const [isHost, setIsHost] = useState(true)
+  const socketRef = useRef(null)
 
-  useEffect(() => {
+  const getRoomContext = () => {
     const roomCode =
       sessionStorage.getItem('kt-room-code') ||
       localStorage.getItem('kt-room-code') ||
@@ -25,31 +28,25 @@ function SetUpBattle() {
       sessionStorage.getItem('kt-player-id') ||
       localStorage.getItem('kt-player-id') ||
       ''
+    const playerName =
+      sessionStorage.getItem('kt-player-name') ||
+      localStorage.getItem('kt-player-name') ||
+      ''
     const hostId = roomCode
       ? localStorage.getItem(`kt-room-host-${roomCode}`) || ''
       : ''
-    if (roomCode && playerId && hostId) {
-      setIsHost(playerId === hostId)
-    } else {
-      setIsHost(true)
+    return {
+      roomCode,
+      playerId,
+      playerName,
+      hostId,
+      gameId: localStorage.getItem('kt-game-id') || '',
     }
-  }, [])
+  }
 
-  const handleDropZoneSelect = (zone) => {
-    if (!isHost) return
-    setSelectedDropZone(zone)
-    localStorage.setItem('kt-drop-zone', zone)
-    localStorage.setItem('kt-drop-zone-opponent', zone === 'A' ? 'B' : 'A')
+  const persistDropZoneAssignments = (zone) => {
     try {
-      const roomCode =
-        sessionStorage.getItem('kt-room-code') ||
-        localStorage.getItem('kt-room-code') ||
-        ''
-      const playerId =
-        sessionStorage.getItem('kt-player-id') ||
-        localStorage.getItem('kt-player-id') ||
-        ''
-      const gameId = localStorage.getItem('kt-game-id') || ''
+      const { roomCode, playerId, gameId } = getRoomContext()
       const storedPlayers = roomCode
         ? localStorage.getItem(`kt-room-players-${roomCode}`)
         : ''
@@ -80,7 +77,12 @@ function SetUpBattle() {
             `kt-room-player-killteam-${roomCode}-${opponentPlayer.id}`,
           )
         : ''
-      const assignments = {}
+      const assignments = {
+        playerAssignments: {
+          [zone]: playerId || '',
+          [zone === 'A' ? 'B' : 'A']: opponentPlayer?.id || '',
+        },
+      }
       if (playerTeamId) {
         assignments[zone] = playerTeamId
       }
@@ -96,8 +98,131 @@ function SetUpBattle() {
       } else {
         localStorage.setItem('kt-drop-zone-assignments', JSON.stringify(assignments))
       }
+      return assignments
     } catch (error) {
       console.warn('Failed to persist drop zone assignments.', error)
+      return {}
+    }
+  }
+
+  useEffect(() => {
+    const applyRoomRole = () => {
+      const { roomCode, playerId, hostId } = getRoomContext()
+      const storedDropZone = localStorage.getItem('kt-drop-zone') || ''
+      if (storedDropZone) {
+        setSelectedDropZone(storedDropZone)
+      }
+      if (!roomCode) {
+        setIsHost(true)
+        return
+      }
+      if (roomCode && playerId && hostId) {
+        setIsHost(playerId === hostId)
+        return
+      }
+      setIsHost(false)
+    }
+
+    applyRoomRole()
+    const handleStorage = () => applyRoomRole()
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
+  useEffect(() => {
+    const { roomCode, playerId, playerName } = getRoomContext()
+    if (!roomCode || !playerId) return undefined
+
+    const socket = new WebSocket(WS_URL)
+    socketRef.current = socket
+
+    const applyDropZoneUpdate = (message) => {
+      const zone = String(message?.zone || '').toUpperCase()
+      if (zone !== 'A' && zone !== 'B') return
+      const selectorPlayerId = String(message?.selectorPlayerId || '')
+      const myZone = selectorPlayerId && selectorPlayerId === playerId
+        ? zone
+        : zone === 'A'
+          ? 'B'
+          : 'A'
+      const opponentZone = myZone === 'A' ? 'B' : 'A'
+
+      setSelectedDropZone(myZone)
+      localStorage.setItem('kt-drop-zone', myZone)
+      localStorage.setItem('kt-drop-zone-opponent', opponentZone)
+
+      const assignments =
+        message?.assignments && typeof message.assignments === 'object'
+          ? message.assignments
+          : null
+      if (assignments) {
+        const { gameId } = getRoomContext()
+        const baseKey = `kt-drop-zone-assignments-${roomCode}`
+        localStorage.setItem(baseKey, JSON.stringify(assignments))
+        if (gameId) {
+          localStorage.setItem(`${baseKey}-${gameId}`, JSON.stringify(assignments))
+        }
+      }
+
+      window.dispatchEvent(new CustomEvent('kt-dropzone-update'))
+    }
+
+    const handleMessage = (event) => {
+      const message = JSON.parse(event.data)
+      if (message.type === 'drop_zone_update') {
+        applyDropZoneUpdate(message)
+      }
+    }
+
+    socket.addEventListener('open', () => {
+      socket.send(
+        JSON.stringify({
+          type: 'sync_init',
+          code: roomCode,
+          name: playerName || 'Player',
+          playerId,
+        }),
+      )
+      socket.send(
+        JSON.stringify({
+          type: 'request_drop_zone',
+          code: roomCode,
+          playerId,
+        }),
+      )
+    })
+    socket.addEventListener('message', handleMessage)
+
+    return () => {
+      socket.removeEventListener('message', handleMessage)
+      socket.close()
+      socketRef.current = null
+    }
+  }, [WS_URL])
+
+  const handleDropZoneSelect = (zone) => {
+    if (!isHost) return
+    setSelectedDropZone(zone)
+    localStorage.setItem('kt-drop-zone', zone)
+    localStorage.setItem('kt-drop-zone-opponent', zone === 'A' ? 'B' : 'A')
+    const assignments = persistDropZoneAssignments(zone)
+    const { roomCode, playerId } = getRoomContext()
+    const socket = socketRef.current
+    if (
+      roomCode &&
+      playerId &&
+      socket &&
+      socket.readyState === WebSocket.OPEN
+    ) {
+      socket.send(
+        JSON.stringify({
+          type: 'set_drop_zone',
+          code: roomCode,
+          playerId,
+          zone,
+          assignments,
+        }),
+      )
     }
     window.dispatchEvent(new CustomEvent('kt-dropzone-update'))
   }

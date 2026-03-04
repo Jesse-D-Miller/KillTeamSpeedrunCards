@@ -667,14 +667,23 @@ function Board({
         const assignments = assignmentsStored
           ? JSON.parse(assignmentsStored)
           : null
-        const resolveTeamZone = (teamId) => {
-          if (!teamId || !assignments) return ''
-          if (assignments.A === teamId) return 'A'
-          if (assignments.B === teamId) return 'B'
+        const playerAssignments =
+          assignments?.playerAssignments &&
+          typeof assignments.playerAssignments === 'object'
+            ? assignments.playerAssignments
+            : {}
+        const resolveTeamZone = (teamId, fallbackPlayerId = '') => {
+          if (!assignments) return ''
+          if (teamId && assignments.A === teamId) return 'A'
+          if (teamId && assignments.B === teamId) return 'B'
+          if (fallbackPlayerId) {
+            if (playerAssignments.A === fallbackPlayerId) return 'A'
+            if (playerAssignments.B === fallbackPlayerId) return 'B'
+          }
           return ''
         }
-        setPlayerAssignedZone(resolveTeamZone(playerTeamId))
-        setOpponentAssignedZone(resolveTeamZone(opponentTeamId))
+        setPlayerAssignedZone(resolveTeamZone(playerTeamId, playerPloysId))
+        setOpponentAssignedZone(resolveTeamZone(opponentTeamId, opponentPloysId))
         const playerStored = playerTeamId
           ? activeGameId
             ? localStorage.getItem(

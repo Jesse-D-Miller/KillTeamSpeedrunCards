@@ -100,6 +100,7 @@ wss.on('connection', (socket) => {
         players: new Map(),
         stateByPlayerId: new Map(),
         selectionReadyByPlayerId: new Map(),
+        dropZoneState: null,
         started: false,
       }
       room.players.set(playerId, {
@@ -164,6 +165,12 @@ wss.on('connection', (socket) => {
         playerId,
         ...serializeRoom(room),
       })
+      if (room.dropZoneState) {
+        sendMessage(socket, {
+          type: 'drop_zone_update',
+          ...room.dropZoneState,
+        })
+      }
       broadcastRoom(room)
       return
     }
@@ -244,6 +251,78 @@ wss.on('connection', (socket) => {
           source: 'sync',
         })
       }
+      if (room.dropZoneState) {
+        sendMessage(socket, {
+          type: 'drop_zone_update',
+          ...room.dropZoneState,
+        })
+      }
+      return
+    }
+
+    if (message.type === 'set_drop_zone') {
+      const code = String(message.code || '').toUpperCase()
+      const playerId = String(message.playerId || '').trim()
+      const zone = String(message.zone || '').toUpperCase()
+      const room = rooms.get(code)
+      if (!room) {
+        sendMessage(socket, { type: 'error', message: 'Room not found.' })
+        return
+      }
+      const player = room.players.get(playerId)
+      if (!player) {
+        sendMessage(socket, { type: 'error', message: 'Player not found.' })
+        return
+      }
+      if (room.hostId !== player.id) {
+        sendMessage(socket, {
+          type: 'error',
+          message: 'Only host can select drop zone.',
+        })
+        return
+      }
+      if (zone !== 'A' && zone !== 'B') {
+        sendMessage(socket, {
+          type: 'error',
+          message: 'Invalid drop zone.',
+        })
+        return
+      }
+      const assignments =
+        message.assignments && typeof message.assignments === 'object'
+          ? message.assignments
+          : {}
+      room.dropZoneState = {
+        zone,
+        selectorPlayerId: player.id,
+        assignments,
+        at: Date.now(),
+      }
+      room.players.forEach((candidate) => {
+        sendMessage(candidate.socket, {
+          type: 'drop_zone_update',
+          ...room.dropZoneState,
+        })
+      })
+      return
+    }
+
+    if (message.type === 'request_drop_zone') {
+      const code = String(message.code || '').toUpperCase()
+      const room = rooms.get(code)
+      if (!room) {
+        sendMessage(socket, { type: 'error', message: 'Room not found.' })
+        return
+      }
+      sendMessage(socket, {
+        type: 'drop_zone_update',
+        ...(room.dropZoneState || {
+          zone: '',
+          selectorPlayerId: '',
+          assignments: {},
+          at: Date.now(),
+        }),
+      })
       return
     }
 
