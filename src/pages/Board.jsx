@@ -618,6 +618,18 @@ function Board({
       if (message.type === 'room_update') {
         try {
           if (Array.isArray(message.players)) {
+            const nonMapCount = message.players.filter(
+              (player) =>
+                String(player?.name || '').trim().toUpperCase() !== 'MAP',
+            ).length
+            if (nonMapCount === 0) {
+              localStorage.setItem(
+                'kt-map-socket-error',
+                'Map-only room payload rejected.',
+              )
+              clearStaleMapRoom(roomCode)
+              return
+            }
             localStorage.setItem(
               `kt-room-players-${roomCode}`,
               JSON.stringify(message.players),
@@ -660,6 +672,18 @@ function Board({
         }
         try {
           if (Array.isArray(message.players)) {
+            const nonMapCount = message.players.filter(
+              (player) =>
+                String(player?.name || '').trim().toUpperCase() !== 'MAP',
+            ).length
+            if (nonMapCount === 0) {
+              localStorage.setItem(
+                'kt-map-socket-error',
+                'Map-only room payload rejected.',
+              )
+              clearStaleMapRoom(roomCode)
+              return
+            }
             localStorage.setItem(
               `kt-room-players-${roomCode}`,
               JSON.stringify(message.players),

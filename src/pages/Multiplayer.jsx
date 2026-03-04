@@ -99,7 +99,7 @@ function Multiplayer() {
       const nonMapCount = (message.players || []).filter(
         (player) => normalizeName(player?.name) !== 'MAP',
       ).length
-      if (message.type === 'room_joined' && isMapUser && nonMapCount === 0) {
+      if (isMapUser && nonMapCount === 0) {
         setError('Map can only join after at least one player is in the room.')
         setStatus('disconnected')
         if (socketRef.current) {
