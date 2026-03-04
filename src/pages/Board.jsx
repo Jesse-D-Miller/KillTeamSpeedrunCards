@@ -149,6 +149,7 @@ function Board({
     activeGameId: '',
     isMapUser: false,
     players: [],
+    nonMapCount: 0,
     hostId: '',
     teamIds: {},
     assignedZones: {
@@ -161,6 +162,7 @@ function Board({
     },
     ploysByPlayerId: {},
     opponentCache: false,
+    mapSocketError: '',
     updatedAt: 0,
   })
   const [syncDebugCopied, setSyncDebugCopied] = useState(false)
@@ -269,6 +271,9 @@ function Board({
                 name: String(player.name || ''),
               }))
           : []
+        const nonMapCount = players.filter(
+          (player) => String(player?.name || '').trim().toUpperCase() !== 'MAP',
+        ).length
         const teamIds = {}
         const ploysByPlayerId = {}
         players.forEach((player) => {
@@ -309,6 +314,7 @@ function Board({
             playerId &&
             localStorage.getItem(`kt-opponent-${roomCode}-${playerId}`),
         )
+        const mapSocketError = localStorage.getItem('kt-map-socket-error') || ''
         setSyncDebug({
           enabled: true,
           roomCode,
@@ -317,6 +323,7 @@ function Board({
           activeGameId,
           isMapUser: playerName.trim().toUpperCase() === 'MAP',
           players,
+          nonMapCount,
           hostId: roomCode ? localStorage.getItem(`kt-room-host-${roomCode}`) || '' : '',
           teamIds,
           assignedZones: {
@@ -335,6 +342,7 @@ function Board({
           },
           ploysByPlayerId,
           opponentCache,
+          mapSocketError,
           updatedAt: Date.now(),
         })
       } catch (error) {
@@ -552,6 +560,17 @@ function Board({
 
     const handleMessage = (event) => {
       const message = JSON.parse(event.data)
+      if (message.type === 'error') {
+        try {
+          localStorage.setItem(
+            'kt-map-socket-error',
+            String(message.message || 'Unknown map socket error'),
+          )
+        } catch {
+          // noop
+        }
+        return
+      }
       if (message.type === 'room_update') {
         try {
           if (Array.isArray(message.players)) {
@@ -590,6 +609,11 @@ function Board({
         return
       }
       if (message.type === 'sync_ready') {
+        try {
+          localStorage.removeItem('kt-map-socket-error')
+        } catch {
+          // noop
+        }
         try {
           if (Array.isArray(message.players)) {
             localStorage.setItem(
@@ -3209,6 +3233,7 @@ function Board({
     `name: ${syncDebug.playerName || 'n/a'}`,
     `gameId: ${syncDebug.activeGameId || 'n/a'}`,
     `isMap: ${syncDebug.isMapUser ? 'yes' : 'no'}`,
+    `nonMapCount: ${syncDebug.nonMapCount}`,
     `hostId: ${syncDebug.hostId || 'n/a'}`,
     `players: ${syncDebug.players.length
       ? syncDebug.players
@@ -3228,6 +3253,7 @@ function Board({
     `zones stored: ${syncDebug.storedZones.player || '-'} / ${syncDebug.storedZones.opponent || '-'}`,
     `zones assigned: ${syncDebug.assignedZones.player || '-'} / ${syncDebug.assignedZones.opponent || '-'}`,
     `opponent cache: ${syncDebug.opponentCache ? 'yes' : 'no'}`,
+    `mapSocketError: ${syncDebug.mapSocketError || 'n/a'}`,
     `updated: ${
       syncDebug.updatedAt
         ? new Date(syncDebug.updatedAt).toLocaleTimeString()
