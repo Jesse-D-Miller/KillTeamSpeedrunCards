@@ -160,7 +160,10 @@ function UnitSelection() {
         sessionStorage.getItem('kt-player-name') ||
         localStorage.getItem('kt-player-name') ||
         ''
-      const storedId = sessionStorage.getItem('kt-player-id') || ''
+      const storedId =
+        sessionStorage.getItem('kt-player-id') ||
+        localStorage.getItem('kt-player-id') ||
+        ''
       setRoomCode(storedCode)
       setPlayerName(storedName)
       setPlayerId(storedId)
@@ -180,7 +183,7 @@ function UnitSelection() {
         code: roomCode,
         playerId,
         state: {
-          name: playerName || 'Player',
+          name: playerName || '',
           killteamId,
           selectedUnits: Array.from(selectedUnits),
           selectedEquipment: [],
@@ -204,6 +207,19 @@ function UnitSelection() {
       const message = JSON.parse(event.data)
       if (message.type === 'sync_ready') {
         setWsReady(true)
+        try {
+          if (roomCode && Array.isArray(message.players)) {
+            localStorage.setItem(
+              `kt-room-players-${roomCode}`,
+              JSON.stringify(message.players),
+            )
+            if (message.hostId) {
+              localStorage.setItem(`kt-room-host-${roomCode}`, message.hostId)
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to persist unit selection room metadata.', error)
+        }
         return
       }
       if (message.type === 'request_sync_state') {
@@ -212,12 +228,11 @@ function UnitSelection() {
     }
 
     socket.addEventListener('open', () => {
-      const syncName = playerName || 'Player'
       socket.send(
         JSON.stringify({
           type: 'sync_init',
           code: roomCode,
-          name: syncName,
+          name: playerName || '',
           playerId,
         }),
       )

@@ -105,6 +105,28 @@ function SetUpBattle() {
     }
   }
 
+  const buildSetupSyncState = () => {
+    try {
+      const selectionRaw = localStorage.getItem('kt-selection-state')
+      const selection = selectionRaw ? JSON.parse(selectionRaw) : {}
+      const selectedUnits =
+        killteamId &&
+        Array.isArray(selection?.selectedUnitsByTeam?.[killteamId])
+          ? selection.selectedUnitsByTeam[killteamId]
+          : []
+      return {
+        killteamId: killteamId || '',
+        selectedUnits,
+      }
+    } catch (error) {
+      console.warn('Failed to build setup sync state.', error)
+      return {
+        killteamId: killteamId || '',
+        selectedUnits: [],
+      }
+    }
+  }
+
   useEffect(() => {
     const applyRoomRole = () => {
       const { roomCode, playerId, hostId } = getRoomContext()
@@ -171,6 +193,55 @@ function SetUpBattle() {
       const message = JSON.parse(event.data)
       if (message.type === 'drop_zone_update') {
         applyDropZoneUpdate(message)
+        return
+      }
+      if (message.type === 'opponent_state' && message.state) {
+        try {
+          const incomingState = message.state
+          const incomingPlayerId = String(incomingState.playerId || '')
+          if (!incomingPlayerId || incomingPlayerId === playerId) return
+          const { gameId } = getRoomContext()
+          if (incomingState.name) {
+            localStorage.setItem(
+              `kt-room-player-name-${roomCode}-${incomingPlayerId}`,
+              String(incomingState.name),
+            )
+          }
+          if (incomingState.killteamId) {
+            localStorage.setItem(
+              `kt-room-player-killteam-${roomCode}-${incomingPlayerId}`,
+              String(incomingState.killteamId),
+            )
+            if (gameId) {
+              localStorage.setItem(
+                `kt-room-player-killteam-${roomCode}-${incomingPlayerId}-${gameId}`,
+                String(incomingState.killteamId),
+              )
+            }
+          }
+          if (Array.isArray(incomingState.selectedUnits)) {
+            const baseKey = `kt-room-player-selected-units-${roomCode}-${incomingPlayerId}`
+            const payload = JSON.stringify(incomingState.selectedUnits)
+            localStorage.setItem(baseKey, payload)
+            if (gameId) {
+              localStorage.setItem(`${baseKey}-${gameId}`, payload)
+            }
+          }
+          if (
+            incomingState.deadUnits &&
+            typeof incomingState.deadUnits === 'object'
+          ) {
+            const baseKey = `kt-room-player-dead-units-${roomCode}-${incomingPlayerId}`
+            const payload = JSON.stringify(incomingState.deadUnits)
+            localStorage.setItem(baseKey, payload)
+            if (gameId) {
+              localStorage.setItem(`${baseKey}-${gameId}`, payload)
+            }
+          }
+          window.dispatchEvent(new CustomEvent('kt-killop-update'))
+        } catch (error) {
+          console.warn('Failed to persist setup opponent state.', error)
+        }
       }
     }
 
@@ -188,6 +259,29 @@ function SetUpBattle() {
           type: 'request_drop_zone',
           code: roomCode,
           playerId,
+        }),
+      )
+      const setupState = buildSetupSyncState()
+      socket.send(
+        JSON.stringify({
+          type: 'sync_state',
+          code: roomCode,
+          playerId,
+          state: {
+            name: playerName || '',
+            playerId,
+            killteamId: setupState.killteamId,
+            selectedUnits: setupState.selectedUnits,
+            selectedEquipment: [],
+            activeStratPloys: [],
+            unitStates: {},
+            deadUnits: {},
+            woundsByUnit: {},
+            stanceByUnit: {},
+            statusesByUnit: {},
+            aplAdjustByUnit: {},
+            legionaryMarkByUnit: {},
+          },
         }),
       )
     })

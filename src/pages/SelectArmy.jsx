@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getKillteams } from '../data/ktData.js'
+import { resolveWsUrl } from '../state/wsUrl.js'
 import './SelectArmy.css'
+
+const WS_URL = resolveWsUrl()
 
 const normalizeText = (value) => value?.replace(/\s+/g, ' ').trim() ?? ''
 
@@ -14,6 +17,67 @@ const truncate = (value, maxLength = 180) => {
 function SelectArmy() {
   const [query, setQuery] = useState('')
   const killteams = useMemo(() => getKillteams(), [])
+
+  const syncKillteamSelection = ({ roomCode, playerId, playerName, killteamId }) => {
+    if (!roomCode || !playerId || !killteamId) return
+    try {
+      const selectionRaw = localStorage.getItem('kt-selection-state')
+      const selection = selectionRaw ? JSON.parse(selectionRaw) : {}
+      const selectedUnits = Array.isArray(selection?.selectedUnitsByTeam?.[killteamId])
+        ? selection.selectedUnitsByTeam[killteamId]
+        : []
+      const socket = new WebSocket(WS_URL)
+      socket.addEventListener('open', () => {
+        socket.send(
+          JSON.stringify({
+            type: 'sync_init',
+            code: roomCode,
+            name: playerName || '',
+            playerId,
+          }),
+        )
+        socket.send(
+          JSON.stringify({
+            type: 'sync_state',
+            code: roomCode,
+            playerId,
+            state: {
+              name: playerName || '',
+              playerId,
+              killteamId,
+              selectedUnits,
+              selectedEquipment: [],
+              activeStratPloys: [],
+              unitStates: {},
+              deadUnits: {},
+              woundsByUnit: {},
+              stanceByUnit: {},
+              statusesByUnit: {},
+              aplAdjustByUnit: {},
+              legionaryMarkByUnit: {},
+            },
+          }),
+        )
+        window.setTimeout(() => {
+          try {
+            socket.close()
+          } catch {
+            // noop
+          }
+        }, 150)
+      })
+      socket.addEventListener('error', () => {
+        try {
+          socket.close()
+        } catch {
+          // noop
+        }
+      })
+    } catch (error) {
+      console.warn('Failed to sync killteam selection.', error)
+    }
+  }
+
   const handleSelectKillteam = (killteamId) => {
     try {
       const roomCode =
@@ -24,6 +88,10 @@ function SelectArmy() {
         sessionStorage.getItem('kt-player-id') ||
         localStorage.getItem('kt-player-id') ||
         ''
+      const playerName =
+        sessionStorage.getItem('kt-player-name') ||
+        localStorage.getItem('kt-player-name') ||
+        ''
       const gameId = localStorage.getItem('kt-game-id') || ''
       localStorage.setItem('kt-last-killteam', killteamId)
       if (roomCode && playerId) {
@@ -31,12 +99,19 @@ function SelectArmy() {
           `kt-room-player-killteam-${roomCode}-${playerId}`,
           killteamId,
         )
+        if (playerName) {
+          localStorage.setItem(
+            `kt-room-player-name-${roomCode}-${playerId}`,
+            String(playerName),
+          )
+        }
         if (gameId) {
           localStorage.setItem(
             `kt-room-player-killteam-${roomCode}-${playerId}-${gameId}`,
             killteamId,
           )
         }
+        syncKillteamSelection({ roomCode, playerId, playerName, killteamId })
       }
     } catch (error) {
       console.warn('Failed to persist selected killteam.', error)

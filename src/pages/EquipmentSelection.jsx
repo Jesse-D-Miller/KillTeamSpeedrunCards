@@ -84,7 +84,10 @@ function EquipmentSelection() {
         sessionStorage.getItem('kt-player-name') ||
         localStorage.getItem('kt-player-name') ||
         ''
-      const storedId = sessionStorage.getItem('kt-player-id') || ''
+      const storedId =
+        sessionStorage.getItem('kt-player-id') ||
+        localStorage.getItem('kt-player-id') ||
+        ''
       setRoomCode(storedCode)
       setPlayerName(storedName)
       setPlayerId(storedId)
@@ -102,7 +105,19 @@ function EquipmentSelection() {
     const handleMessage = (event) => {
       const message = JSON.parse(event.data)
       if (message.type === 'sync_ready') {
-        // Ready for sync; no selection lock.
+        try {
+          if (roomCode && Array.isArray(message.players)) {
+            localStorage.setItem(
+              `kt-room-players-${roomCode}`,
+              JSON.stringify(message.players),
+            )
+            if (message.hostId) {
+              localStorage.setItem(`kt-room-host-${roomCode}`, message.hostId)
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to persist equipment room metadata.', error)
+        }
       }
       if (message.type === 'request_sync_state') {
         sendSyncState()
@@ -110,12 +125,11 @@ function EquipmentSelection() {
     }
 
     socket.addEventListener('open', () => {
-      const syncName = playerName || 'Player'
       socket.send(
         JSON.stringify({
           type: 'sync_init',
           code: roomCode,
-          name: syncName,
+          name: playerName || '',
           playerId,
         }),
       )
@@ -219,7 +233,7 @@ function EquipmentSelection() {
         code: roomCode,
         playerId,
         state: {
-          name: playerName || 'Player',
+          name: playerName || '',
           killteamId,
           selectedUnits,
           selectedEquipment: Array.from(selectedEquipment),
