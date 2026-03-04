@@ -179,7 +179,7 @@ function SetUpBattle() {
         JSON.stringify({
           type: 'sync_init',
           code: roomCode,
-          name: playerName || 'Player',
+          name: playerName || '',
           playerId,
         }),
       )

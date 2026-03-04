@@ -683,7 +683,10 @@ function Game() {
         sessionStorage.getItem('kt-player-name') ||
         localStorage.getItem('kt-player-name') ||
         ''
-      const storedId = sessionStorage.getItem('kt-player-id') || ''
+      const storedId =
+        sessionStorage.getItem('kt-player-id') ||
+        localStorage.getItem('kt-player-id') ||
+        ''
       setRoomCode(storedCode)
       setPlayerName(storedName)
       setPlayerId(storedId)
@@ -748,6 +751,30 @@ function Game() {
           ...prev,
           lastSyncReadyAt: Date.now(),
         }))
+        try {
+          if (roomCode && Array.isArray(message.players)) {
+            localStorage.setItem(
+              `kt-room-players-${roomCode}`,
+              JSON.stringify(message.players),
+            )
+            if (message.hostId) {
+              localStorage.setItem(`kt-room-host-${roomCode}`, message.hostId)
+            }
+            if (!playerName) {
+              const localPlayer = message.players.find(
+                (candidate) => candidate?.id === playerId,
+              )
+              const resolvedName = String(localPlayer?.name || '').trim()
+              if (resolvedName) {
+                setPlayerName(resolvedName)
+                localStorage.setItem('kt-player-name', resolvedName)
+                sessionStorage.setItem('kt-player-name', resolvedName)
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to persist sync room metadata.', error)
+        }
         const currentState = syncStateRef.current
         if (currentState && socket.readyState === WebSocket.OPEN) {
           socket.send(
@@ -835,12 +862,11 @@ function Game() {
         ...prev,
         lastSocketOpenAt: Date.now(),
       }))
-      const syncName = playerName || 'Player'
       socket.send(
         JSON.stringify({
           type: 'sync_init',
           code: roomCode,
-          name: syncName,
+          name: playerName || '',
           playerId,
         }),
       )

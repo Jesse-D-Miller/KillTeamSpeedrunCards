@@ -133,6 +133,7 @@ function Multiplayer() {
           sessionStorage.setItem('kt-player-name', resolvedName)
         }
         if (playerId) {
+          localStorage.setItem('kt-player-id', playerId)
           sessionStorage.setItem('kt-player-id', playerId)
         }
       } catch (storageError) {
