@@ -180,6 +180,7 @@ function Board({
     mapSocketLastOutboundType: '',
     mapSocketOutboundCount: 0,
     mapSocketLastOutboundAt: 0,
+    mapSocketRoomNotFoundCount: 0,
     mapSocketBoundRoom: '',
     mapSocketBoundPlayerId: '',
     mapSocketError: '',
@@ -376,6 +377,9 @@ function Board({
         const mapSocketLastOutboundAtKey = roomCode
           ? `kt-map-socket-last-outbound-at-${roomCode}`
           : ''
+        const mapSocketRoomNotFoundCountKey = roomCode
+          ? `kt-map-socket-room-not-found-count-${roomCode}`
+          : ''
         let mapSocketError = mapSocketErrorKey
           ? localStorage.getItem(mapSocketErrorKey) || ''
           : ''
@@ -459,6 +463,11 @@ function Board({
           mapSocketLastOutboundAt: Number(
             mapSocketLastOutboundAtKey
               ? localStorage.getItem(mapSocketLastOutboundAtKey) || '0'
+              : '0',
+          ),
+          mapSocketRoomNotFoundCount: Number(
+            mapSocketRoomNotFoundCountKey
+              ? localStorage.getItem(mapSocketRoomNotFoundCountKey) || '0'
               : '0',
           ),
           mapSocketBoundRoom:
@@ -858,6 +867,13 @@ function Board({
               mapSocketRoomNotFoundCountKey,
               String(roomNotFoundCount),
             )
+            if (roomNotFoundCount >= 2 && nonMapCount > 0) {
+              try {
+                socket.close()
+              } catch {
+                // noop
+              }
+            }
             if (roomNotFoundCount >= 3 && nonMapCount === 0) {
               clearStaleMapRoom(roomCode)
             }
@@ -1033,6 +1049,7 @@ function Board({
       stampSocketMeta(mapSocketMessageCountKey, 0)
       stampSocketMeta(mapSocketLastTypeKey, 'open')
       stampSocketMeta(mapSocketLastAtKey, Date.now())
+      localStorage.removeItem(mapSocketRoomNotFoundCountKey)
       try {
         localStorage.removeItem(mapSocketErrorKey)
         localStorage.removeItem('kt-map-socket-error')
@@ -3620,6 +3637,7 @@ function Board({
     `mapSocketBoundPlayer: ${syncDebug.mapSocketBoundPlayerId || 'n/a'}`,
     `mapSocketLastType: ${syncDebug.mapSocketLastType || 'n/a'}`,
     `mapSocketMsgs: ${syncDebug.mapSocketMessageCount}`,
+    `mapSocketRoomNotFoundCount: ${syncDebug.mapSocketRoomNotFoundCount}`,
     `mapSocketLastOutboundType: ${syncDebug.mapSocketLastOutboundType || 'n/a'}`,
     `mapSocketOutboundMsgs: ${syncDebug.mapSocketOutboundCount}`,
     `teams: ${Object.keys(syncDebug.teamIds).length
