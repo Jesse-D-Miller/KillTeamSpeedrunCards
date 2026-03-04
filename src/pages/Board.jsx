@@ -104,27 +104,16 @@ function Board({
   )
   const critOpsCards = critOpsCardsData?.cards ?? []
   const [arrangementIndex, setArrangementIndex] = useState(0)
-        const parseRoomPloys = (payload) => {
-          if (!payload) return []
-          const parsed = JSON.parse(payload)
-          return Array.isArray(parsed) ? parsed : []
-        }
-        const storedPlayerName =
-          sessionStorage.getItem('kt-player-name') ||
-          localStorage.getItem('kt-player-name') ||
-          ''
   const activeArrangement = mapArrangements[arrangementIndex] || null
   const hasRandomizedMapRef = useRef(false)
   const boardSurfaceRef = useRef(null)
   const boardFrameRef = useRef(null)
-        const activeGameId = localStorage.getItem('kt-game-id') || ''
   const boardOverlayRef = useRef(null)
   const [toolMode, setToolMode] = useState('none')
   const [showMapTooltips, setShowMapTooltips] = useState(true)
   const [currentRuleIndex, setCurrentRuleIndex] = useState(0)
   const [selectedCardIndex, setSelectedCardIndex] = useState(0)
   const shouldRotateZones = activeMap?.id === 'map_02'
-        const isMapUser = storedPlayerName.trim().toUpperCase() === 'MAP'
   const sourceWidth = shouldRotateZones ? board.height : board.width
   const sourceHeight = shouldRotateZones ? board.width : board.height
   const textureByMapIdRef = useRef(new Map())
@@ -931,6 +920,46 @@ function Board({
         const nonMapPlayers = roomPlayers.filter(
           (player) => String(player?.name || '').trim().toUpperCase() !== 'MAP',
         )
+        const normalizedStoredName = String(storedPlayerName || '').trim()
+        const resolvedPlayerId =
+          playerId ||
+          nonMapPlayers.find(
+            (player) =>
+              String(player?.name || '').trim() === normalizedStoredName,
+          )?.id ||
+          ''
+        const assignmentsKey = roomCode
+          ? `kt-drop-zone-assignments-${roomCode}`
+          : 'kt-drop-zone-assignments'
+        const assignmentsStored = roomCode
+          ? (activeGameId &&
+              localStorage.getItem(`${assignmentsKey}-${activeGameId}`)) ||
+            localStorage.getItem(assignmentsKey)
+          : localStorage.getItem(assignmentsKey)
+        const assignments = assignmentsStored
+          ? JSON.parse(assignmentsStored)
+          : null
+        const playerAssignments =
+          assignments?.playerAssignments &&
+          typeof assignments.playerAssignments === 'object'
+            ? assignments.playerAssignments
+            : {}
+        const getAssignedPlayerId = (zone) => {
+          const id = String(playerAssignments?.[zone] || '').trim()
+          if (!id) return ''
+          return nonMapPlayers.some((player) => player?.id === id) ? id : ''
+        }
+        const mapRightPlayerId = getAssignedPlayerId('B')
+        const mapLeftPlayerId = getAssignedPlayerId('A')
+        const fallbackFirstPlayerId = nonMapPlayers[0]?.id || ''
+        const mapPrimaryPlayerId =
+          mapRightPlayerId || mapLeftPlayerId || fallbackFirstPlayerId
+        const mapSecondaryPlayerId =
+          mapLeftPlayerId ||
+          nonMapPlayers.find(
+            (player) => player?.id && player.id !== mapPrimaryPlayerId,
+          )?.id ||
+          ''
         const getRoomTeamId = (id) => {
           if (!roomCode || !id) return ''
           return (
@@ -1090,6 +1119,46 @@ function Board({
         const nonMapPlayers = roomPlayers.filter(
           (player) => String(player?.name || '').trim().toUpperCase() !== 'MAP',
         )
+        const normalizedStoredName = String(storedPlayerName || '').trim()
+        const resolvedPlayerId =
+          playerId ||
+          nonMapPlayers.find(
+            (player) =>
+              String(player?.name || '').trim() === normalizedStoredName,
+          )?.id ||
+          ''
+        const assignmentsKey = roomCode
+          ? `kt-drop-zone-assignments-${roomCode}`
+          : 'kt-drop-zone-assignments'
+        const assignmentsStored = roomCode
+          ? (activeGameId &&
+              localStorage.getItem(`${assignmentsKey}-${activeGameId}`)) ||
+            localStorage.getItem(assignmentsKey)
+          : localStorage.getItem(assignmentsKey)
+        const assignments = assignmentsStored
+          ? JSON.parse(assignmentsStored)
+          : null
+        const playerAssignments =
+          assignments?.playerAssignments &&
+          typeof assignments.playerAssignments === 'object'
+            ? assignments.playerAssignments
+            : {}
+        const getAssignedPlayerId = (zone) => {
+          const id = String(playerAssignments?.[zone] || '').trim()
+          if (!id) return ''
+          return nonMapPlayers.some((player) => player?.id === id) ? id : ''
+        }
+        const mapRightPlayerId = getAssignedPlayerId('B')
+        const mapLeftPlayerId = getAssignedPlayerId('A')
+        const fallbackFirstPlayerId = nonMapPlayers[0]?.id || ''
+        const mapPrimaryPlayerId =
+          mapRightPlayerId || mapLeftPlayerId || fallbackFirstPlayerId
+        const mapSecondaryPlayerId =
+          mapLeftPlayerId ||
+          nonMapPlayers.find(
+            (player) => player?.id && player.id !== mapPrimaryPlayerId,
+          )?.id ||
+          ''
         const getRoomTeamId = (id) => {
           if (!roomCode || !id) return ''
           if (activeGameId) {
@@ -1143,10 +1212,10 @@ function Board({
         }
 
         const playerRoomId = isMapUser
-          ? nonMapPlayers[0]?.id
+          ? mapPrimaryPlayerId
           : resolvedPlayerId
         const opponentRoomId = isMapUser
-          ? nonMapPlayers[1]?.id
+          ? mapSecondaryPlayerId
           : nonMapPlayers.find(
               (player) => player?.id && player.id !== resolvedPlayerId,
             )?.id

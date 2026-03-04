@@ -44,6 +44,13 @@ const getNonMapPlayers = (room) =>
 const hasMapPlayer = (room) =>
   Array.from(room.players.values()).some((player) => isMapName(player.name))
 
+const resolveHostId = (room) => {
+  const nonMapHost = getNonMapPlayers(room)[0]
+  if (nonMapHost?.id) return nonMapHost.id
+  const fallback = room.players.values().next().value
+  return fallback?.id || ''
+}
+
 const broadcastRoom = (room) => {
   const payload = JSON.stringify({
     type: 'room_update',
@@ -72,8 +79,10 @@ const removePlayer = (room, playerId) => {
     return
   }
   if (room.hostId === playerId) {
-    const nextHost = room.players.values().next().value
-    room.hostId = nextHost.id
+    const nextHostId = resolveHostId(room)
+    if (nextHostId) {
+      room.hostId = nextHostId
+    }
   }
   broadcastRoom(room)
 }
@@ -94,6 +103,13 @@ wss.on('connection', (socket) => {
         sendMessage(socket, {
           type: 'error',
           message: 'Name is required to create a room.',
+        })
+        return
+      }
+      if (isMapName(name) || message.isMap === true) {
+        sendMessage(socket, {
+          type: 'error',
+          message: 'Map cannot create rooms. Join an existing code as MAP.',
         })
         return
       }
@@ -166,6 +182,9 @@ wss.on('connection', (socket) => {
         socket,
       })
       room.selectionReadyByPlayerId.set(playerId, false)
+      if (!isMap && isMapName(room.players.get(room.hostId)?.name)) {
+        room.hostId = playerId
+      }
       socket.playerId = playerId
       socket.roomCode = code
       sendMessage(socket, {
@@ -232,6 +251,9 @@ wss.on('connection', (socket) => {
         if (name) {
           player.name = resolvedName
         }
+      }
+      if (!isMap && isMapName(room.players.get(room.hostId)?.name)) {
+        room.hostId = player.id
       }
       const incomingKillteamId = String(message.killteamId || '').trim()
       if (incomingKillteamId) {
