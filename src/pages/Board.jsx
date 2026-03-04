@@ -181,6 +181,8 @@ function Board({
     mapSocketOutboundCount: 0,
     mapSocketLastOutboundAt: 0,
     mapSocketRoomNotFoundCount: 0,
+    mapSocketLastInstanceId: '',
+    mapSocketErrorInstanceId: '',
     mapSocketBoundRoom: '',
     mapSocketBoundPlayerId: '',
     mapSocketError: '',
@@ -380,6 +382,12 @@ function Board({
         const mapSocketRoomNotFoundCountKey = roomCode
           ? `kt-map-socket-room-not-found-count-${roomCode}`
           : ''
+        const mapSocketLastInstanceIdKey = roomCode
+          ? `kt-map-socket-last-instance-id-${roomCode}`
+          : ''
+        const mapSocketErrorInstanceIdKey = roomCode
+          ? `kt-map-socket-error-instance-id-${roomCode}`
+          : ''
         let mapSocketError = mapSocketErrorKey
           ? localStorage.getItem(mapSocketErrorKey) || ''
           : ''
@@ -470,6 +478,12 @@ function Board({
               ? localStorage.getItem(mapSocketRoomNotFoundCountKey) || '0'
               : '0',
           ),
+          mapSocketLastInstanceId: mapSocketLastInstanceIdKey
+            ? localStorage.getItem(mapSocketLastInstanceIdKey) || ''
+            : '',
+          mapSocketErrorInstanceId: mapSocketErrorInstanceIdKey
+            ? localStorage.getItem(mapSocketErrorInstanceIdKey) || ''
+            : '',
           mapSocketBoundRoom:
             String(mapSocketRef.current?.ktRoomCode || '').trim() || '',
           mapSocketBoundPlayerId:
@@ -687,6 +701,10 @@ function Board({
     const mapSocketLastOutboundAtKey = `kt-map-socket-last-outbound-at-${roomCode}`
     const mapSocketRoomNotFoundCountKey =
       `kt-map-socket-room-not-found-count-${roomCode}`
+    const mapSocketLastInstanceIdKey =
+      `kt-map-socket-last-instance-id-${roomCode}`
+    const mapSocketErrorInstanceIdKey =
+      `kt-map-socket-error-instance-id-${roomCode}`
     let reconnectTimer = null
     let isCleaningUp = false
 
@@ -710,6 +728,8 @@ function Board({
         localStorage.removeItem(`kt-map-socket-outbound-count-${code}`)
         localStorage.removeItem(`kt-map-socket-last-outbound-at-${code}`)
         localStorage.removeItem(`kt-map-socket-room-not-found-count-${code}`)
+        localStorage.removeItem(`kt-map-socket-last-instance-id-${code}`)
+        localStorage.removeItem(`kt-map-socket-error-instance-id-${code}`)
         localStorage.removeItem(`kt-room-players-${code}`)
         localStorage.removeItem(`kt-room-host-${code}`)
         localStorage.removeItem(`kt-drop-zone-assignments-${code}`)
@@ -838,6 +858,10 @@ function Board({
 
     const handleMessage = (event) => {
       const message = JSON.parse(event.data)
+      const incomingInstanceId = String(message?.instanceId || '').trim()
+      if (incomingInstanceId) {
+        stampSocketMeta(mapSocketLastInstanceIdKey, incomingInstanceId)
+      }
       markSocketMessage(message?.type || 'unknown')
       const clearMapSocketError = () => {
         try {
@@ -851,6 +875,9 @@ function Board({
         try {
           const errorMessage = String(message.message || 'Unknown map socket error')
           localStorage.setItem(mapSocketErrorKey, errorMessage)
+          if (incomingInstanceId) {
+            localStorage.setItem(mapSocketErrorInstanceIdKey, incomingInstanceId)
+          }
           if (errorMessage === 'Room not found.') {
             const roomPlayersRaw =
               localStorage.getItem(`kt-room-players-${roomCode}`) || '[]'
@@ -3638,6 +3665,8 @@ function Board({
     `mapSocketLastType: ${syncDebug.mapSocketLastType || 'n/a'}`,
     `mapSocketMsgs: ${syncDebug.mapSocketMessageCount}`,
     `mapSocketRoomNotFoundCount: ${syncDebug.mapSocketRoomNotFoundCount}`,
+    `mapSocketLastInstance: ${syncDebug.mapSocketLastInstanceId || 'n/a'}`,
+    `mapSocketErrorInstance: ${syncDebug.mapSocketErrorInstanceId || 'n/a'}`,
     `mapSocketLastOutboundType: ${syncDebug.mapSocketLastOutboundType || 'n/a'}`,
     `mapSocketOutboundMsgs: ${syncDebug.mapSocketOutboundCount}`,
     `teams: ${Object.keys(syncDebug.teamIds).length

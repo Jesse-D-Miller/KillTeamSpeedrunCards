@@ -10,6 +10,8 @@ const MAX_PLAYERS = 2
 const server = createServer()
 const wss = new WebSocketServer({ server })
 const DEBUG_WS = process.env.DEBUG_WS === '1'
+const SERVER_INSTANCE_ID =
+  process.env.INSTANCE_ID || randomUUID().replace(/-/g, '').slice(0, 8)
 
 const rooms = new Map()
 
@@ -59,6 +61,7 @@ const serializeRoom = (room) => ({
 const broadcastRoom = (room) => {
   const payload = JSON.stringify({
     type: 'room_update',
+    instanceId: SERVER_INSTANCE_ID,
     ...serializeRoom(room),
   })
   room.players.forEach((player) => {
@@ -70,7 +73,11 @@ const broadcastRoom = (room) => {
 
 const sendMessage = (socket, payload) => {
   if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify(payload))
+    const messagePayload =
+      payload && typeof payload === 'object' && !Array.isArray(payload)
+        ? { instanceId: SERVER_INSTANCE_ID, ...payload }
+        : payload
+    socket.send(JSON.stringify(messagePayload))
   }
 }
 
