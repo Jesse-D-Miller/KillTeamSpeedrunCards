@@ -16,6 +16,7 @@ import './Board.css'
 
 const HIDDEN_TAC_OP_SRC = '/images/tacOps/hidden-tac-op.png'
 const OBJECTIVE_MARKER_RADIUS_IN = 20 / 25.4
+const MAP_SOCKET_STALE_RESYNC_MS = 10000
 const WS_STATE_LABELS = {
   0: 'CONNECTING',
   1: 'OPEN',
@@ -743,6 +744,26 @@ function Board({
       })
     }
 
+    const maybeSendStaleResync = () => {
+      const now = Date.now()
+      let lastInboundAt = 0
+      let lastSyncInitAt = 0
+      try {
+        lastInboundAt = Number(localStorage.getItem(mapSocketLastAtKey) || '0')
+        lastSyncInitAt = Number(localStorage.getItem(mapSocketSyncInitAtKey) || '0')
+      } catch {
+        lastInboundAt = 0
+        lastSyncInitAt = 0
+      }
+      const inboundIsStale = !lastInboundAt || now - lastInboundAt > MAP_SOCKET_STALE_RESYNC_MS
+      const syncInitIsOld = !lastSyncInitAt || now - lastSyncInitAt > MAP_SOCKET_STALE_RESYNC_MS
+      if (inboundIsStale && syncInitIsOld) {
+        sendSyncInit()
+        return true
+      }
+      return false
+    }
+
     const requestAllPlayerStates = (players = []) => {
       if (socket.readyState !== WebSocket.OPEN) return
       const targets = (players || []).filter((candidate) => {
@@ -985,6 +1006,7 @@ function Board({
     const refreshInterval = window.setInterval(() => {
       try {
         if (socket.readyState !== WebSocket.OPEN) return
+        maybeSendStaleResync()
         const storedPlayers = localStorage.getItem(`kt-room-players-${roomCode}`)
         if (!storedPlayers) {
           sendSyncInit()
