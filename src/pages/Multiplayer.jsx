@@ -222,6 +222,10 @@ function Multiplayer() {
       setError('Enter a username to create a room.')
       return
     }
+    if (normalizeName(trimmedName) === 'MAP') {
+      setError('Use the Map button to join as MAP.')
+      return
+    }
     setIsMapUser(false)
     connectAndSend({ type: 'create_room', name: trimmedName })
   }
@@ -231,6 +235,10 @@ function Multiplayer() {
     const normalized = normalizeCode(roomCode)
     if (!trimmedName || !normalized) {
       setError('Enter a username and room code to join.')
+      return
+    }
+    if (normalizeName(trimmedName) === 'MAP') {
+      setError('Use the Map button to join as MAP.')
       return
     }
     setIsMapUser(false)

@@ -539,6 +539,46 @@ function Board({
     const socket = new WebSocket(WS_URL)
     mapSocketRef.current = socket
 
+    const clearStaleMapRoom = (code) => {
+      if (!code) return
+      try {
+        localStorage.removeItem(`kt-room-players-${code}`)
+        localStorage.removeItem(`kt-room-host-${code}`)
+        localStorage.removeItem(`kt-drop-zone-assignments-${code}`)
+        const keysToRemove = []
+        for (let index = 0; index < localStorage.length; index += 1) {
+          const key = localStorage.key(index)
+          if (!key) continue
+          if (
+            key.startsWith(`kt-room-player-killteam-${code}-`) ||
+            key.startsWith(`kt-room-player-strat-ploys-${code}-`) ||
+            key.startsWith(`kt-room-player-selected-units-${code}-`) ||
+            key.startsWith(`kt-room-player-dead-units-${code}-`) ||
+            key.startsWith(`kt-room-player-tac-op-${code}-`) ||
+            key.startsWith(`kt-opponent-${code}-`) ||
+            key.startsWith(`kt-drop-zone-assignments-${code}-`)
+          ) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach((key) => localStorage.removeItem(key))
+        const currentName =
+          sessionStorage.getItem('kt-player-name') ||
+          localStorage.getItem('kt-player-name') ||
+          ''
+        if (String(currentName).trim().toUpperCase() === 'MAP') {
+          localStorage.removeItem('kt-room-code')
+          sessionStorage.removeItem('kt-room-code')
+          localStorage.removeItem('kt-player-id')
+          sessionStorage.removeItem('kt-player-id')
+          localStorage.removeItem('kt-player-name')
+          sessionStorage.removeItem('kt-player-name')
+        }
+      } catch (error) {
+        console.warn('Failed to clear stale map room data.', error)
+      }
+    }
+
     const requestAllPlayerStates = (players = []) => {
       if (socket.readyState !== WebSocket.OPEN) return
       const targets = (players || []).filter((candidate) => {
@@ -562,10 +602,14 @@ function Board({
       const message = JSON.parse(event.data)
       if (message.type === 'error') {
         try {
+          const errorMessage = String(message.message || 'Unknown map socket error')
           localStorage.setItem(
             'kt-map-socket-error',
-            String(message.message || 'Unknown map socket error'),
+            errorMessage,
           )
+          if (errorMessage === 'Room not found.') {
+            clearStaleMapRoom(roomCode)
+          }
         } catch {
           // noop
         }
