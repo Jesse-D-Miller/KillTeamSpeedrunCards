@@ -399,6 +399,13 @@ function Board({
       const nonMapPlayers = roomPlayers.filter(
         (player) => String(player?.name || '').trim().toUpperCase() !== 'MAP',
       )
+      const resolvedPlayerId =
+        playerId ||
+        nonMapPlayers.find(
+          (player) =>
+            String(player?.name || '').trim() === normalizedPlayerName,
+        )?.id ||
+        ''
       const getArmyNameForPlayer = (id) => {
         if (!roomCode || !id) return ''
         const teamId =
@@ -411,22 +418,55 @@ function Board({
         return team?.killteamName || ''
       }
       if (isMapUser && nonMapPlayers.length) {
-        const primaryName = nonMapPlayers[0]?.name || ''
-        const secondaryName = nonMapPlayers[1]?.name || ''
+        const assignmentsKey = roomCode
+          ? `kt-drop-zone-assignments-${roomCode}`
+          : 'kt-drop-zone-assignments'
+        const assignmentsStored = roomCode
+          ? (activeGameId &&
+              localStorage.getItem(`${assignmentsKey}-${activeGameId}`)) ||
+            localStorage.getItem(assignmentsKey)
+          : localStorage.getItem(assignmentsKey)
+        const assignments = assignmentsStored ? JSON.parse(assignmentsStored) : null
+        const playerAssignments =
+          assignments?.playerAssignments &&
+          typeof assignments.playerAssignments === 'object'
+            ? assignments.playerAssignments
+            : {}
+        const zoneAPlayer = nonMapPlayers.find(
+          (player) => player?.id && player.id === playerAssignments.A,
+        )
+        const zoneBPlayer = nonMapPlayers.find(
+          (player) => player?.id && player.id === playerAssignments.B,
+        )
+        const primaryPlayer = zoneBPlayer || nonMapPlayers[0] || null
+        const secondaryPlayer =
+          zoneAPlayer ||
+          nonMapPlayers.find((player) => player?.id && player.id !== primaryPlayer?.id) ||
+          null
+        const primaryName = primaryPlayer?.name || ''
+        const secondaryName = secondaryPlayer?.name || ''
         if (primaryName) setPlayerName(primaryName)
         if (secondaryName) setOpponentName(secondaryName)
-        const primaryArmy = getArmyNameForPlayer(nonMapPlayers[0]?.id)
-        const secondaryArmy = getArmyNameForPlayer(nonMapPlayers[1]?.id)
+        const primaryArmy = getArmyNameForPlayer(primaryPlayer?.id)
+        const secondaryArmy = getArmyNameForPlayer(secondaryPlayer?.id)
         if (primaryArmy) setPlayerArmyName(primaryArmy)
         if (secondaryArmy) setOpponentArmyName(secondaryArmy)
+        if (primaryPlayer?.id && secondaryPlayer?.id) {
+          setPlayerAssignedZone(
+            playerAssignments.B === primaryPlayer.id ? 'B' : 'A',
+          )
+          setOpponentAssignedZone(
+            playerAssignments.A === secondaryPlayer.id ? 'A' : 'B',
+          )
+        }
       } else {
         if (normalizedPlayerName) setPlayerName(normalizedPlayerName)
-        if (roomCode && playerId) {
-          const playerArmy = getArmyNameForPlayer(playerId)
+        if (roomCode && resolvedPlayerId) {
+          const playerArmy = getArmyNameForPlayer(resolvedPlayerId)
           if (playerArmy) setPlayerArmyName(playerArmy)
         }
       }
-      if (!roomCode || !playerId) {
+      if (!roomCode || !resolvedPlayerId) {
         if (!isMapUser && nonMapPlayers.length) {
           const fallbackOpponent = nonMapPlayers.find(
             (player) => player?.name && player.name !== normalizedPlayerName,
@@ -438,7 +478,7 @@ function Board({
         return
       }
       const opponentStored = localStorage.getItem(
-        `kt-opponent-${roomCode}-${playerId}`,
+        `kt-opponent-${roomCode}-${resolvedPlayerId}`,
       )
       if (!opponentStored) {
         if (!isMapUser && nonMapPlayers.length) {
@@ -728,6 +768,14 @@ function Board({
         const nonMapPlayers = roomPlayers.filter(
           (player) => String(player?.name || '').trim().toUpperCase() !== 'MAP',
         )
+        const normalizedStoredName = String(storedPlayerName || '').trim()
+        const resolvedPlayerId =
+          playerId ||
+          nonMapPlayers.find(
+            (player) =>
+              String(player?.name || '').trim() === normalizedStoredName,
+          )?.id ||
+          ''
         const assignmentsKey = roomCode
           ? `kt-drop-zone-assignments-${roomCode}`
           : 'kt-drop-zone-assignments'
@@ -904,20 +952,20 @@ function Board({
         }
         const playerPloysId = isMapUser
           ? mapPrimaryPlayerId
-          : playerId
+          : resolvedPlayerId
         const opponentPloysId = isMapUser
           ? mapSecondaryPlayerId
           : nonMapPlayers.find(
-              (player) => player?.id && player.id !== playerId,
+              (player) => player?.id && player.id !== resolvedPlayerId,
             )?.id
         const playerTeamId = playerPloysId
           ? getRoomTeamId(playerPloysId)
           : localStorage.getItem('kt-last-killteam') || ''
         let opponentTeamId = opponentPloysId ? getRoomTeamId(opponentPloysId) : ''
         let opponentPloys = []
-        if (roomCode && playerId) {
+        if (roomCode && resolvedPlayerId) {
           const opponentStored = localStorage.getItem(
-            `kt-opponent-${roomCode}-${playerId}`,
+            `kt-opponent-${roomCode}-${resolvedPlayerId}`,
           )
           if (opponentStored) {
             const opponentParsed = JSON.parse(opponentStored)
@@ -1096,10 +1144,12 @@ function Board({
 
         const playerRoomId = isMapUser
           ? nonMapPlayers[0]?.id
-          : playerId
+          : resolvedPlayerId
         const opponentRoomId = isMapUser
           ? nonMapPlayers[1]?.id
-          : nonMapPlayers.find((player) => player?.id && player.id !== playerId)?.id
+          : nonMapPlayers.find(
+              (player) => player?.id && player.id !== resolvedPlayerId,
+            )?.id
 
         const selectedUnitsByTeam = parseSelectionState()
         const playerTeamId = playerRoomId
@@ -1110,10 +1160,10 @@ function Board({
         let opponentSelectedUnits = []
         let opponentDeadUnits = {}
 
-        if (roomCode && playerId) {
+        if (roomCode && resolvedPlayerId) {
           const scopedOpponentKey = activeGameId
-            ? `kt-opponent-${roomCode}-${playerId}-${activeGameId}`
-            : `kt-opponent-${roomCode}-${playerId}`
+            ? `kt-opponent-${roomCode}-${resolvedPlayerId}-${activeGameId}`
+            : `kt-opponent-${roomCode}-${resolvedPlayerId}`
           const opponentStored = localStorage.getItem(scopedOpponentKey)
           if (opponentStored) {
             const opponentParsed = JSON.parse(opponentStored)
