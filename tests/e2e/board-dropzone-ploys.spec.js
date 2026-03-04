@@ -354,7 +354,10 @@ test('map shows names, armies, and strat ploys on correct sides', async ({ brows
   await expect
     .poll(
       async () =>
-        mapPage.evaluate(() => localStorage.getItem('kt-map-socket-error') || ''),
+        mapPage.evaluate(
+          ({ code }) => localStorage.getItem(`kt-map-socket-error-${code}`) || '',
+          { code: roomCode },
+        ),
       { timeout: 5000 },
     )
     .not.toBe('Map-only room payload rejected.')

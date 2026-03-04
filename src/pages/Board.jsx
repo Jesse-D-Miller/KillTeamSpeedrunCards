@@ -314,7 +314,9 @@ function Board({
             playerId &&
             localStorage.getItem(`kt-opponent-${roomCode}-${playerId}`),
         )
-        const mapSocketError = localStorage.getItem('kt-map-socket-error') || ''
+        const mapSocketError = roomCode
+          ? localStorage.getItem(`kt-map-socket-error-${roomCode}`) || ''
+          : ''
         setSyncDebug({
           enabled: true,
           roomCode,
@@ -536,12 +538,16 @@ function Board({
     if (!isMapUser || !roomCode || !playerId) return undefined
     if (mapSocketRef.current) return undefined
 
+    const mapSocketErrorKey = `kt-map-socket-error-${roomCode}`
+
     const socket = new WebSocket(WS_URL)
     mapSocketRef.current = socket
 
     const clearStaleMapRoom = (code) => {
       if (!code) return
       try {
+        localStorage.removeItem(`kt-map-socket-error-${code}`)
+        localStorage.removeItem('kt-map-socket-error')
         localStorage.removeItem(`kt-room-players-${code}`)
         localStorage.removeItem(`kt-room-host-${code}`)
         localStorage.removeItem(`kt-drop-zone-assignments-${code}`)
@@ -590,6 +596,7 @@ function Board({
       const message = JSON.parse(event.data)
       const clearMapSocketError = () => {
         try {
+          localStorage.removeItem(mapSocketErrorKey)
           localStorage.removeItem('kt-map-socket-error')
         } catch {
           // noop
@@ -598,10 +605,7 @@ function Board({
       if (message.type === 'error') {
         try {
           const errorMessage = String(message.message || 'Unknown map socket error')
-          localStorage.setItem(
-            'kt-map-socket-error',
-            errorMessage,
-          )
+          localStorage.setItem(mapSocketErrorKey, errorMessage)
           if (errorMessage === 'Room not found.') {
             clearStaleMapRoom(roomCode)
           }
@@ -619,7 +623,7 @@ function Board({
             ).length
             if (nonMapCount === 0) {
               localStorage.setItem(
-                'kt-map-socket-error',
+                mapSocketErrorKey,
                 'Map-only room payload rejected.',
               )
               return
@@ -669,7 +673,7 @@ function Board({
             ).length
             if (nonMapCount === 0) {
               localStorage.setItem(
-                'kt-map-socket-error',
+                mapSocketErrorKey,
                 'Map-only room payload rejected.',
               )
               return
