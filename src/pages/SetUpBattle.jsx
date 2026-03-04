@@ -20,6 +20,30 @@ function SetUpBattle() {
   const [isHost, setIsHost] = useState(true)
   const socketRef = useRef(null)
 
+  const resolveEffectiveHostId = (roomCode, rawHostId) => {
+    if (!roomCode) return rawHostId || ''
+    try {
+      const playersRaw = localStorage.getItem(`kt-room-players-${roomCode}`)
+      const players = playersRaw ? JSON.parse(playersRaw) : []
+      const nonMapPlayers = Array.isArray(players)
+        ? players.filter(
+            (player) =>
+              player?.id &&
+              String(player?.name || '').trim().toUpperCase() !== 'MAP',
+          )
+        : []
+      const hostPlayer = Array.isArray(players)
+        ? players.find((player) => player?.id === rawHostId)
+        : null
+      const hostIsMap =
+        String(hostPlayer?.name || '').trim().toUpperCase() === 'MAP'
+      if (rawHostId && !hostIsMap) return rawHostId
+      return nonMapPlayers[0]?.id || rawHostId || ''
+    } catch {
+      return rawHostId || ''
+    }
+  }
+
   const getRoomContext = () => {
     const roomCode =
       sessionStorage.getItem('kt-room-code') ||
@@ -36,11 +60,12 @@ function SetUpBattle() {
     const hostId = roomCode
       ? localStorage.getItem(`kt-room-host-${roomCode}`) || ''
       : ''
+    const effectiveHostId = resolveEffectiveHostId(roomCode, hostId)
     return {
       roomCode,
       playerId,
       playerName,
-      hostId,
+      hostId: effectiveHostId,
       gameId: localStorage.getItem('kt-game-id') || '',
     }
   }
@@ -199,8 +224,23 @@ function SetUpBattle() {
               `kt-room-players-${roomCode}`,
               JSON.stringify(message.players),
             )
-            if (message.hostId) {
-              localStorage.setItem(`kt-room-host-${roomCode}`, message.hostId)
+            const incomingHostId = String(message.hostId || '')
+            const nonMapPlayers = message.players.filter(
+              (player) =>
+                player?.id &&
+                String(player?.name || '').trim().toUpperCase() !== 'MAP',
+            )
+            const incomingHostPlayer = message.players.find(
+              (player) => player?.id === incomingHostId,
+            )
+            const incomingHostIsMap =
+              String(incomingHostPlayer?.name || '').trim().toUpperCase() === 'MAP'
+            const resolvedHostId =
+              incomingHostId && !incomingHostIsMap
+                ? incomingHostId
+                : nonMapPlayers[0]?.id || incomingHostId
+            if (resolvedHostId) {
+              localStorage.setItem(`kt-room-host-${roomCode}`, resolvedHostId)
             }
             const { gameId } = getRoomContext()
             message.players.forEach((player) => {
