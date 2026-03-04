@@ -676,6 +676,8 @@ function Board({
       `kt-map-socket-last-outbound-type-${roomCode}`
     const mapSocketOutboundCountKey = `kt-map-socket-outbound-count-${roomCode}`
     const mapSocketLastOutboundAtKey = `kt-map-socket-last-outbound-at-${roomCode}`
+    const mapSocketRoomNotFoundCountKey =
+      `kt-map-socket-room-not-found-count-${roomCode}`
     let reconnectTimer = null
     let isCleaningUp = false
 
@@ -698,6 +700,7 @@ function Board({
         localStorage.removeItem(`kt-map-socket-last-outbound-type-${code}`)
         localStorage.removeItem(`kt-map-socket-outbound-count-${code}`)
         localStorage.removeItem(`kt-map-socket-last-outbound-at-${code}`)
+        localStorage.removeItem(`kt-map-socket-room-not-found-count-${code}`)
         localStorage.removeItem(`kt-room-players-${code}`)
         localStorage.removeItem(`kt-room-host-${code}`)
         localStorage.removeItem(`kt-drop-zone-assignments-${code}`)
@@ -840,7 +843,24 @@ function Board({
           const errorMessage = String(message.message || 'Unknown map socket error')
           localStorage.setItem(mapSocketErrorKey, errorMessage)
           if (errorMessage === 'Room not found.') {
-            clearStaleMapRoom(roomCode)
+            const roomPlayersRaw =
+              localStorage.getItem(`kt-room-players-${roomCode}`) || '[]'
+            const roomPlayers = JSON.parse(roomPlayersRaw)
+            const nonMapCount = Array.isArray(roomPlayers)
+              ? roomPlayers.filter(
+                  (player) =>
+                    String(player?.name || '').trim().toUpperCase() !== 'MAP',
+                ).length
+              : 0
+            const roomNotFoundCount =
+              Number(localStorage.getItem(mapSocketRoomNotFoundCountKey) || '0') + 1
+            localStorage.setItem(
+              mapSocketRoomNotFoundCountKey,
+              String(roomNotFoundCount),
+            )
+            if (roomNotFoundCount >= 3 && nonMapCount === 0) {
+              clearStaleMapRoom(roomCode)
+            }
           }
         } catch {
           // noop
@@ -862,6 +882,7 @@ function Board({
               return
             }
             clearMapSocketError()
+            localStorage.removeItem(mapSocketRoomNotFoundCountKey)
             localStorage.setItem(
               `kt-room-players-${roomCode}`,
               JSON.stringify(message.players),
@@ -916,6 +937,7 @@ function Board({
               return
             }
             clearMapSocketError()
+            localStorage.removeItem(mapSocketRoomNotFoundCountKey)
             localStorage.setItem(
               `kt-room-players-${roomCode}`,
               JSON.stringify(message.players),
