@@ -3246,8 +3246,39 @@ function Board({
     }
   }
 
+  const handleToggleSyncDebug = () => {
+    try {
+      const nextEnabled = !syncDebug.enabled
+      if (nextEnabled) {
+        localStorage.setItem('kt-sync-debug', '1')
+      } else {
+        localStorage.removeItem('kt-sync-debug')
+        const url = new URL(window.location.href)
+        if (url.searchParams.get('syncDebug') === '1') {
+          url.searchParams.delete('syncDebug')
+          window.history.replaceState({}, '', url.toString())
+        }
+      }
+      window.dispatchEvent(new StorageEvent('storage'))
+      setSyncDebug((previous) => ({
+        ...previous,
+        enabled: nextEnabled,
+        updatedAt: Date.now(),
+      }))
+    } catch (error) {
+      console.warn('Failed to toggle sync debug mode.', error)
+    }
+  }
+
   return (
     <div className="board-view">
+      <button
+        type="button"
+        className={`board-sync-debug-toggle${syncDebug.enabled ? ' is-active' : ''}`}
+        onClick={handleToggleSyncDebug}
+      >
+        {syncDebug.enabled ? 'Debug On' : 'Debug'}
+      </button>
       {syncDebug.enabled ? (
         <aside className="board-sync-debug" aria-live="polite">
           <div className="board-sync-debug__header">

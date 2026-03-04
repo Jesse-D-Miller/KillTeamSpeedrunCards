@@ -30,6 +30,30 @@
   backdrop-filter: blur(2px);
 }
 
+.board-sync-debug-toggle {
+  position: fixed;
+  right: 10px;
+  bottom: 10px;
+  z-index: 31;
+  border: 1px solid rgba(160, 176, 197, 0.45);
+  background: rgba(9, 12, 16, 0.9);
+  color: #d4dee8;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  padding: 7px 10px;
+}
+
+.board-sync-debug-toggle.is-active {
+  color: #98ffba;
+  border-color: rgba(152, 255, 186, 0.6);
+}
+
+.board-sync-debug-toggle.is-active + .board-sync-debug {
+  bottom: 44px;
+}
+
 .board-sync-debug__header {
   display: flex;
   align-items: center;
