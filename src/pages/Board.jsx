@@ -3768,15 +3768,43 @@ function Board({
     }
   }
 
+  useEffect(() => {
+    const isTypingTarget = (target) => {
+      if (!target || typeof target !== 'object') return false
+      const tagName = String(target.tagName || '').toUpperCase()
+      if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') {
+        return true
+      }
+      return Boolean(target.isContentEditable)
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.defaultPrevented) return
+      if (isTypingTarget(event.target)) return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      const key = String(event.key || '').toLowerCase()
+      if (key !== 'd') return
+      event.preventDefault()
+      handleToggleSyncDebug()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [syncDebug.enabled])
+
   return (
     <div className="board-view">
-      <button
-        type="button"
-        className={`board-sync-debug-toggle${syncDebug.enabled ? ' is-active' : ''}`}
-        onClick={handleToggleSyncDebug}
-      >
-        {syncDebug.enabled ? 'Debug On' : 'Debug'}
-      </button>
+      {syncDebug.enabled ? (
+        <button
+          type="button"
+          className={`board-sync-debug-toggle${syncDebug.enabled ? ' is-active' : ''}`}
+          onClick={handleToggleSyncDebug}
+        >
+          Debug On
+        </button>
+      ) : null}
       {syncDebug.enabled ? (
         <aside className="board-sync-debug" aria-live="polite">
           <div className="board-sync-debug__header">
