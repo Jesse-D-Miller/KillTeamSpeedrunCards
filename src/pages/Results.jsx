@@ -6,6 +6,7 @@ import {
   getPlayerId,
   getRoomCode,
   getRoomPlayers,
+  listFinalResultPlayerIds,
   readFinalResult,
   writeFinalResult,
 } from '../state/finalResults.js'
@@ -69,6 +70,17 @@ function Results() {
 
     const socket = new WebSocket(WS_URL)
 
+    const requestPeerState = () => {
+      if (socket.readyState !== WebSocket.OPEN) return
+      socket.send(
+        JSON.stringify({
+          type: 'request_opponent_state',
+          code: roomCode,
+          playerId,
+        }),
+      )
+    }
+
     const sendCurrentState = () => {
       if (socket.readyState !== WebSocket.OPEN) return
       const ownResults = readFinalResult({ roomCode, playerId, gameId })
@@ -85,15 +97,42 @@ function Results() {
           },
         }),
       )
+
+      requestPeerState()
     }
 
-    socket.addEventListener('open', sendCurrentState)
+    const persistIncomingFinalResults = (state, fallbackPlayerId = '') => {
+      const incomingPlayerId = state?.playerId || fallbackPlayerId || ''
+      const incomingFinalResults = state?.finalResults || null
+      if (!incomingPlayerId || !incomingFinalResults) return
+
+      writeFinalResult({
+        roomCode,
+        playerId: incomingPlayerId,
+        gameId,
+        result: incomingFinalResults,
+      })
+      setResultsVersion((prev) => prev + 1)
+    }
+
+    socket.addEventListener('open', () => {
+      socket.send(
+        JSON.stringify({
+          type: 'sync_init',
+          code: roomCode,
+          playerId,
+        }),
+      )
+      sendCurrentState()
+      requestPeerState()
+    })
 
     socket.addEventListener('message', (event) => {
       const message = JSON.parse(event.data)
 
       if (message.type === 'sync_ready' || message.type === 'request_sync_state') {
         sendCurrentState()
+        requestPeerState()
         return
       }
 
@@ -110,38 +149,64 @@ function Results() {
         return
       }
 
-      if (message.type !== 'sync_state') return
-
-      const state = message.state || {}
-      const incomingPlayerId = state.playerId || message.playerId || ''
-      const incomingFinalResults = state.finalResults || null
-      if (!incomingPlayerId || !incomingFinalResults) return
-
-      writeFinalResult({
-        roomCode,
-        playerId: incomingPlayerId,
-        gameId,
-        result: incomingFinalResults,
-      })
-      setResultsVersion((prev) => prev + 1)
+      if (message.type === 'sync_state' || message.type === 'opponent_state') {
+        persistIncomingFinalResults(message.state || {}, message.playerId)
+      }
     })
 
+    const refreshInterval = window.setInterval(() => {
+      if (socket.readyState !== WebSocket.OPEN) return
+      sendCurrentState()
+      requestPeerState()
+    }, 1500)
+
     return () => {
+      window.clearInterval(refreshInterval)
       socket.close()
     }
   }, [roomCode, playerId, gameId])
 
   const displayPlayers = useMemo(() => {
-    if (players.length) {
-      return players.slice(0, 2)
+    if (!roomCode) {
+      return [{ id: 'local', name: 'Player' }]
     }
 
-    if (roomCode && playerId) {
-      return [{ id: playerId, name: 'Player 1' }, { id: 'opponent', name: 'Player 2' }]
+    const playerById = new Map()
+    players.forEach((player) => {
+      const id = String(player?.id || '').trim()
+      if (!id) return
+      playerById.set(id, {
+        id,
+        name: String(player?.name || '').trim() || 'Player',
+      })
+    })
+
+    if (playerId && !playerById.has(playerId)) {
+      const storedName = localStorage.getItem(`kt-room-player-name-${roomCode}-${playerId}`)
+      playerById.set(playerId, {
+        id: playerId,
+        name: String(storedName || 'Player').trim() || 'Player',
+      })
+    }
+
+    listFinalResultPlayerIds({ roomCode, gameId }).forEach((id) => {
+      if (playerById.has(id)) return
+      const storedName = localStorage.getItem(`kt-room-player-name-${roomCode}-${id}`)
+      playerById.set(id, {
+        id,
+        name: String(storedName || 'Player').trim() || 'Player',
+      })
+    })
+
+    const resolved = Array.from(playerById.values()).slice(0, 2)
+    if (resolved.length) return resolved
+
+    if (playerId) {
+      return [{ id: playerId, name: 'Player' }]
     }
 
     return [{ id: 'local', name: 'Player' }]
-  }, [players, roomCode, playerId])
+  }, [players, roomCode, playerId, gameId])
 
   const resultsByPlayer = useMemo(() => {
     const next = {}
@@ -151,7 +216,9 @@ function Results() {
     return next
   }, [displayPlayers, roomCode, gameId, resultsVersion])
 
-  const expectedLocks = roomCode ? 2 : 1
+  const expectedLocks = roomCode
+    ? Math.max(1, Math.min(2, displayPlayers.length))
+    : 1
   const lockedResults = displayPlayers
     .map((player) => ({ player, result: resultsByPlayer[player.id] }))
     .filter((entry) => entry.result)

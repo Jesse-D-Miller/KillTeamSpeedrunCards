@@ -74,13 +74,18 @@ function GameEnd() {
   const primarySourceKey = primaryIndexMatch
     ? primarySourceByIndex[primaryIndexMatch[1]]
     : null
+  const activeGameId = getGameId()
   const critOpSrc =
     typeof window !== 'undefined'
-      ? localStorage.getItem('kt-crit-op-src')
+      ? (activeGameId
+          ? localStorage.getItem(`kt-crit-op-src-${activeGameId}`)
+          : null) || localStorage.getItem('kt-crit-op-src')
       : null
   const critOpLabel =
     typeof window !== 'undefined'
-      ? localStorage.getItem('kt-crit-op-label')
+      ? (activeGameId
+          ? localStorage.getItem(`kt-crit-op-label-${activeGameId}`)
+          : null) || localStorage.getItem('kt-crit-op-label')
       : null
   const [scores, setScores] = useState({
     critOp: 0,
@@ -141,22 +146,40 @@ function GameEnd() {
         socket.addEventListener('open', () => {
           socket.send(
             JSON.stringify({
-              type: 'sync_state',
+              type: 'sync_init',
               code: roomCode,
               playerId,
-              state: {
-                playerId,
-                finalResults: resultPayload,
-              },
             }),
           )
-          setTimeout(() => {
+
+          let attempts = 0
+          const sendResultState = () => {
+            if (socket.readyState !== WebSocket.OPEN) return
+            socket.send(
+              JSON.stringify({
+                type: 'sync_state',
+                code: roomCode,
+                playerId,
+                state: {
+                  playerId,
+                  finalResults: resultPayload,
+                },
+              }),
+            )
+            attempts += 1
+            if (attempts >= 3) return
+            window.setTimeout(sendResultState, 350)
+          }
+
+          sendResultState()
+
+          window.setTimeout(() => {
             try {
               socket.close()
             } catch {
               // no-op
             }
-          }, 150)
+          }, 1400)
         })
       } catch (error) {
         console.warn('Failed to sync final results.', error)

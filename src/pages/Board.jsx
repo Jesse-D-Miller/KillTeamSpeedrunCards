@@ -169,6 +169,8 @@ function Board({
       opponent: '',
     },
     ploysByPlayerId: {},
+    lastSyncByPlayerId: {},
+    lastSyncSourceByPlayerId: {},
     opponentCache: false,
     mapSocketState: 'n/a',
     mapSocketEpoch: 0,
@@ -314,6 +316,8 @@ function Board({
         ).length
         const teamIds = {}
         const ploysByPlayerId = {}
+        const lastSyncByPlayerId = {}
+        const lastSyncSourceByPlayerId = {}
         players.forEach((player) => {
           const id = String(player.id || '').trim()
           if (!id) return
@@ -333,6 +337,18 @@ function Board({
             '[]'
           const parsedPloys = JSON.parse(ploysRaw)
           ploysByPlayerId[id] = Array.isArray(parsedPloys) ? parsedPloys.length : 0
+          const lastSyncAt = Number(
+            localStorage.getItem(`kt-room-player-last-sync-at-${roomCode}-${id}`) || '0',
+          )
+          const lastSyncSource =
+            localStorage.getItem(`kt-room-player-last-sync-source-${roomCode}-${id}`) ||
+            ''
+          if (lastSyncAt) {
+            lastSyncByPlayerId[id] = lastSyncAt
+          }
+          if (lastSyncSource) {
+            lastSyncSourceByPlayerId[id] = lastSyncSource
+          }
         })
         const assignmentsKey = roomCode
           ? `kt-drop-zone-assignments-${roomCode}`
@@ -427,6 +443,8 @@ function Board({
             opponent: localStorage.getItem('kt-drop-zone-opponent') || '',
           },
           ploysByPlayerId,
+          lastSyncByPlayerId,
+          lastSyncSourceByPlayerId,
           opponentCache,
           mapSocketState:
             mapSocketRef.current && mapSocketRef.current.readyState in WS_STATE_LABELS
@@ -1034,6 +1052,14 @@ function Board({
       if (!incomingPlayerId) return
       try {
         const activeGameId = localStorage.getItem('kt-game-id') || ''
+        localStorage.setItem(
+          `kt-room-player-last-sync-at-${roomCode}-${incomingPlayerId}`,
+          String(Date.now()),
+        )
+        localStorage.setItem(
+          `kt-room-player-last-sync-source-${roomCode}-${incomingPlayerId}`,
+          String(message.source || 'unknown'),
+        )
         if (state?.killteamId) {
           localStorage.setItem(
             `kt-room-player-killteam-${roomCode}-${incomingPlayerId}`,
@@ -3664,8 +3690,15 @@ function Board({
     if (!selectedCritOpsCard?.opNumber) return
     const padded = String(selectedCritOpsCard.opNumber).padStart(2, '0')
     try {
-      localStorage.setItem('kt-crit-op-src', `/images/critOps/critops_${padded}.png`)
-      localStorage.setItem('kt-crit-op-label', `Crit Op ${selectedCritOpsCard.opNumber}`)
+      const src = `/images/critOps/critops_${padded}.png`
+      const label = `Crit Op ${selectedCritOpsCard.opNumber}`
+      const activeGameId = localStorage.getItem('kt-game-id') || ''
+      localStorage.setItem('kt-crit-op-src', src)
+      localStorage.setItem('kt-crit-op-label', label)
+      if (activeGameId) {
+        localStorage.setItem(`kt-crit-op-src-${activeGameId}`, src)
+        localStorage.setItem(`kt-crit-op-label-${activeGameId}`, label)
+      }
     } catch (error) {
       console.warn('Failed to store crit op selection.', error)
     }
@@ -3715,6 +3748,16 @@ function Board({
     `ploys: ${Object.keys(syncDebug.ploysByPlayerId).length
       ? Object.entries(syncDebug.ploysByPlayerId)
           .map(([id, count]) => `${id.slice(0, 6)}:${count}`)
+          .join(', ')
+      : 'none'}`,
+    `lastSyncAt: ${Object.keys(syncDebug.lastSyncByPlayerId || {}).length
+      ? Object.entries(syncDebug.lastSyncByPlayerId)
+          .map(([id, timestamp]) => `${id.slice(0, 6)}:${formatDebugTimestamp(timestamp)}`)
+          .join(', ')
+      : 'none'}`,
+    `lastSyncSource: ${Object.keys(syncDebug.lastSyncSourceByPlayerId || {}).length
+      ? Object.entries(syncDebug.lastSyncSourceByPlayerId)
+          .map(([id, source]) => `${id.slice(0, 6)}:${source || '-'}`)
           .join(', ')
       : 'none'}`,
     `zones stored: ${syncDebug.storedZones.player || '-'} / ${syncDebug.storedZones.opponent || '-'}`,

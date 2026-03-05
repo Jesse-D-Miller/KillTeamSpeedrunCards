@@ -1443,6 +1443,7 @@ function Game() {
       statusesByUnit,
       aplAdjustByUnit,
       legionaryMarkByUnit,
+      updatedAt: Date.now(),
     }
   }, [
     playerName,
@@ -1464,6 +1465,27 @@ function Game() {
     aplAdjustByUnit,
     legionaryMarkByUnit,
   ])
+
+  useEffect(() => {
+    if (!roomCode || !playerId || !wsReady) return undefined
+    const intervalId = window.setInterval(() => {
+      const socket = socketRef.current
+      const currentState = syncStateRef.current
+      if (!socket || socket.readyState !== WebSocket.OPEN || !currentState) return
+      socket.send(
+        JSON.stringify({
+          type: 'sync_state',
+          code: roomCode,
+          playerId,
+          state: currentState,
+        }),
+      )
+    }, 4000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [roomCode, playerId, wsReady])
 
   useEffect(() => {
     const displayName = playerName || 'Player'
@@ -1628,10 +1650,10 @@ function Game() {
             ? secondCurrent
             : firstCurrent
 
-        const firstTarget = deadUnits[firstKey] || unitStates[firstKey] === 'expended'
+        const firstTarget = deadUnits[firstKey]
           ? false
           : baseRowState
-        const secondTarget = deadUnits[secondKey] || unitStates[secondKey] === 'expended'
+        const secondTarget = deadUnits[secondKey]
           ? false
           : baseRowState
 
