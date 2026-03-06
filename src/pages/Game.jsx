@@ -209,6 +209,11 @@ const isPlasmaKnifeWeapon = (weapon) =>
 const isFistsWeapon = (weapon) =>
   /^fists$/i.test(String(weapon?.wepName ?? '').trim())
 
+const PHOBOS_PURITY_SEALS_IDS = new Set(['IMP-PHO-PS'])
+const PHOBOS_ADDITIONAL_UTILITY_GRENADES_IDS = new Set(['IMP-PHO-AUG'])
+const PHOBOS_COMBAT_BLADES_IDS = new Set(['IMP-PHO-CB'])
+const PHOBOS_SPECIAL_ISSUE_AMMUNITION_IDS = new Set(['IMP-PHO-SIA'])
+
 const HERNKYN_BOLT_SHELL_IDS = new Set(['VOT-HKY-FSBS', 'VOT-HKY-SBS'])
 const HERNKYN_KV_UNDERSUIT_IDS = new Set(['VOT-HKY-KVCU'])
 
@@ -251,6 +256,32 @@ const isKommandoDynamiteEquipment = (equipment) =>
 const isKommandoHarpoonEquipment = (equipment) =>
   KOMMANDO_HARPOON_IDS.has(String(equipment?.eqId ?? ''))
 
+const isPhobosPuritySealsEquipment = (equipment) =>
+  PHOBOS_PURITY_SEALS_IDS.has(String(equipment?.eqId ?? '')) ||
+  /purity\s*seals/i.test(String(equipment?.eqName ?? ''))
+
+const isPhobosAdditionalUtilityGrenadesEquipment = (equipment) =>
+  PHOBOS_ADDITIONAL_UTILITY_GRENADES_IDS.has(String(equipment?.eqId ?? '')) ||
+  /additional\s*utility\s*grenades/i.test(String(equipment?.eqName ?? ''))
+
+const isPhobosCombatBladesEquipment = (equipment) =>
+  PHOBOS_COMBAT_BLADES_IDS.has(String(equipment?.eqId ?? '')) ||
+  /combat\s*blades/i.test(String(equipment?.eqName ?? ''))
+
+const isPhobosSpecialIssueAmmunitionEquipment = (equipment) =>
+  PHOBOS_SPECIAL_ISSUE_AMMUNITION_IDS.has(String(equipment?.eqId ?? '')) ||
+  /special\s*issue\s*ammunition/i.test(String(equipment?.eqName ?? ''))
+
+const unitHasPhobosSiaWeapon = (unit) =>
+  (unit?.opType?.weapons ?? []).some((weapon) => {
+    const weaponName = String(weapon?.wepName ?? '').trim().toLowerCase()
+    return (
+      weaponName === 'bolt carbine' ||
+      weaponName === 'marksman bolt carbine' ||
+      weaponName === 'occulus bolt carbine'
+    )
+  })
+
 const buildKommandoAssignedEquipmentForUnit = ({ unit, selectedEquipment }) => {
   if (isKommandoExcludedUnit(unit)) return []
   return (selectedEquipment ?? []).filter((equipment) => {
@@ -278,6 +309,17 @@ const buildAssignedEquipmentForUnit = ({ unit, selectedEquipment, killteamId }) 
     return buildKommandoAssignedEquipmentForUnit({
       unit,
       selectedEquipment,
+    })
+  }
+
+  if (killteamId === 'IMP-PHO') {
+    const hasSiaWeapon = unitHasPhobosSiaWeapon(unit)
+    return (selectedEquipment ?? []).filter((equipment) => {
+      if (isPhobosAdditionalUtilityGrenadesEquipment(equipment)) return false
+      if (isPhobosPuritySealsEquipment(equipment)) return true
+      if (isPhobosCombatBladesEquipment(equipment)) return true
+      if (isPhobosSpecialIssueAmmunitionEquipment(equipment)) return hasSiaWeapon
+      return false
     })
   }
 
@@ -378,6 +420,23 @@ const applyKommandoCollapsibleStocksEquipment = (weapons, isSelected) => {
       })),
     }
   })
+}
+
+const applyPhobosCombatBladesEquipment = (weapons, equipmentWeapon) => {
+  if (!equipmentWeapon) return weapons
+  const sourceWeapons = Array.isArray(weapons) ? weapons : []
+  return sourceWeapons.map((weapon) =>
+    isFistsWeapon(weapon)
+      ? {
+          ...equipmentWeapon,
+          wepId: `${equipmentWeapon.wepId}-${weapon.wepId ?? 'fists'}`,
+          profiles: (equipmentWeapon.profiles ?? []).map((profile, profileIndex) => ({
+            ...profile,
+            wepprofileId: `${equipmentWeapon.wepId}-${weapon.wepId ?? 'fists'}-${profileIndex}`,
+          })),
+        }
+      : weapon,
+  )
 }
 
 function Game() {
@@ -998,6 +1057,19 @@ function Game() {
       isKommandoCollapsibleStocksEquipment(equipment),
     )
   }, [killteamId, selectedEquipment])
+  const phobosCombatBladesEquipmentWeapon = useMemo(() => {
+    if (killteamId !== 'IMP-PHO') return null
+    const combatBladesEquipment = selectedEquipment.find((equipment) =>
+      isPhobosCombatBladesEquipment(equipment),
+    )
+    if (!combatBladesEquipment) return null
+    const weaponRows = parseEquipmentWeaponEffects(combatBladesEquipment.effects)
+    const combatBladeRow = weaponRows.find((row) =>
+      /combat\s*blade/i.test(String(row.name ?? '')),
+    )
+    if (!combatBladeRow) return null
+    return buildEquipmentWeapon(combatBladesEquipment, combatBladeRow)
+  }, [killteamId, selectedEquipment])
   const getStratOpsForTp = (tp, teamId) =>
     stratOpsByTp[tp]?.[teamId] ?? []
   const ploys = killteam.ploys ?? []
@@ -1068,6 +1140,11 @@ function Game() {
                 ),
                 isKommandoCollapsibleStocksSelected,
               )
+            : killteamId === 'IMP-PHO'
+              ? applyPhobosCombatBladesEquipment(
+                  baseWeapons,
+                  phobosCombatBladesEquipmentWeapon,
+                )
             : baseWeapons
       return {
         ...unit,
