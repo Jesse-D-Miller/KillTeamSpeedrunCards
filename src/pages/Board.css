@@ -173,6 +173,50 @@
   display: none;
 }
 
+.board-overlay.is-token-mode {
+  cursor: crosshair;
+}
+
+.board-token-center {
+  cursor: grab;
+}
+
+.board-token-label {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(10, 45, 120, 0.65);
+  background: rgba(8, 14, 26, 0.75);
+  color: #d8e6ff;
+  font-size: 0.11in;
+  padding: 0.02in 0.04in;
+  outline: none;
+}
+
+.board-token-label::placeholder {
+  color: rgba(216, 230, 255, 0.7);
+}
+
+.board-token-label-wrap {
+  position: absolute;
+  width: 1.4in;
+  height: 0.32in;
+  transform: translate(0, 0);
+  z-index: 11;
+  pointer-events: auto;
+}
+
+.board-token-range-wrap {
+  width: 0.46in;
+}
+
+.board-token-text {
+  fill: #ffffff;
+  font-weight: 900;
+  font-size: 0.0125em;
+  letter-spacing: 0.01em;
+}
+
 .board-card-overlay {
   position: fixed;
   --card-height: calc(120mm * var(--inch-scale));

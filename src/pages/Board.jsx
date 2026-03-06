@@ -17,6 +17,9 @@ import './Board.css'
 
 const HIDDEN_TAC_OP_SRC = '/images/tacOps/hidden-tac-op.png'
 const OBJECTIVE_MARKER_RADIUS_IN = 20 / 25.4
+const TOKEN_MARKER_RADIUS_IN = 10 / 25.4
+const TOKEN_RING_OFFSET_IN = 1
+const TOKEN_DRAG_INCREMENT_MAX_IN = 6
 const MAP_SOCKET_STALE_RESYNC_MS = 10000
 const WS_STATE_LABELS = {
   0: 'CONNECTING',
@@ -118,6 +121,11 @@ function Board({
   const boardFrameRef = useRef(null)
   const boardOverlayRef = useRef(null)
   const [toolMode, setToolMode] = useState('none')
+  const [tokenMode, setTokenMode] = useState('none')
+  const [tokens, setTokens] = useState([])
+  const [dragTokenId, setDragTokenId] = useState(null)
+  const nextTokenIdRef = useRef(1)
+  const tokenDragRef = useRef(null)
   const [showMapTooltips, setShowMapTooltips] = useState(true)
   const [currentRuleIndex, setCurrentRuleIndex] = useState(0)
   const [selectedCardIndex, setSelectedCardIndex] = useState(0)
@@ -3504,6 +3512,191 @@ function Board({
     window.dispatchEvent(new CustomEvent('kt-clear-tools'))
   }
 
+  const getOverlayPoint = (event) => {
+    const svg = boardOverlayRef.current
+    if (!svg) return null
+    const rect = svg.getBoundingClientRect()
+    if (!rect.width || !rect.height) return null
+    const x = ((event.clientX - rect.left) / rect.width) * board.width
+    const y = board.height - ((event.clientY - rect.top) / rect.height) * board.height
+    return {
+      x: Math.min(board.width, Math.max(0, x)),
+      y: Math.min(board.height, Math.max(0, y)),
+    }
+  }
+
+  const handleBoardOverlayClick = (event) => {
+    if (tokenMode === 'none') return
+    const point = getOverlayPoint(event)
+    if (!point) return
+
+    if (tokenMode === 'add') {
+      const nextId = nextTokenIdRef.current
+      nextTokenIdRef.current += 1
+      setTokens((prev) => [
+        ...prev,
+        {
+          id: nextId,
+          x: point.x,
+          y: point.y,
+          label: '',
+          inchMarker: 0,
+          inchMarkerInput: '0',
+          isRangeEditing: true,
+          isLabelEditing: false,
+        },
+      ])
+      setTokenMode('none')
+      return
+    }
+
+    if (tokenMode === 'remove') {
+      setTokens((prev) => {
+        if (!prev.length) return prev
+        let nearestIndex = -1
+        let nearestDistance = Number.POSITIVE_INFINITY
+
+        prev.forEach((token, index) => {
+          const markerInches = Math.max(
+            0,
+            Math.min(9, Number(token.inchMarker || 0)),
+          )
+          const removeRadius = TOKEN_MARKER_RADIUS_IN + markerInches
+          const distance = Math.hypot(token.x - point.x, token.y - point.y)
+          if (distance <= removeRadius && distance < nearestDistance) {
+            nearestDistance = distance
+            nearestIndex = index
+          }
+        })
+
+        if (nearestIndex < 0) return prev
+        const next = [...prev]
+        next.splice(nearestIndex, 1)
+        return next
+      })
+      setTokenMode('none')
+    }
+  }
+
+  const handleTokenPointerDown = (event, tokenId) => {
+    if (tokenMode !== 'none') return
+    event.preventDefault()
+    event.stopPropagation()
+    tokenDragRef.current = {
+      tokenId,
+      pointerId: event.pointerId,
+    }
+    setDragTokenId(tokenId)
+    if (boardOverlayRef.current?.setPointerCapture) {
+      boardOverlayRef.current.setPointerCapture(event.pointerId)
+    }
+  }
+
+  const handleBoardOverlayPointerMove = (event) => {
+    const dragState = tokenDragRef.current
+    if (!dragState || dragState.pointerId !== event.pointerId) return
+    const point = getOverlayPoint(event)
+    if (!point) return
+    setTokens((prev) =>
+      prev.map((token) =>
+        token.id === dragState.tokenId
+          ? {
+              ...token,
+              x: point.x,
+              y: point.y,
+            }
+          : token,
+      ),
+    )
+  }
+
+  const stopTokenDrag = (event) => {
+    const dragState = tokenDragRef.current
+    if (!dragState || dragState.pointerId !== event.pointerId) return
+    if (boardOverlayRef.current?.releasePointerCapture) {
+      try {
+        boardOverlayRef.current.releasePointerCapture(event.pointerId)
+      } catch {
+        // noop
+      }
+    }
+    tokenDragRef.current = null
+    setDragTokenId(null)
+  }
+
+  const handleTokenLabelChange = (tokenId, value) => {
+    setTokens((prev) =>
+      prev.map((token) =>
+        token.id === tokenId
+          ? {
+              ...token,
+              label: value,
+            }
+          : token,
+      ),
+    )
+  }
+
+  const handleTokenRangeChange = (tokenId, value) => {
+    const sanitized = String(value ?? '').replace(/[^0-9]/g, '')
+    const normalized = sanitized.slice(0, 1)
+    setTokens((prev) =>
+      prev.map((token) =>
+        token.id === tokenId
+          ? {
+              ...token,
+              inchMarkerInput: normalized,
+            }
+          : token,
+      ),
+    )
+  }
+
+  const commitTokenRange = (tokenId) => {
+    setTokens((prev) =>
+      prev.map((token) => {
+        if (token.id !== tokenId) return token
+        const parsed = Number.parseInt(String(token.inchMarkerInput || '0'), 10)
+        const inchMarker = Number.isFinite(parsed)
+          ? Math.max(0, Math.min(9, parsed))
+          : 0
+        return {
+          ...token,
+          inchMarker,
+          inchMarkerInput: String(inchMarker),
+          isRangeEditing: false,
+          isLabelEditing: true,
+        }
+      }),
+    )
+  }
+
+  const commitTokenLabel = (tokenId) => {
+    setTokens((prev) =>
+      prev.map((token) => {
+        if (token.id !== tokenId) return token
+        const nextLabel = String(token.label || '').trim()
+        if (!nextLabel) {
+          return {
+            ...token,
+            label: '',
+            isLabelEditing: true,
+          }
+        }
+        return {
+          ...token,
+          label: nextLabel,
+          isLabelEditing: false,
+        }
+      }),
+    )
+  }
+
+  const getTokenEditorStyle = (token) => ({
+    left: `${((token.x + TOKEN_MARKER_RADIUS_IN + 0.08) / board.width) * 100}%`,
+    top: `${((board.height - token.y - 0.16) / board.height) * 100}%`,
+  })
+
   useEffect(() => {
     const isEditableTarget = (target) => {
       if (!target) return false
@@ -3518,6 +3711,7 @@ function Board({
       if (event.key === 'Escape' && !isEditableTarget(event.target)) {
         event.preventDefault()
         window.dispatchEvent(new CustomEvent('kt-clear-tools'))
+        setTokenMode('none')
         if (toolMode === 'measure' || toolMode === 'sight' || toolMode === 'fov') {
           return
         }
@@ -3534,6 +3728,34 @@ function Board({
       ) {
         event.preventDefault()
         setShowMapTooltips((prev) => !prev)
+        return
+      }
+      if (
+        !event.repeat &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !isEditableTarget(event.target) &&
+        event.code === 'Equal'
+      ) {
+        event.preventDefault()
+        clearActiveTool()
+        setToolMode('none')
+        setTokenMode('add')
+        return
+      }
+      if (
+        !event.repeat &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !isEditableTarget(event.target) &&
+        event.code === 'Minus'
+      ) {
+        event.preventDefault()
+        clearActiveTool()
+        setToolMode('none')
+        setTokenMode('remove')
         return
       }
       if (
@@ -3965,10 +4187,14 @@ function Board({
             </>
           ) : null}
           <svg
-            className="board-overlay"
+            className={`board-overlay${tokenMode !== 'none' ? ` is-token-mode is-token-mode-${tokenMode}` : ''}`}
             viewBox={`0 0 ${board.width} ${board.height}`}
             preserveAspectRatio="none"
             ref={boardOverlayRef}
+            onClick={handleBoardOverlayClick}
+            onPointerMove={handleBoardOverlayPointerMove}
+            onPointerUp={stopTokenDrag}
+            onPointerCancel={stopTokenDrag}
           >
             <g transform={`scale(1,-1) translate(0, -${board.height})`}>
               <line
@@ -4107,6 +4333,78 @@ function Board({
                   )
                 }),
               )}
+              {tokens.map((token) => (
+                <g key={`token-${token.id}`}>
+                  <circle
+                    className="board-token-center"
+                    cx={token.x}
+                    cy={token.y}
+                    r={TOKEN_MARKER_RADIUS_IN}
+                    fill="rgba(10, 45, 120, 0.5)"
+                    stroke="rgba(10, 45, 120, 0.5)"
+                    strokeWidth="2"
+                    vectorEffect="non-scaling-stroke"
+                    onPointerDown={(event) => handleTokenPointerDown(event, token.id)}
+                  />
+                  {Math.max(0, Math.min(9, Number(token.inchMarker || 0))) > 0 ? (
+                    <circle
+                      cx={token.x}
+                      cy={token.y}
+                      r={
+                        TOKEN_MARKER_RADIUS_IN +
+                        Math.max(0, Math.min(9, Number(token.inchMarker || 0)))
+                      }
+                      fill="none"
+                      stroke="rgba(10, 45, 120, 0.5)"
+                      strokeWidth="2"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ) : null}
+                  {dragTokenId === token.id
+                    ? Array.from(
+                        { length: TOKEN_DRAG_INCREMENT_MAX_IN },
+                        (_, index) => {
+                          const increment = index + 1
+                          const selectedInchMarker = Math.max(
+                            0,
+                            Math.min(9, Number(token.inchMarker || 0)),
+                          )
+                          const strokeColor =
+                            increment === selectedInchMarker
+                              ? 'rgba(10, 45, 120, 0.5)'
+                              : 'rgba(220, 40, 40, 0.55)'
+                          return (
+                            <circle
+                              key={`token-${token.id}-range-${increment}`}
+                              cx={token.x}
+                              cy={token.y}
+                              r={TOKEN_MARKER_RADIUS_IN + increment}
+                              fill="none"
+                              stroke={strokeColor}
+                              strokeWidth="2"
+                              vectorEffect="non-scaling-stroke"
+                            />
+                          )
+                        },
+                      )
+                    : null}
+                  {showMapTooltips && token.label && !token.isEditing ? (
+                    <text
+                      className="board-token-text"
+                      fontSize={0.16}
+                      x={token.x}
+                      y={-Math.min(
+                        board.height,
+                        token.y + TOKEN_MARKER_RADIUS_IN + 0.22,
+                      )}
+                      transform="scale(1,-1)"
+                      textAnchor="middle"
+                    >
+                      {String(token.label || '').toUpperCase()}
+                    </text>
+                  ) : null}
+                </g>
+              ))}
               <SightLine
                 boardWidth={board.width}
                 boardHeight={board.height}
@@ -4128,6 +4426,73 @@ function Board({
               />
             </g>
           </svg>
+          {tokens
+            .filter((token) => token.isRangeEditing)
+            .map((token) => (
+              <div
+                key={`token-range-${token.id}`}
+                className="board-token-label-wrap board-token-range-wrap"
+                style={getTokenEditorStyle(token)}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={token.inchMarkerInput ?? '0'}
+                  className="board-token-label"
+                  placeholder="0-9"
+                  onChange={(event) =>
+                    handleTokenRangeChange(token.id, event.target.value)
+                  }
+                  onFocus={(event) => {
+                    event.target.select()
+                  }}
+                  onBlur={() => commitTokenRange(token.id)}
+                  onKeyDown={(event) => {
+                    if (/^[0-9]$/.test(event.key)) {
+                      event.preventDefault()
+                      handleTokenRangeChange(token.id, event.key)
+                      return
+                    }
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      commitTokenRange(token.id)
+                    }
+                  }}
+                  autoFocus
+                />
+              </div>
+            ))}
+          {tokens
+            .filter((token) => token.isLabelEditing)
+            .map((token) => (
+              <div
+                key={`token-label-${token.id}`}
+                className="board-token-label-wrap"
+                style={getTokenEditorStyle(token)}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <input
+                  type="text"
+                  value={token.label || ''}
+                  className="board-token-label"
+                  placeholder="Token"
+                  onChange={(event) =>
+                    handleTokenLabelChange(token.id, event.target.value)
+                  }
+                  onBlur={() => commitTokenLabel(token.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      commitTokenLabel(token.id)
+                    }
+                  }}
+                  autoFocus
+                />
+              </div>
+            ))}
           {activeMap?.id === 'map_01' && selectedCritOpsCard ? (
             <>
               <BoardSide
