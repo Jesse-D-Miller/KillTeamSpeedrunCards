@@ -4191,6 +4191,7 @@ function Board({
             viewBox={`0 0 ${board.width} ${board.height}`}
             preserveAspectRatio="none"
             ref={boardOverlayRef}
+            data-testid="board-overlay"
             onClick={handleBoardOverlayClick}
             onPointerMove={handleBoardOverlayPointerMove}
             onPointerUp={stopTokenDrag}
@@ -4337,6 +4338,7 @@ function Board({
                 <g key={`token-${token.id}`}>
                   <circle
                     className="board-token-center"
+                    data-testid={`token-center-${token.id}`}
                     cx={token.x}
                     cy={token.y}
                     r={TOKEN_MARKER_RADIUS_IN}
@@ -4348,6 +4350,8 @@ function Board({
                   />
                   {Math.max(0, Math.min(9, Number(token.inchMarker || 0))) > 0 ? (
                     <circle
+                      className="board-token-range-base"
+                      data-testid={`token-range-base-${token.id}`}
                       cx={token.x}
                       cy={token.y}
                       r={
@@ -4375,6 +4379,8 @@ function Board({
                               : 'rgba(220, 40, 40, 0.55)'
                           return (
                             <circle
+                              className="board-token-range-drag"
+                              data-testid={`token-range-drag-${token.id}-${increment}`}
                               key={`token-${token.id}-range-${increment}`}
                               cx={token.x}
                               cy={token.y}
@@ -4432,6 +4438,7 @@ function Board({
               <div
                 key={`token-range-${token.id}`}
                 className="board-token-label-wrap board-token-range-wrap"
+                data-testid={`token-range-wrap-${token.id}`}
                 style={getTokenEditorStyle(token)}
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => event.stopPropagation()}
@@ -4441,6 +4448,7 @@ function Board({
                   inputMode="numeric"
                   value={token.inchMarkerInput ?? '0'}
                   className="board-token-label"
+                  data-testid={`token-range-input-${token.id}`}
                   placeholder="0-9"
                   onChange={(event) =>
                     handleTokenRangeChange(token.id, event.target.value)
@@ -4470,6 +4478,7 @@ function Board({
               <div
                 key={`token-label-${token.id}`}
                 className="board-token-label-wrap"
+                data-testid={`token-label-wrap-${token.id}`}
                 style={getTokenEditorStyle(token)}
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => event.stopPropagation()}
@@ -4478,6 +4487,7 @@ function Board({
                   type="text"
                   value={token.label || ''}
                   className="board-token-label"
+                  data-testid={`token-name-input-${token.id}`}
                   placeholder="Token"
                   onChange={(event) =>
                     handleTokenLabelChange(token.id, event.target.value)
