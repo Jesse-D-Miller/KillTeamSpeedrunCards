@@ -317,7 +317,7 @@ const buildAssignedEquipmentForUnit = ({ unit, selectedEquipment, killteamId }) 
     return (selectedEquipment ?? []).filter((equipment) => {
       if (isPhobosAdditionalUtilityGrenadesEquipment(equipment)) return false
       if (isPhobosPuritySealsEquipment(equipment)) return true
-      if (isPhobosCombatBladesEquipment(equipment)) return true
+      if (isPhobosCombatBladesEquipment(equipment)) return false
       if (isPhobosSpecialIssueAmmunitionEquipment(equipment)) return hasSiaWeapon
       return false
     })
