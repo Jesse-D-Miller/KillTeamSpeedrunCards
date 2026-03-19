@@ -1,5 +1,9 @@
 # Kill Team Speedrun Cards
 
+Live site: https://ktspeedrun.jesse-miller.com/
+
+Demo note: full multiplayer flow is best tested with 3 browser sessions (2 players plus 1 map view).
+
 A full-stack React app for running fast, structured Kill Team match setup and tracking. The project combines a guided pre-game workflow, in-game board support, and multiplayer room sync over WebSockets.
 
 ## Project story
