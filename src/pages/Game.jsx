@@ -216,6 +216,7 @@ const PHOBOS_SPECIAL_ISSUE_AMMUNITION_IDS = new Set(['IMP-PHO-SIA'])
 
 const HERNKYN_BOLT_SHELL_IDS = new Set(['VOT-HKY-FSBS', 'VOT-HKY-SBS'])
 const HERNKYN_KV_UNDERSUIT_IDS = new Set(['VOT-HKY-KVCU'])
+const NAVY_BREACHER_SLUGS_IDS = new Set(['IMP-INB-SL'])
 
 const isHernkynBoltShellEquipment = (equipment) =>
   HERNKYN_BOLT_SHELL_IDS.has(String(equipment?.eqId ?? '')) ||
@@ -224,6 +225,15 @@ const isHernkynBoltShellEquipment = (equipment) =>
 const isHernkynKvUndersuitEquipment = (equipment) =>
   HERNKYN_KV_UNDERSUIT_IDS.has(String(equipment?.eqId ?? '')) ||
   /kv[\s-]*ceramide\s*undersuit/i.test(String(equipment?.eqName ?? ''))
+
+const isNavyBreacherSlugsEquipment = (equipment) =>
+  NAVY_BREACHER_SLUGS_IDS.has(String(equipment?.eqId ?? '')) ||
+  /^slugs$/i.test(String(equipment?.eqName ?? '').trim())
+
+const unitHasNavisShotgun = (unit) =>
+  (unit?.opType?.weapons ?? []).some((weapon) =>
+    /navis\s*shotgun/i.test(String(weapon?.wepName ?? '')),
+  )
 
 const unitHasBoltShotgun = (unit) =>
   (unit?.opType?.weapons ?? []).some((weapon) =>
@@ -295,7 +305,7 @@ const buildKommandoAssignedEquipmentForUnit = ({ unit, selectedEquipment }) => {
   })
 }
 
-const buildAssignedEquipmentForUnit = ({ unit, selectedEquipment, killteamId }) => {
+export const buildAssignedEquipmentForUnit = ({ unit, selectedEquipment, killteamId }) => {
   if (killteamId === 'VOT-HKY') {
     const hasBoltShotgun = unitHasBoltShotgun(unit)
     return (selectedEquipment ?? []).filter((equipment) => {
@@ -320,6 +330,14 @@ const buildAssignedEquipmentForUnit = ({ unit, selectedEquipment, killteamId }) 
       if (isPhobosCombatBladesEquipment(equipment)) return false
       if (isPhobosSpecialIssueAmmunitionEquipment(equipment)) return hasSiaWeapon
       return false
+    })
+  }
+
+  if (killteamId === 'IMP-INB') {
+    const hasNavisShotgun = unitHasNavisShotgun(unit)
+    return (selectedEquipment ?? []).filter((equipment) => {
+      if (isNavyBreacherSlugsEquipment(equipment)) return hasNavisShotgun
+      return true
     })
   }
 
