@@ -38,6 +38,9 @@ const UNIT_COUNT_OVERRIDES = {
   'ORK-KOM': {
     'ORK-KOM-BOY': 2,
   },
+  'IMP-INB': {
+    'IMP-INB-GNR': 2,
+  },
 }
 
 const buildUnitCounts = (killteam, operatives) => {
