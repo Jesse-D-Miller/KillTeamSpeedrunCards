@@ -60,6 +60,8 @@ export const buildTerrain = (arrangement, pieceById) => {
       const points = area.points.map((point) => transformPoint(point, placement))
       areas.push({
         id: `${entry.id || piece.id}-area-${areaIndex}`,
+        // The terrain feature this belongs to (rules care about "the same feature").
+        featureId: entry.id || piece.id,
         pieceLabel: label,
         // Volkus B's second area is the tall tower.
         vantage: label ? (label === 'B' && areaIndex === 1 ? 4 : 2) : null,
@@ -72,6 +74,7 @@ export const buildTerrain = (arrangement, pieceById) => {
       if (!Array.isArray(segmentPoints)) return
       walls.push({
         id: `${entry.id || piece.id}-wall-${index}`,
+        featureId: entry.id || piece.id,
         type: getSegmentType(segment),
         start: transformPoint(segmentPoints[0], placement),
         end: transformPoint(segmentPoints[1], placement),
@@ -96,6 +99,19 @@ export const zoneEdge = (rect, board) => {
 }
 
 export const EDGE_ROTATION = { bottom: 0, top: 180, left: 90, right: -90 }
+
+// Ray-casting point-in-polygon test.
+export const pointInPolygon = (point, polygon) => {
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const a = polygon[i]
+    const b = polygon[j]
+    if (a.y > point.y !== b.y > point.y && point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x) {
+      inside = !inside
+    }
+  }
+  return inside
+}
 
 // Segment/segment intersection. Returns { x, y, t } with t along a->b, or null.
 export const segmentIntersection = (a, b, c, d) => {

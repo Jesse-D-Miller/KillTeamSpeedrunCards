@@ -7,6 +7,7 @@ import {
   tokenRadiusIn,
   turnState,
 } from '../../shared/game.js'
+import { clampToBase, defaultShooterPoint } from '../../shared/targeting.js'
 import BoardSvg from '../board/BoardSvg.jsx'
 import { dragOverlays } from '../board/dragOverlays.js'
 import { baseSizeMm } from '../data/baseSizes.js'
@@ -15,7 +16,8 @@ import { categoriesFor, radiusFor } from '../data/tokenCatalog.js'
 import { maxWoundsFor, tokenLabelFor } from '../rules/roster.js'
 import Drawer from './Drawer.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
-import { SelectPanel, TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
+import { SelectPanel, TokenFlyout, UnitsFlyout, WeaponFlyout } from './RailFlyouts.jsx'
+import { rangedWeaponsFor } from '../rules/weaponRules.js'
 import ToolIcon from './ToolIcon.jsx'
 import { usePlayer } from './usePlayer.js'
 
@@ -44,6 +46,15 @@ const FULL_VIEW = { x: -PAD, y: -PAD, w: BOARD.width + PAD * 2, h: BOARD.height 
 const ASPECT = FULL_VIEW.h / FULL_VIEW.w
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+
+// How close (in screen pixels) a finger must be to grab the ruler's end or line.
+const GRAB_PX = 24
+
+const distanceToSegment = (point, a, b) => {
+  const lengthSq = (b.x - a.x) ** 2 + (b.y - a.y) ** 2
+  const t = lengthSq ? clamp(((point.x - a.x) * (b.x - a.x) + (point.y - a.y) * (b.y - a.y)) / lengthSq, 0, 1) : 0
+  return distance(point, { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })
+}
 
 // Pixel <-> viewBox mapping for preserveAspectRatio="xMidYMid meet".
 const viewMetrics = (rect, view) => {
@@ -166,13 +177,13 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     return { x: clamp(svgX, 0, BOARD.width), y: clamp(BOARD.height - svgY, 0, BOARD.height) }
   }
 
-  const snapToToken = (point) => {
-    const hit = tokens.find(
-      (token) =>
-        !game.players[token.seat]?.unitState?.[token.unitKey]?.dead &&
-        distance(token, point) <= tokenRadiusIn(token) * 1.2,
-    )
-    return hit ? { x: hit.x, y: hit.y } : point
+  // Sightline: where the shooter's targeting lines currently start (absolute), if shown.
+  const shooterPointOf = (payload) => {
+    const shooter = tokens.find((token) => token.id === payload?.shooterId)
+    if (!shooter) return null
+    if (payload.point) return { x: shooter.x + payload.point.dx, y: shooter.y + payload.point.dy }
+    const target = tokens.find((token) => token.id === payload.targetId)
+    return target ? defaultShooterPoint(shooter, target) : null
   }
 
   // The living operative whose base is under this point, if any.
@@ -304,6 +315,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           distance(token.lastMove.from, point) <= Math.max(0.5, tokenRadiusIn(token)),
       )
       if (origin) {
+        // Drop the brief post-drag hold so the operative isn't drawn where it was.
+        setDragPreview(null)
         act({ type: 'token/undoMove', id: origin.id })
         return
       }
@@ -314,17 +327,46 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       gestureRef.current = { type: 'pan', last: { x: event.clientX, y: event.clientY } }
       return
     }
+    // Measure is a free ruler: grab an end to stretch it, the middle to slide it,
+    // or anywhere else to start a new one. Nothing snaps.
     if (tool === 'measure') {
-      const start = snapToToken(point)
-      const points = overlay?.tool === 'measure' ? [...overlay.points, start] : [start, start]
-      gestureRef.current = { type: 'measure' }
-      publish({ tool: 'measure', points })
+      const line = overlay?.tool === 'measure' && overlay.points.length === 2 ? overlay.points : null
+      const reach = GRAB_PX / viewMetrics(svgRef.current.getBoundingClientRect(), viewRef.current).scale
+      const end = line ? [0, 1].find((index) => distance(line[index], point) <= reach) : undefined
+      if (end !== undefined) {
+        gestureRef.current = { type: 'measure-end', index: end }
+        return
+      }
+      if (line && distanceToSegment(point, line[0], line[1]) <= reach) {
+        gestureRef.current = { type: 'measure-slide', grab: point, points: line }
+        return
+      }
+      gestureRef.current = { type: 'measure-end', index: 1 }
+      publish({ tool: 'measure', points: [point, point] })
       return
     }
+    // Sightline: tap a shooter, then a target. Drag the white point to start the
+    // targeting lines from another part of the shooter's base.
     if (tool === 'los') {
-      const from = snapToToken(point)
-      gestureRef.current = { type: 'los', from }
-      publish({ tool: 'los', from, to: from })
+      const current = overlay?.tool === 'target' ? overlay : null
+      const shown = shooterPointOf(current)
+      const reach = GRAB_PX / viewMetrics(svgRef.current.getBoundingClientRect(), viewRef.current).scale
+      if (shown && distance(shown, point) <= reach) {
+        gestureRef.current = { type: 'target-point' }
+        return
+      }
+      const tapped = target?.token
+      const alive = tapped?.unitKey && !game.players[tapped.seat]?.unitState?.[tapped.unitKey]?.dead
+      if (!alive || tapped.id === current?.shooterId) {
+        clearTool()
+        return
+      }
+      const shooter = tokens.find((token) => token.id === current?.shooterId)
+      publish(
+        shooter && tapped.seat !== shooter.seat
+          ? { ...current, targetId: tapped.id }
+          : { tool: 'target', shooterId: tapped.id, targetId: null, point: null, weaponId: null },
+      )
       return
     }
     if (tool === 'ping') {
@@ -365,18 +407,25 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       const preview = { id: gesture.id, ...point, trail: gesture.trail, origin: gesture.origin }
       setDragPreview(preview)
       sendEphemeral({ tool: 'drag', ...preview })
-    } else if (gesture.type === 'measure') {
+    } else if (gesture.type === 'measure-end') {
       setOverlay((current) => {
         if (current?.tool !== 'measure') return current
-        const points = [...current.points.slice(0, -1), point]
+        const points = current.points.map((end, index) => (index === gesture.index ? point : end))
         const next = { tool: 'measure', points }
         sendEphemeral(next)
         return next
       })
-    } else if (gesture.type === 'los') {
-      const next = { tool: 'los', from: gesture.from, to: point }
-      setOverlay(next)
-      sendEphemeral(next)
+    } else if (gesture.type === 'measure-slide') {
+      // Slide both ends by the finger's movement, keeping the whole ruler on the mat.
+      const [a, b] = gesture.points
+      const dx = clamp(point.x - gesture.grab.x, -Math.min(a.x, b.x), BOARD.width - Math.max(a.x, b.x))
+      const dy = clamp(point.y - gesture.grab.y, -Math.min(a.y, b.y), BOARD.height - Math.max(a.y, b.y))
+      publish({ tool: 'measure', points: gesture.points.map((end) => ({ x: end.x + dx, y: end.y + dy })) })
+    } else if (gesture.type === 'target-point') {
+      const shooter = tokens.find((token) => token.id === overlay?.shooterId)
+      if (!shooter) return
+      const inside = clampToBase(shooter, point)
+      publish({ ...overlay, point: { dx: inside.x - shooter.x, dy: inside.y - shooter.y } })
     }
   }
 
@@ -424,15 +473,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       sendEphemeral(overlay ?? null)
       setDragPreview((current) => current && { id: current.id, x: current.x, y: current.y })
       window.setTimeout(() => setDragPreview(null), 400)
-    }
-    if (gesture.type === 'los') {
-      const to = snapToToken(overlay?.to ?? gesture.from)
-      publish({ tool: 'los', from: gesture.from, to })
-    }
-    if (gesture.type === 'measure' && overlay?.tool === 'measure') {
-      const points = [...overlay.points]
-      points[points.length - 1] = snapToToken(points[points.length - 1])
-      publish({ tool: 'measure', points })
     }
   }
 
@@ -639,6 +679,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const overlays = [...remoteOverlays, ...(overlay ? [{ owner: seat, payload: overlay }] : [])]
   if (dragPreview) dragOverlays(dragPreview).forEach((overlay) => overlays.push({ owner: seat, payload: overlay }))
 
+  const sightlineShooter =
+    tool === 'los' && overlay?.tool === 'target' ? tokens.find((token) => token.id === overlay.shooterId) ?? null : null
+
   // Units, Token and Select each pop a panel out beside their button.
   const flyouts = {
     units: unitsOpen ? (
@@ -659,8 +702,24 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           act={act}
           onRemoved={() => setSelectedId(null)}
           onDetach={detachSelected}
+          vantage={
+            selected?.unitKey && selected.seat === seat
+              ? game.players[seat].unitState?.[selected.unitKey]?.vantage ?? 0
+              : null
+          }
+          onVantage={(vantage) =>
+            act({ type: 'unit/update', unitKey: selected.unitKey, maxWounds: maxWoundsOf(selected.id), patch: { vantage } })
+          }
         />
       ) : null,
+    // Sightline: the shooter's ranged weapons (and grenades), to apply their rules.
+    los: sightlineShooter ? (
+      <WeaponFlyout
+        weapons={rangedWeaponsFor(game, sightlineShooter)}
+        selectedId={overlay.weaponId ?? null}
+        onChoose={(weaponId) => publish({ ...overlay, weaponId })}
+      />
+    ) : null,
   }
   const pressTool = { units: pressUnits, token: pressToken }
 

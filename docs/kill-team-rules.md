@@ -545,6 +545,33 @@ All of these were replaced in Approved Ops 2025.
 - **Undo:** dragging an operative back to where its move started, or tapping that spot with Move on, puts it back and reverts the activation; it's ready again. There's no undo drawer or activation banner on the iPad any more; the board shows the status.
 - **Turn order:** `turnState` works out whose activation is next; the projector shows Activating, Up next or Counteract badges.
 
+**Sightline tool = targeting check (25 Oct 2026, `shared/targeting.js`):**
+- **Lines:** one draggable point on the shooter's base, with lines to the facing arc of the target's base (core rules targeting lines).
+- **Cover:** terrain within 1" of the target, and none when the operatives are within 2".
+- **Obscured:** Heavy terrain (doors count as Heavy) more than 1" from both operatives.
+- **Same feature:** cover or obscured from one feature means the defender chooses.
+- **Not a valid target:** Conceal and in cover, or a friendly operative within 1" of the target.
+- **Shooter warnings:** on Conceal, or engaged; an injured shooter's Hit is worsened by 1.
+- **Vantage** (a per-operative 0/2/4" toggle in Select): Accurate 1/2, the Light-cover rule for Conceal targets, and the Heavy terrain of the feature they stand on ignored for obscuring.
+- **Visibility stand-in (user's choice, 25 Oct 2026):** the rules check visibility from the shooter's head to any part of the target model, in 3D, separately from the base-to-base targeting lines. The app can't see heights, so it treats Heavy terrain as tall and solid. If every targeting line crosses Heavy terrain (wholly intervening), the target counts as not visible, so not a valid target. Partly behind Heavy terrain it's obscured, as the rules say. At the table, a model seen over a low wall or through a window is really obscured, not hidden.
+
+**Shooting measurements (25 Oct 2026, Sightline weapon picker, `src/rules/weaponRules.js`):**
+- **Picking a weapon:** with a shooter chosen, pick a ranged weapon profile (filtered by loadout) or a grenade the player took (Frag, Krak, Stun).
+- **Range:** a dashed ring; targets out of range are invalid.
+- **Area rules:**
+  - **Blast:** every operative within x of the target, friendlies included, visible to the target.
+  - **Torrent:** valid enemy targets within x, not engaged with friendlies.
+  - **x" Devastating:** everything within x of the target.
+  - **Stun grenade:** everything within 1".
+  - Each draws an orange ring and a tag on every operative it catches.
+- **Rules that change targeting:**
+  - Saturate: no cover save.
+  - Seek / Seek Light: Conceal targets behind terrain become valid, keeping their cover save.
+  - Silent: can shoot on Conceal.
+  - Accurate stacks with Vantage up to 2.
+  - Heavy and the rest show as chips.
+- **Smoke** (Smoke Grenade markers): wholly within the 1" area means obscured to anything more than 2" away, and vice versa; Piercing 2 drops to 1.
+
 **Not modelled:** scoring is entered by hand, and the app doesn't automate VP conditions.
 
 **Order tags:** the red/black swap is the user's table convention. The rules flip every token to its light (ready) side in each Ready step; tracking ready/expended by alternating colours each TP gives the same information.

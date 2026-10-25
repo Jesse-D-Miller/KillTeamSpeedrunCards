@@ -130,6 +130,8 @@ const UNIT_FIELDS = {
   statuses: (value) => (Array.isArray(value) ? value.map(String) : null),
   apl: (value) => clamp(Math.round(toNumber(value)), -3, 3),
   mark: (value) => (value == null ? null : String(value)),
+  // Height on Vantage terrain (0 = killzone floor), used by the Sightline tool.
+  vantage: (value) => ([0, 2, 4].includes(Number(value)) ? Number(value) : null),
 }
 
 const sanitizeUnitPatch = (patch) => {

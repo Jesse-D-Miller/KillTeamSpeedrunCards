@@ -1,8 +1,9 @@
-import { distance, isObscured, pathLength, sightlineHits } from '../../shared/geometry.js'
+import { distance, pathLength } from '../../shared/geometry.js'
 import { BOARD, toSvgY } from './boardData.js'
 import { seatColor } from './colors.js'
 
-// Live tool previews (measure / line of sight / ping). Drawn identically on the iPad
+// Live tool previews (measure / moves / ping). The Sightline tool draws with
+// TargetingOverlay. Drawn identically on the iPad
 // that owns the tool and on every other screen that receives it.
 
 const inches = (value) => `${value.toFixed(1)}"`
@@ -35,6 +36,23 @@ function Label({ x, y, children, className = '' }) {
 }
 
 // onToken: a dragged operative's measured route, counted in the middle of the token.
+// A line across the ruler at `at`, perpendicular to the segment from -> to.
+function CrossLine({ at, from, to, half, className }) {
+  const length = distance(from, to) || 1
+  const nx = -(to.y - from.y) / length
+  const ny = (to.x - from.x) / length
+  const unit = from === to || distance(from, to) === 0 ? { x: 0, y: 1 } : { x: nx, y: ny }
+  return (
+    <line
+      className={className}
+      x1={at.x - unit.x * half}
+      y1={toSvgY(at.y - unit.y * half)}
+      x2={at.x + unit.x * half}
+      y2={toSvgY(at.y + unit.y * half)}
+    />
+  )
+}
+
 function Measure({ points, onToken = false }) {
   if (!points?.length) return null
   const total = pathLength(points)
@@ -46,17 +64,26 @@ function Measure({ points, onToken = false }) {
     const length = distance(start, point)
     for (let d = 1 - carried; d <= length; d += 1) {
       const t = d / length
-      ticks.push({ x: start.x + (point.x - start.x) * t, y: start.y + (point.y - start.y) * t })
+      ticks.push({ x: start.x + (point.x - start.x) * t, y: start.y + (point.y - start.y) * t, from: start, to: point })
     }
     carried = (carried + length) % 1
   })
+  const last = points.length > 1 ? points[points.length - 2] : end
   return (
     <g className="overlay-measure">
       <polyline points={points.map((point) => `${point.x},${toSvgY(point.y)}`).join(' ')} />
+      {/* Ruler marks: a short line across the ruler at every inch, longer ones at the ends. */}
       {ticks.map((tick, index) => (
-        <circle key={index} className="overlay-tick" cx={tick.x} cy={toSvgY(tick.y)} r={0.09} />
+        <CrossLine key={index} className="overlay-tick-line" at={tick} from={tick.from} to={tick.to} half={0.16} />
       ))}
-      <circle className="overlay-origin" cx={points[0].x} cy={toSvgY(points[0].y)} r={0.18} />
+      {onToken ? (
+        <circle className="overlay-origin" cx={points[0].x} cy={toSvgY(points[0].y)} r={0.18} />
+      ) : (
+        <>
+          <CrossLine className="overlay-end-line" at={points[0]} from={points[0]} to={points[1] ?? end} half={0.32} />
+          <CrossLine className="overlay-end-line" at={end} from={last} to={end} half={0.32} />
+        </>
+      )}
       {onToken ? (
         <MoveCount x={end.x} y={end.y} value={total} />
       ) : (
@@ -96,26 +123,6 @@ function MovePath({ path, settled, tip }) {
   )
 }
 
-function LineOfSight({ from, to, walls }) {
-  if (!from || !to) return null
-  const hits = sightlineHits(from, to, walls)
-  const obscured = isObscured(hits)
-  const cover = hits.some((hit) => hit.fromTarget <= 1)
-  const status = [obscured ? 'OBSCURED' : 'CLEAR', cover ? 'COVER' : null].filter(Boolean).join(' · ')
-  return (
-    <g className={`overlay-los${obscured ? ' is-obscured' : ''}`}>
-      <line x1={from.x} y1={toSvgY(from.y)} x2={to.x} y2={toSvgY(to.y)} />
-      <circle className="overlay-los-target" cx={to.x} cy={toSvgY(to.y)} r={1.5} />
-      {hits.map((hit) => (
-        <circle key={hit.wallId} className={`overlay-hit is-${hit.type}`} cx={hit.x} cy={toSvgY(hit.y)} r={0.22} />
-      ))}
-      <Label x={to.x} y={to.y + 1.6}>
-        {inches(distance(from, to))} · {status}
-      </Label>
-    </g>
-  )
-}
-
 function Ping({ x, y }) {
   return (
     <g className="overlay-ping">
@@ -125,12 +132,11 @@ function Ping({ x, y }) {
   )
 }
 
-function Overlay({ owner, payload, walls }) {
+function Overlay({ owner, payload }) {
   if (!payload) return null
   let content = null
   if (payload.tool === 'measure') content = <Measure points={payload.points} onToken={payload.onToken} />
   if (payload.tool === 'count') content = <MoveCount x={payload.to.x} y={payload.to.y} value={distance(payload.from, payload.to)} />
-  if (payload.tool === 'los') content = <LineOfSight from={payload.from} to={payload.to} walls={walls} />
   if (payload.tool === 'ping') content = <Ping x={payload.x} y={payload.y} />
   if (payload.tool === 'move') content = <MovePath path={payload.path} settled={payload.settled} tip={payload.tip} />
   if (!content) return null

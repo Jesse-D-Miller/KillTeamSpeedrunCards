@@ -1,4 +1,5 @@
 import { BASE_SIZES_MM, DEFAULT_BASE_MM } from '../../shared/game.js'
+import { weaponLabel, weaponRuleChips } from '../rules/weaponRules.js'
 
 // Glass panels that pop out of the map's tool rail, beside their button.
 
@@ -31,6 +32,30 @@ function Swatch({ entry }) {
     <span className={`flyout-swatch is-${entry.kind}`} aria-hidden="true">
       {entry.kind === 'base' ? '' : entry.short}
     </span>
+  )
+}
+
+// Sightline: pick the shooter's weapon so its Range, Blast/Torrent and other rules
+// apply. "No weapon" checks targeting only.
+export function WeaponFlyout({ weapons, selectedId, onChoose }) {
+  return (
+    <nav className="rail-flyout anchored-flyout weapon-flyout glass" aria-label="Choose a weapon">
+      <button type="button" className={selectedId ? '' : 'is-selected'} onClick={() => onChoose(null)}>
+        No weapon
+      </button>
+      {weapons.map((weapon) => (
+        <button
+          key={weapon.id}
+          type="button"
+          className={`flyout-weapon${weapon.id === selectedId ? ' is-selected' : ''}`}
+          onClick={() => onChoose(weapon.id)}
+        >
+          <span>{weaponLabel(weapon)}</span>
+          <span className="flyout-weapon-rules">{weaponRuleChips(weapon.rules).join(' · ') || 'No special rules'}</span>
+        </button>
+      ))}
+      {!weapons.length ? <span className="muted flyout-note">No ranged weapons found.</span> : null}
+    </nav>
   )
 }
 
@@ -108,7 +133,9 @@ function SizeStepper({ label, value, sizes, onChange }) {
 
 // Select: edit whatever is selected. Changes are saved on the server straight away.
 //   item: { type: 'token' | 'marker', value }.
-export function SelectPanel({ item, act, onRemoved, onDetach }) {
+// vantage / onVantage: your own operative's height on Vantage terrain (0, 2 or 4"),
+// used by the Sightline tool; null for anything else.
+export function SelectPanel({ item, act, onRemoved, onDetach, vantage = null, onVantage }) {
   const { type, value } = item
   const update = (patch) => act({ type: `${type}/update`, id: value.id, ...patch })
   return (
@@ -144,6 +171,24 @@ export function SelectPanel({ item, act, onRemoved, onDetach }) {
           onChange={(mm) => update({ radius: mm / MM_PER_IN / 2 })}
         />
       )}
+
+      {vantage != null ? (
+        <div className="select-field">
+          <span className="muted">On Vantage</span>
+          <div className="select-chips">
+            {[0, 2, 4].map((height) => (
+              <button
+                key={height}
+                type="button"
+                className={`chip${vantage === height ? ' is-selected' : ''}`}
+                onClick={() => onVantage(height)}
+              >
+                {height ? `${height}" up` : 'Floor'}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="select-field">
         <span className="muted">Range</span>

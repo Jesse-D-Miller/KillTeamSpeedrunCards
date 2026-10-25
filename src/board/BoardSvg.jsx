@@ -11,6 +11,7 @@ import { NEUTRAL_COLOR, seatColor, zoneOwner } from './colors.js'
 import MarkerDisc from './MarkerDisc.jsx'
 import OrderTag from './OrderTag.jsx'
 import Overlay, { MoveCount } from './Overlay.jsx'
+import TargetingOverlay from './TargetingOverlay.jsx'
 import TokenLabel from './TokenLabel.jsx'
 import './board.css'
 
@@ -388,7 +389,7 @@ function BoardSvg({
             key={`move-${token.id}`}
             owner={token.seat}
             payload={{ tool: 'move', path: token.lastMove.path, settled: true }}
-            walls={layout.walls}
+           
           />
         ) : null,
       )}
@@ -461,9 +462,38 @@ function BoardSvg({
         ) : null,
       )}
 
-      {overlays.map(({ owner, payload }) => (
-        <Overlay key={owner} owner={owner} payload={payload} walls={layout.walls} />
-      ))}
+      {/* Operatives up on Vantage terrain (set with Select) show their height. */}
+      {tokenViews.map(({ token, view, status }) =>
+        status?.vantage && !view.dead ? (
+          <text
+            key={`vantage-${token.id}`}
+            className="board-vantage"
+            data-vantage-for={token.id}
+            x={view.x + view.r * 0.8}
+            y={view.cy - view.r * 0.8}
+            textAnchor="middle"
+            dominantBaseline="central"
+          >
+            ▲{status.vantage}"
+          </text>
+        ) : null,
+      )}
+
+      {overlays.map(({ owner, payload }) =>
+        payload.tool === 'target' ? (
+          <TargetingOverlay
+            key={owner}
+            tokens={tokens}
+            players={players}
+            markers={markers}
+            layout={layout}
+            payload={payload}
+            maxWoundsOf={maxWoundsOf}
+          />
+        ) : (
+          <Overlay key={owner} owner={owner} payload={payload} />
+        ),
+      )}
 
       {children}
     </svg>

@@ -32,6 +32,24 @@ const readyUp = async (...pages) => {
   }
 }
 
+// Send actions straight to the table server as the projector (test setup).
+const tableActions = (table, actions) =>
+  table.evaluate(
+    (list) =>
+      new Promise((resolve) => {
+        const socket = new WebSocket(`ws://${window.location.host}/ws`)
+        socket.onopen = () => {
+          socket.send(JSON.stringify({ type: 'hello', role: 'table' }))
+          list.forEach((action) => socket.send(JSON.stringify({ type: 'action', action })))
+          setTimeout(() => {
+            socket.close()
+            resolve()
+          }, 300)
+        }
+      }),
+    actions,
+  )
+
 const dragOnMap = async (page, from, to) => {
   const box = await page.locator('.map-stage svg').boundingBox()
   const at = (fx, fy) => [box.x + box.width * fx, box.y + box.height * fy]
@@ -230,23 +248,145 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator('.board-token-ring')).toHaveCount(0)
 
   await a.getByRole('button', { name: 'Show tools' }).click()
+  // Measure is a free ruler: nothing snaps, ends stretch, the middle slides it.
   await a.getByRole('button', { name: 'Measure', exact: true }).click()
-  await dragOnMap(a, [0.3, 0.5], [0.6, 0.5])
-  await expect(table.locator('.overlay-measure .overlay-label')).toBeVisible()
+  const dragPx = async (from, to) => {
+    await a.mouse.move(from.x, from.y)
+    await a.mouse.down()
+    for (let i = 1; i <= 8; i += 1) await a.mouse.move(from.x + ((to.x - from.x) * i) / 8, from.y + ((to.y - from.y) * i) / 8)
+    await a.mouse.up()
+  }
+  const at = (fx, fy, dxIn = 0, dyIn = 0) => ({
+    x: stageBox.x + stageBox.width * fx + dxIn * pxPerInch,
+    y: stageBox.y + stageBox.height * fy + dyIn * pxPerInch,
+  })
+  const rulerLabel = table.locator('.overlay-measure .overlay-label')
+  const inchesOf = async () => Number.parseFloat(await rulerLabel.textContent())
+  await dragPx(at(0.35, 0.62), at(0.35, 0.62, 3))
+  await expect.poll(inchesOf).toBeCloseTo(3, 0)
+  // The start end-line's centre (it's drawn across the ruler).
+  const startHandle = table.locator('.overlay-measure .overlay-end-line').first()
+  const startX = async () => (Number(await startHandle.getAttribute('x1')) + Number(await startHandle.getAttribute('x2'))) / 2
+  const startY = async () => (Number(await startHandle.getAttribute('y1')) + Number(await startHandle.getAttribute('y2'))) / 2
+  const startCxBefore = await startX()
+  const startCyBefore = await startY()
+  // Stretch: drag the far end 2" further; the start stays put.
+  await dragPx(at(0.35, 0.62, 3), at(0.35, 0.62, 5))
+  await expect.poll(inchesOf).toBeCloseTo(5, 0)
+  expect(await startX()).toBeCloseTo(startCxBefore, 1)
+  // Slide: drag the middle down 1"; same length, both ends move.
+  await dragPx(at(0.35, 0.62, 2.5), at(0.35, 0.62, 2.5, 1))
+  await expect.poll(async () => (await startY()) - startCyBefore).toBeCloseTo(1, 0)
+  await expect.poll(inchesOf).toBeCloseTo(5, 0)
+  expect(await startX()).toBeCloseTo(startCxBefore, 1)
   await shot(a, '05-map-ipad')
+  // Pressing elsewhere starts a fresh line instead of adding a bend.
+  await dragPx(at(0.35, 0.3), at(0.35, 0.3, 1.5))
+  await expect.poll(inchesOf).toBeCloseTo(1.5, 0)
+  await expect(table.locator('.overlay-measure')).toHaveCount(1)
   await shot(table, '06-map-table')
 
   // Switching tools clears the measurement; no separate Clear button.
   await expect(a.getByRole('button', { name: 'Clear' })).toHaveCount(0)
+  // Sightline: a sniper (Alice) and four of Bob's operatives around the ruins of
+  // Map 2 / Layout 04: one in the open, one wholly behind ruin F's heavy wall (not
+  // visible), one partly behind it (obscured), one just inside ruin B (Conceal, in cover).
+  const tokenCount = await table.locator('.board-token').count()
+  await tableActions(table, [
+    // The sniper uses the Yaegir Gunner's datacard (its weapon has Blast profiles).
+    { type: 'token/add', seat: 'A', label: 'Sniper', unitKey: 'VOT-HKY-GNR-0', x: 8, y: 8.5, baseMm: 32 },
+    { type: 'token/add', seat: 'B', label: 'Open', unitKey: 'TEST-OPEN', x: 8, y: 4, baseMm: 32 },
+    { type: 'token/add', seat: 'B', label: 'Behind', unitKey: 'TEST-BEHIND', x: 12.5, y: 5, baseMm: 32 },
+    { type: 'token/add', seat: 'B', label: 'Inside', unitKey: 'TEST-INSIDE', x: 8, y: 12, baseMm: 32 },
+    { type: 'token/add', seat: 'B', label: 'Edge', unitKey: 'TEST-EDGE', x: 14, y: 5, baseMm: 32 },
+  ])
+  await expect(table.locator('.board-token')).toHaveCount(tokenCount + 5)
+  const [sniper, inOpen, behind, inside, edge] = (
+    await table.locator('.board-token').evaluateAll((nodes) => nodes.map((node) => node.dataset.tokenId))
+  ).slice(-5)
+  const tapToken = (id) => a.locator(`.map-stage [data-token-id="${id}"] .board-token-base`).click()
   await a.getByRole('button', { name: 'Sightline', exact: true }).click()
   await expect(table.locator('.overlay-measure')).toHaveCount(0)
-  await dragOnMap(a, [0.2, 0.3], [0.8, 0.6])
-  await expect(table.locator('.overlay-los')).toBeVisible()
+  // Picking the shooter badges every enemy at a glance.
+  await tapToken(sniper)
+  await expect(table.locator(`[data-badge-for="${inOpen}"]`)).toHaveAttribute('data-status', 'valid')
+  await expect(table.locator(`[data-badge-for="${behind}"]`)).toHaveAttribute('data-status', 'invalid')
+  await expect(table.locator(`[data-badge-for="${edge}"]`)).toHaveAttribute('data-status', 'obscured')
+  await expect(table.locator(`[data-badge-for="${inside}"]`)).toHaveAttribute('data-status', 'invalid')
+  // Picking a target draws the beams and its roll effects. Partly behind Heavy
+  // terrain: obscured.
+  await tapToken(edge)
+  await expect(table.locator('.target-scan.is-blocked').first()).toBeVisible()
+  await expect(table.locator('.target-scan.is-clear')).toHaveCount(1)
+  await expect(table.locator(`[data-chips-for="${edge}"]`)).toContainText('OBSCURED · −1 SUCCESS · NO CRITS')
+  // Wholly behind it: treated as not visible, so not a valid target.
+  await tapToken(behind)
+  await expect(table.locator(`[data-chips-for="${behind}"]`)).toContainText(
+    'NOT VALID · WHOLLY BEHIND HEAVY TERRAIN (NOT VISIBLE)',
+  )
+  await expect(table.locator(`[data-chips-for="${behind}"]`)).not.toContainText('OBSCURED')
   await shot(table, '07-los-table')
-  // Tapping the active tool again turns it off and clears its line.
+  await shot(a, '07a-los-ipad')
+  await tapToken(inside)
+  // Only green and red in the scan: no yellow, and no individual beams.
+  await expect(table.locator('.target-scan:not(.is-clear):not(.is-blocked), .target-beam')).toHaveCount(0)
+  await expect(table.locator(`[data-chips-for="${inside}"]`)).toContainText('NOT VALID · CONCEAL ORDER IN COVER')
+  // The white point can be dragged around the shooter's base but never off it.
+  const pointBox = await a.locator('.map-stage .target-point circle').last().boundingBox()
+  const px = pointBox.x + pointBox.width / 2
+  const py = pointBox.y + pointBox.height / 2
+  await a.mouse.move(px, py)
+  await a.mouse.down()
+  for (let i = 1; i <= 8; i += 1) await a.mouse.move(px - (2 * pxPerInch * i) / 8, py)
+  await a.mouse.up()
+  const sniperBase = table.locator(`[data-token-id="${sniper}"] .board-token-base`)
+  const pointOffset = async () =>
+    Number(await table.locator('.target-point circle').last().getAttribute('cx')) - Number(await sniperBase.getAttribute('cx'))
+  await expect.poll(pointOffset).toBeLessThan(-0.3)
+  expect(Math.abs(await pointOffset())).toBeLessThanOrEqual(Number(await sniperBase.getAttribute('r')) + 0.001)
+  // Pick a weapon: its rules apply. A Blast 2" profile rings the target and tags
+  // everyone it would also hit.
+  const weaponList = a.getByRole('navigation', { name: 'Choose a weapon' })
+  await expect(weaponList.getByRole('button')).toHaveCount(4)
+  await shot(a, '07b-weapon-list')
+  await tapToken(edge)
+  await weaponList.getByRole('button', { name: /BLAST 2"/ }).click()
+  await expect(table.locator('[data-area-ring="2"]')).toHaveCount(1)
+  await expect(table.locator(`[data-splash-for="${behind}"]`)).toHaveAttribute('data-splash', 'blast')
+  await expect(table.locator(`[data-chips-for="${sniper}"]`)).toContainText('WEAPON ·')
+  await expect(table.locator(`[data-chips-for="${sniper}"]`)).toContainText('BLAST 2"')
+  await shot(table, '07c-blast-table')
+  // Smoke: the operative in the open, wholly inside a Smoke Grenade's 1", is obscured.
+  await tableActions(table, [
+    { type: 'marker/add', kind: 'marker', catalogId: 'smoke-grenade', label: 'Smoke Grenade', radius: 20 / 25.4 / 2, x: 8, y: 4 },
+  ])
+  await expect(table.locator(`[data-badge-for="${inOpen}"]`)).toHaveAttribute('data-status', 'obscured')
+  const smokeId = await table.locator('[data-catalog-id="smoke-grenade"]').getAttribute('data-marker-id')
+  await tableActions(table, [{ type: 'marker/remove', id: smokeId }])
+  // Tapping the active tool again turns it off and clears it.
   await a.getByRole('button', { name: 'Sightline', exact: true }).click()
-  await expect(table.locator('.overlay-los')).toHaveCount(0)
+  await expect(table.locator('.targeting')).toHaveCount(0)
   await expect(a.getByRole('button', { name: 'Sightline', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  // On Vantage (set with Select): shooting down at an Engage target gives Accurate.
+  await a.getByRole('button', { name: 'Select', exact: true }).click()
+  await tapToken(sniper)
+  await a.locator('.select-panel').getByRole('button', { name: '2" up' }).click()
+  await expect(table.locator(`[data-vantage-for="${sniper}"]`)).toHaveText('▲2"')
+  await a.getByRole('button', { name: 'Select', exact: true }).click()
+  await tableActions(table, [{ type: 'unit/update', seat: 'B', unitKey: 'TEST-OPEN', patch: { order: 'engage' } }])
+  await a.getByRole('button', { name: 'Sightline', exact: true }).click()
+  await tapToken(sniper)
+  await tapToken(inOpen)
+  await expect(table.locator(`[data-chips-for="${sniper}"]`)).toContainText('VANTAGE · ACCURATE 1')
+  await a.getByRole('button', { name: 'Sightline', exact: true }).click()
+  await tableActions(
+    table,
+    [
+      ...[sniper, inOpen, behind, inside, edge].map((id) => ({ type: 'token/remove', id })),
+      { type: 'unit/update', seat: 'A', unitKey: 'VOT-HKY-GNR-0', patch: { vantage: 0 } },
+    ],
+  )
+  await expect(table.locator('.board-token')).toHaveCount(tokenCount)
 
   // The rail also holds Fit and the Tabs flyout; the map has no top status bar or hint.
   await expect(a.locator('.play-header')).toHaveCount(0)
@@ -377,9 +517,13 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     for (let i = 1; i <= 10; i += 1) await a.mouse.move(x0, y0 + (inches * pxPerInch * i) / 10)
     await a.mouse.up()
   }
-  // Back-tracking a move all the way to its start does the same.
+  // Back-tracking a move all the way to its start does the same. (Wait for the
+  // iPad to show the reset first, so the test doesn't grab the old position.)
+  await expect(a.locator('.map-stage .move-count[data-count-for="t1"]')).toHaveCount(0)
   await dragDown(0, 2.2)
   await expect(table.locator('[data-token-id="t1"]')).toHaveClass(/is-active/)
+  // Wait for the iPad to show the settled move before grabbing the token again.
+  await expect(a.locator('.map-stage .move-count[data-count-for="t1"]')).toHaveText('2.0"')
   await dragDown(0, -2.2)
   await expect(tableToken).toHaveAttribute('cx', startCx)
   await expect(table.locator('[data-token-id="t1"]')).not.toHaveClass(/is-active/)

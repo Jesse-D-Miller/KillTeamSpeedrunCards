@@ -365,38 +365,17 @@
   fill: var(--overlay-color);
 }
 
-.overlay-los line {
-  stroke: #7dff9b;
-  stroke-width: 0.08;
+.overlay-tick-line {
+  stroke: #fff;
+  stroke-width: 0.06;
+  stroke-linecap: round;
 }
 
-.overlay-los.is-obscured line {
-  stroke: #ff6b6b;
-  stroke-dasharray: 0.3 0.15;
-}
-
-.overlay-los-target {
-  fill: none;
+/* The ruler's ends: longer cross lines, which are also its grab points. */
+.overlay-end-line {
   stroke: var(--overlay-color);
-  stroke-width: 0.05;
-  stroke-dasharray: 0.2 0.15;
-}
-
-.overlay-hit {
-  stroke: #000;
-  stroke-width: 0.04;
-}
-
-.overlay-hit.is-heavy {
-  fill: #ff4d4d;
-}
-
-.overlay-hit.is-light {
-  fill: #ffe066;
-}
-
-.overlay-hit.is-door {
-  fill: #ffa94d;
+  stroke-width: 0.12;
+  stroke-linecap: round;
 }
 
 .overlay-ping circle {
@@ -422,4 +401,158 @@
     transform: scale(5);
     opacity: 0;
   }
+}
+
+/* ---- Sightline tool (TargetingOverlay) ---- */
+.targeting {
+  pointer-events: none;
+}
+
+.target-scan {
+  stroke-width: 0.03;
+  stroke-linejoin: round;
+}
+
+.target-scan.is-clear {
+  fill: #4ade80;
+  fill-opacity: 0.18;
+  stroke: rgba(74, 222, 128, 0.9);
+}
+
+.target-scan.is-blocked {
+  fill: #ef4444;
+  fill-opacity: 0.22;
+  stroke: rgba(239, 68, 68, 0.9);
+}
+
+.target-range-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 0.04;
+  stroke-dasharray: 0.3 0.2;
+}
+
+.target-area-ring {
+  fill: #f97316;
+  fill-opacity: 0.12;
+  stroke: #f97316;
+  stroke-width: 0.05;
+}
+
+.target-splash rect {
+  fill: #f97316;
+}
+
+.target-splash text {
+  fill: #0b0d10;
+  font-weight: 800;
+}
+
+.target-splash.is-friendly rect {
+  fill: #ef4444;
+}
+
+.target-splash.is-friendly text {
+  fill: #fff;
+}
+
+.target-point circle {
+  fill: #fff;
+}
+
+.target-point .target-point-ring {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 0.04;
+}
+
+.target-shooter-ring {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 0.06;
+  stroke-dasharray: 0.2 0.12;
+}
+
+.target-badge circle {
+  stroke: #0b0d10;
+  stroke-width: 0.04;
+}
+
+.target-badge text {
+  fill: #0b0d10;
+  font-size: 0.28px;
+  font-weight: 800;
+}
+
+.target-badge.is-valid circle {
+  fill: #4ade80;
+}
+
+.target-badge.is-cover circle {
+  fill: #facc15;
+}
+
+.target-badge.is-obscured circle {
+  fill: #ef4444;
+}
+
+.target-badge.is-invalid circle {
+  fill: #6b7280;
+}
+
+.target-badge.is-invalid text,
+.target-badge.is-obscured text {
+  fill: #fff;
+}
+
+.target-chip rect {
+  fill: rgba(11, 13, 16, 0.88);
+  stroke-width: 0.03;
+}
+
+.target-chip text {
+  font-weight: 700;
+  letter-spacing: 0.01px;
+}
+
+.target-chip.is-bad rect {
+  stroke: #ef4444;
+}
+
+.target-chip.is-bad text {
+  fill: #fca5a5;
+}
+
+.target-chip.is-warn rect {
+  stroke: #facc15;
+}
+
+.target-chip.is-warn text {
+  fill: #fde68a;
+}
+
+.target-chip.is-good rect {
+  stroke: #4ade80;
+}
+
+.target-chip.is-good text {
+  fill: #bbf7d0;
+}
+
+.target-chip.is-info rect {
+  stroke: rgba(255, 255, 255, 0.3);
+}
+
+.target-chip.is-info text {
+  fill: rgba(255, 255, 255, 0.75);
+}
+
+.board-vantage {
+  fill: #fff;
+  font-size: 0.28px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: #0b0d10;
+  stroke-width: 0.07px;
+  pointer-events: none;
 }
