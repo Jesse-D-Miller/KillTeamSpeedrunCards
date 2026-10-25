@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Table server state
+server/data
+
+# Playwright output
+test-results
+playwright-report

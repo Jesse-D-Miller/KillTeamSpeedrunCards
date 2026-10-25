@@ -1,14 +1,8 @@
 import './CritOpsCard.css'
 
-function CritOpsCard({ card, isTwoColumn = false, layoutVariant = '' }) {
-	if (!card) return null
-	const mission = card.missionAction ?? {}
-	const victory = card.victoryPoints ?? {}
-	const additional = card.additionalRules ?? {}
+function MissionAction({ mission }) {
 	const missionBullets = mission.bullets ?? []
-	const victoryBullets = victory.bullets ?? []
-
-	const missionBlock = (
+	return (
 		<section className="critops-card__section">
 			<div className="critops-card__section-head">
 				<h3 className="critops-card__section-title">
@@ -46,6 +40,24 @@ function CritOpsCard({ card, isTwoColumn = false, layoutVariant = '' }) {
 			</div>
 		</section>
 	)
+}
+
+// Approved Ops 2025 crit ops can have no mission action (Stake Claim, Energy Cells)
+// or two (Data).
+function CritOpsCard({ card, isTwoColumn = false, layoutVariant = '' }) {
+	if (!card) return null
+	const missions = card.missionActions ?? (card.missionAction ? [card.missionAction] : [])
+	const victory = card.victoryPoints ?? {}
+	const additional = card.additionalRules ?? {}
+	const victoryBullets = victory.bullets ?? []
+
+	const missionBlock = missions.length ? (
+		<>
+			{missions.map((mission, index) => (
+				<MissionAction key={mission.subtitle || index} mission={mission} />
+			))}
+		</>
+	) : null
 
 	const isSplitLayout =
 		isTwoColumn &&

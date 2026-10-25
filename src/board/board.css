@@ -1,0 +1,425 @@
+.board-svg {
+  display: block;
+  /* Dead operatives sit just off the mat. */
+  overflow: visible;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: 'Oswald', 'Arial Narrow', system-ui, sans-serif;
+}
+
+.board-mat {
+  fill: var(--board-mat, #15171b);
+}
+
+.board-territory {
+  fill: var(--zone-color);
+  fill-opacity: 0.1;
+}
+
+.board-dropzone {
+  fill: var(--zone-color);
+  fill-opacity: 0.28;
+  stroke: var(--zone-color);
+  stroke-width: 0.06;
+}
+
+.board-grid line {
+  stroke: rgba(255, 255, 255, 0.09);
+  stroke-width: 0.02;
+}
+
+.board-grid line.is-major {
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 0.035;
+}
+
+.board-centerline {
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 0.05;
+  stroke-dasharray: 0.4 0.3;
+}
+
+.board-terrain-area {
+  fill: rgba(255, 255, 255, 0.08);
+}
+
+.board-wall {
+  stroke-linecap: round;
+}
+
+.board-wall.is-heavy {
+  stroke: #f2efe6;
+  stroke-width: 0.16;
+}
+
+.board-wall.is-light {
+  stroke: #b8b2a3;
+  stroke-width: 0.1;
+  stroke-dasharray: 0.3 0.2;
+}
+
+.board-wall.is-door {
+  stroke: #ffd166;
+  stroke-width: 0.16;
+}
+
+.board-vantage {
+  fill: rgba(255, 255, 255, 0.55);
+  font-size: 0.32px;
+  letter-spacing: 0.02px;
+}
+
+.board-objective-range {
+  fill: none;
+  stroke: #ff4d4d;
+  stroke-opacity: 0.6;
+  stroke-width: 0.05;
+}
+
+.board-objective-core {
+  fill: #e23b3b;
+  stroke: #fff;
+  stroke-width: 0.04;
+}
+
+.board-objective-cross {
+  stroke: #1a0000;
+  stroke-width: 0.06;
+}
+
+.board-token-base {
+  fill: var(--token-color);
+  fill-opacity: 0.45;
+  stroke: var(--token-color);
+  stroke-width: 0.08;
+}
+
+.board-token-ring {
+  pointer-events: none;
+  fill: var(--token-color);
+  fill-opacity: 0.06;
+  stroke: var(--token-color);
+  stroke-width: 0.05;
+  stroke-dasharray: 0.25 0.15;
+}
+
+.board-token.is-highlighted .board-token-base {
+  stroke: #fff;
+  stroke-width: 0.12;
+}
+
+/* Wound badge under the base: amber when damaged, red + glow when injured. */
+.board-token-wounds-pill {
+  fill-opacity: 0.8;
+  stroke: rgba(0, 0, 0, 0.6);
+  stroke-width: 0.03;
+}
+
+.board-token-wounds-text {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01px;
+}
+
+.board-token-wounds.is-damaged .board-token-wounds-pill {
+  fill: #f5b13d;
+}
+
+.board-token-wounds.is-damaged .board-token-wounds-text {
+  fill: #1a1205;
+}
+
+.board-token-wounds.is-injured .board-token-wounds-pill {
+  fill: #e5484d;
+}
+
+.board-token-wounds.is-injured .board-token-wounds-text {
+  fill: #fff;
+}
+
+.board-token-wounds-glow {
+  fill: #ff3b3b;
+  opacity: 0.85;
+}
+
+/* Active: pulsing yellow glow just outside the base. */
+.board-token-glow {
+  fill: none;
+  stroke: #ffd84a;
+  stroke-width: 0.16;
+  animation: token-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes token-glow {
+  0%,
+  100% {
+    stroke-opacity: 0.35;
+  }
+  50% {
+    stroke-opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-token-glow {
+    animation: none;
+    stroke-opacity: 0.85;
+  }
+}
+
+/* Active: bright fill and a white rim inside the pulsing glow. */
+.board-token.is-active .board-token-base {
+  fill-opacity: 0.8;
+  stroke: #fff;
+  stroke-width: 0.1;
+}
+
+/* Expended: greyed out with a dashed rim, so it reads as done from across the table. */
+.board-token.is-expended .board-token-base {
+  fill: #2b2e33;
+  fill-opacity: 0.85;
+  stroke-opacity: 0.6;
+  stroke-dasharray: 0.18 0.12;
+}
+
+.board-token-name.is-expended .board-token-label {
+  pointer-events: none;
+  fill-opacity: 0.45;
+}
+
+/* Dead: X'd out, darker still, and out of the way of the pointer. */
+.board-token.is-dead {
+  pointer-events: none;
+}
+
+.board-token-name.is-dead .board-token-label {
+  fill-opacity: 0.5;
+}
+
+.board-token.is-dead .board-token-base {
+  fill-opacity: 0.12;
+  stroke-opacity: 0.5;
+}
+
+/* Dead: a see-through white skull watermark over the darkened base. */
+.board-token-skull {
+  fill: #fff;
+  fill-opacity: 0.55;
+}
+
+.board-token-label {
+  fill: #fff;
+  letter-spacing: 0.01px;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.75);
+  stroke-width: 0.08px;
+  text-transform: uppercase;
+}
+
+.board-marker circle {
+  fill: var(--token-color);
+  fill-opacity: 0.25;
+  stroke: var(--token-color);
+  stroke-width: 0.06;
+  stroke-dasharray: 0.15 0.1;
+}
+
+/* Marker and token names: like operative names, but smaller, grey and see-through. */
+.board-marker-label {
+  fill: #c4c7cc;
+  fill-opacity: 0.7;
+  letter-spacing: 0.01px;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 0.05px;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+/* Catalogue markers and tokens are solid discs; generic markers stay dashed. */
+.board-marker.is-catalog circle {
+  fill: color-mix(in srgb, var(--token-color) 30%, #101216);
+  fill-opacity: 0.92;
+  stroke-dasharray: none;
+  stroke-width: 0.05;
+}
+
+.board-marker.is-token circle {
+  stroke: #fff;
+  stroke-width: 0.03;
+}
+
+.board-marker.is-riding circle {
+  filter: drop-shadow(0 0 0.04px rgba(0, 0, 0, 0.8));
+}
+
+.board-marker.is-highlighted circle {
+  stroke: #fff;
+  stroke-width: 0.08;
+  stroke-dasharray: none;
+}
+
+/* Engage / Conceal tag pointing out of an operative's base. */
+.board-order-tag-shape {
+  stroke-linejoin: round;
+}
+
+.board-order-tag.is-red .board-order-tag-shape {
+  fill: #c8322a;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 0.02;
+}
+
+.board-order-tag.is-black .board-order-tag-shape {
+  fill: #111214;
+  stroke: rgba(255, 255, 255, 0.75);
+  stroke-width: 0.025;
+}
+
+.board-order-tag-icon {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 0.24;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.board-order-tag-icon.is-conceal {
+  fill: #fff;
+  stroke: none;
+}
+
+.board-order-tag.is-interactive {
+  cursor: pointer;
+}
+
+/* ---- overlays ---- */
+
+.overlay-move polyline {
+  fill: none;
+  stroke: var(--overlay-color);
+  stroke-width: 0.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.overlay-move-start {
+  fill: none;
+  stroke: var(--overlay-color);
+  stroke-width: 0.05;
+  stroke-dasharray: 0.12 0.1;
+}
+
+.overlay-move-tip {
+  stroke: var(--overlay-color);
+  stroke-width: 0.04;
+  stroke-dasharray: 0.08 0.08;
+}
+
+.overlay-move.is-settled {
+  opacity: 0.75;
+}
+
+.overlay-move.is-settled polyline {
+  stroke-dasharray: 0.35 0.15;
+}
+
+.board-overlay {
+  pointer-events: none;
+  color: var(--overlay-color);
+}
+
+/* The distance moved, in the middle of the piece being moved. */
+.overlay-label.move-count {
+  font-size: 0.4px;
+  stroke-width: 0.12px;
+  pointer-events: none;
+}
+
+.overlay-label {
+  fill: #fff;
+  font-size: 0.6px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--overlay-color);
+  stroke-width: 0.16px;
+  stroke-linejoin: round;
+}
+
+.overlay-measure polyline {
+  fill: none;
+  stroke: var(--overlay-color);
+  stroke-width: 0.12;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.overlay-tick {
+  fill: #fff;
+}
+
+.overlay-origin {
+  fill: var(--overlay-color);
+}
+
+.overlay-los line {
+  stroke: #7dff9b;
+  stroke-width: 0.08;
+}
+
+.overlay-los.is-obscured line {
+  stroke: #ff6b6b;
+  stroke-dasharray: 0.3 0.15;
+}
+
+.overlay-los-target {
+  fill: none;
+  stroke: var(--overlay-color);
+  stroke-width: 0.05;
+  stroke-dasharray: 0.2 0.15;
+}
+
+.overlay-hit {
+  stroke: #000;
+  stroke-width: 0.04;
+}
+
+.overlay-hit.is-heavy {
+  fill: #ff4d4d;
+}
+
+.overlay-hit.is-light {
+  fill: #ffe066;
+}
+
+.overlay-hit.is-door {
+  fill: #ffa94d;
+}
+
+.overlay-ping circle {
+  fill: var(--overlay-color);
+  fill-opacity: 0.6;
+}
+
+.overlay-ping-wave {
+  fill: none !important;
+  stroke: var(--overlay-color);
+  stroke-width: 0.08;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ping-wave 1.2s ease-out infinite;
+}
+
+@keyframes ping-wave {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(5);
+    opacity: 0;
+  }
+}

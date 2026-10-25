@@ -1,0 +1,9 @@
+{
+  "name": "KT Speedrun",
+  "short_name": "KT Speedrun",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#0f1114",
+  "theme_color": "#0f1114",
+  "icons": [{ "src": "/killteamSpeedrunLogo.png", "sizes": "any", "type": "image/png" }]
+}

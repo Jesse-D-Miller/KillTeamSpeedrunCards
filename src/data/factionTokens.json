@@ -1,0 +1,572 @@
+{
+  "IMP-AOD": [],
+  "IMP-BC": [
+    {
+      "id": "imp-bc-poison",
+      "name": "Poison",
+      "short": "POIS",
+      "kind": "token"
+    },
+    {
+      "id": "imp-bc-omniscanner",
+      "name": "Omniscanner",
+      "short": "OMNI",
+      "kind": "token"
+    }
+  ],
+  "AEL-BOK": [],
+  "CHAOS-BLD": [
+    {
+      "id": "chaos-bld-blooded",
+      "name": "Blooded",
+      "short": "BLOO",
+      "kind": "token"
+    }
+  ],
+  "TYR-BBRO": [
+    {
+      "id": "tyr-bbro-crossfire",
+      "name": "Crossfire",
+      "short": "CROS",
+      "kind": "token"
+    },
+    {
+      "id": "tyr-bbro-explosives",
+      "name": "Explosives",
+      "short": "EXPL",
+      "kind": "marker"
+    }
+  ],
+  "NEC-CAN": [
+    {
+      "id": "nec-can-obelisk-node",
+      "name": "Obelisk Node",
+      "short": "ON",
+      "kind": "marker"
+    },
+    {
+      "id": "nec-can-reanimation",
+      "name": "Reanimation",
+      "short": "REAN",
+      "kind": "marker"
+    }
+  ],
+  "IMP-CI": [
+    {
+      "id": "imp-ci-suspicion",
+      "name": "Suspicion",
+      "short": "SUSP",
+      "kind": "token"
+    },
+    {
+      "id": "imp-ci-nullification",
+      "name": "Nullification",
+      "short": "NULL",
+      "kind": "token"
+    }
+  ],
+  "CHAOS-CULT": [
+    {
+      "id": "chaos-cult-malefic-vortex",
+      "name": "Malefic Vortex",
+      "short": "MV",
+      "kind": "marker"
+    }
+  ],
+  "AEL-COR": [],
+  "IMP-DKK": [
+    {
+      "id": "imp-dkk-gas",
+      "name": "Gas",
+      "short": "GAS",
+      "kind": "marker"
+    }
+  ],
+  "IMP-DW": [],
+  "IMP-ESS": [
+    {
+      "id": "imp-ess-claim",
+      "name": "Claim",
+      "short": "CLAI",
+      "kind": "marker"
+    }
+  ],
+  "IMP-AES": [
+    {
+      "id": "imp-aes-nuncio-aquila",
+      "name": "Nuncio-Aquila",
+      "short": "NA",
+      "kind": "marker"
+    }
+  ],
+  "TAU-FSKB": [
+    {
+      "id": "tau-fskb-pech-ra",
+      "name": "Pech'ra",
+      "short": "PECH",
+      "kind": "marker"
+    }
+  ],
+  "CHAOS-FELL": [
+    {
+      "id": "chaos-fell-frenzy",
+      "name": "Frenzy",
+      "short": "FREN",
+      "kind": "token"
+    }
+  ],
+  "CHAOS-GPI": [
+    {
+      "id": "chaos-gpi-techno-curse",
+      "name": "Techno-Curse",
+      "short": "TC",
+      "kind": "token"
+    }
+  ],
+  "CHAOS-GORE": [
+    {
+      "id": "chaos-gore-gory-totem",
+      "name": "Gory Totem",
+      "short": "GT",
+      "kind": "marker"
+    },
+    {
+      "id": "chaos-gore-bloody-cadaver",
+      "name": "Bloody Cadaver",
+      "short": "BC",
+      "kind": "marker"
+    },
+    {
+      "id": "chaos-gore-bleeding",
+      "name": "Bleeding",
+      "short": "BLEE",
+      "kind": "token"
+    }
+  ],
+  "AEL-HOTA": [
+    {
+      "id": "ael-hota-pain",
+      "name": "Pain",
+      "short": "PAIN",
+      "kind": "token"
+    },
+    {
+      "id": "ael-hota-poison",
+      "name": "Poison",
+      "short": "POIS",
+      "kind": "token"
+    }
+  ],
+  "VOT-HKS": [
+    {
+      "id": "vot-hks-grudge",
+      "name": "Grudge",
+      "short": "GRUD",
+      "kind": "token"
+    },
+    {
+      "id": "vot-hks-system-jam",
+      "name": "System Jam",
+      "short": "SJ",
+      "kind": "token"
+    },
+    {
+      "id": "vot-hks-defence",
+      "name": "Defence",
+      "short": "DEFE",
+      "kind": "marker"
+    },
+    {
+      "id": "vot-hks-attack",
+      "name": "Attack",
+      "short": "ATTA",
+      "kind": "marker"
+    },
+    {
+      "id": "vot-hks-pan-spectral-scan",
+      "name": "Pan Spectral Scan",
+      "short": "PSS",
+      "kind": "marker"
+    }
+  ],
+  "VOT-HKY": [
+    {
+      "id": "vot-hky-fallen-kin",
+      "name": "Fallen Kin",
+      "short": "FK",
+      "kind": "marker"
+    },
+    {
+      "id": "vot-hky-minefield",
+      "name": "Minefield",
+      "short": "MINE",
+      "kind": "marker"
+    }
+  ],
+  "NEC-HIER": [
+    {
+      "id": "nec-hier-reanimation",
+      "name": "Reanimation",
+      "short": "REAN",
+      "kind": "marker"
+    },
+    {
+      "id": "nec-hier-countertemporal-nanomine",
+      "name": "Countertemporal Nanomine",
+      "short": "CN",
+      "kind": "marker"
+    },
+    {
+      "id": "nec-hier-poison",
+      "name": "Poison",
+      "short": "POIS",
+      "kind": "token"
+    },
+    {
+      "id": "nec-hier-despair",
+      "name": "Despair",
+      "short": "DESP",
+      "kind": "marker"
+    },
+    {
+      "id": "nec-hier-madness",
+      "name": "Madness",
+      "short": "MADN",
+      "kind": "token"
+    },
+    {
+      "id": "nec-hier-deathmarked",
+      "name": "Deathmarked",
+      "short": "DEAT",
+      "kind": "token"
+    }
+  ],
+  "IMP-HC": [],
+  "IMP-INB": [
+    {
+      "id": "imp-inb-attack-order",
+      "name": "Attack Order",
+      "short": "AO",
+      "kind": "marker"
+    },
+    {
+      "id": "imp-inb-defence-order",
+      "name": "Defence Order",
+      "short": "DO",
+      "kind": "marker"
+    }
+  ],
+  "IMP-INQ": [
+    {
+      "id": "imp-inq-melta-mine",
+      "name": "Melta Mine",
+      "short": "MM",
+      "kind": "marker"
+    }
+  ],
+  "IMP-KAS": [
+    {
+      "id": "imp-kas-clearance-sweep",
+      "name": "Clearance Sweep",
+      "short": "CS",
+      "kind": "marker"
+    },
+    {
+      "id": "imp-kas-melta-mine",
+      "name": "Melta Mine",
+      "short": "MM",
+      "kind": "marker"
+    }
+  ],
+  "ORK-KOM": [],
+  "CHAOS-LEG": [
+    {
+      "id": "chaos-leg-grisly",
+      "name": "Grisly",
+      "short": "GRIS",
+      "kind": "marker"
+    }
+  ],
+  "AEL-MND": [
+    {
+      "id": "ael-mnd-shadow-portal",
+      "name": "Shadow Portal",
+      "short": "SP",
+      "kind": "marker"
+    },
+    {
+      "id": "ael-mnd-balefire",
+      "name": "Balefire",
+      "short": "BALE",
+      "kind": "token"
+    },
+    {
+      "id": "ael-mnd-haunting-focus",
+      "name": "Haunting Focus",
+      "short": "HF",
+      "kind": "token"
+    },
+    {
+      "id": "ael-mnd-weave-darkness",
+      "name": "Weave Darkness",
+      "short": "WD",
+      "kind": "marker"
+    }
+  ],
+  "CHAOS-MW": [
+    {
+      "id": "chaos-mw-challenge",
+      "name": "Challenge",
+      "short": "CHAL",
+      "kind": "token"
+    },
+    {
+      "id": "chaos-mw-warp",
+      "name": "Warp",
+      "short": "WARP",
+      "kind": "marker"
+    }
+  ],
+  "CHAOS-NC": [
+    {
+      "id": "chaos-nc-grisly-trophy",
+      "name": "Grisly Trophy",
+      "short": "GT",
+      "kind": "token"
+    },
+    {
+      "id": "chaos-nc-terrorchem",
+      "name": "Terrorchem",
+      "short": "TERR",
+      "kind": "token"
+    }
+  ],
+  "SPEC-NPO": [],
+  "IMP-NOV": [
+    {
+      "id": "imp-nov-blaze",
+      "name": "Blaze",
+      "short": "BLAZ",
+      "kind": "token"
+    },
+    {
+      "id": "imp-nov-auto-broadcaster",
+      "name": "Auto-Broadcaster",
+      "short": "AB",
+      "kind": "marker"
+    }
+  ],
+  "TAU-PF": [
+    {
+      "id": "tau-pf-markerlight",
+      "name": "Markerlight",
+      "short": "MARK",
+      "kind": "token"
+    }
+  ],
+  "IMP-PHO": [
+    {
+      "id": "imp-pho-explosives",
+      "name": "Explosives",
+      "short": "EXPL",
+      "kind": "marker"
+    },
+    {
+      "id": "imp-pho-haywire-mine",
+      "name": "Haywire Mine",
+      "short": "HM",
+      "kind": "marker"
+    }
+  ],
+  "CHAOS-PM": [
+    {
+      "id": "chaos-pm-poison",
+      "name": "Poison",
+      "short": "POIS",
+      "kind": "token"
+    },
+    {
+      "id": "chaos-pm-flies",
+      "name": "Flies",
+      "short": "FLIE",
+      "kind": "marker"
+    }
+  ],
+  "IMP-RAT": [
+    {
+      "id": "imp-rat-tripwire",
+      "name": "Tripwire",
+      "short": "TRIP",
+      "kind": "marker"
+    }
+  ],
+  "TYR-RAV": [
+    {
+      "id": "tyr-rav-tunnel",
+      "name": "Tunnel",
+      "short": "TUNN",
+      "kind": "marker"
+    },
+    {
+      "id": "tyr-rav-poison",
+      "name": "Poison",
+      "short": "POIS",
+      "kind": "token"
+    }
+  ],
+  "IMP-SANC": [
+    {
+      "id": "imp-sanc-doused",
+      "name": "Doused",
+      "short": "DOUS",
+      "kind": "token"
+    },
+    {
+      "id": "imp-sanc-blaze",
+      "name": "Blaze",
+      "short": "BLAZ",
+      "kind": "token"
+    }
+  ],
+  "IMP-SCT": [
+    {
+      "id": "imp-sct-booby-trap",
+      "name": "Booby Trap",
+      "short": "BT",
+      "kind": "marker"
+    },
+    {
+      "id": "imp-sct-target",
+      "name": "Target",
+      "short": "TARG",
+      "kind": "token"
+    },
+    {
+      "id": "imp-sct-trip-alarm",
+      "name": "Trip Alarm",
+      "short": "TA",
+      "kind": "marker"
+    }
+  ],
+  "IMP-SFV": [],
+  "IMP-TEMPAQ": [
+    {
+      "id": "imp-tempaq-drop",
+      "name": "Drop",
+      "short": "DROP",
+      "kind": "marker"
+    },
+    {
+      "id": "imp-tempaq-detected",
+      "name": "Detected",
+      "short": "DETE",
+      "kind": "token"
+    }
+  ],
+  "SPEC-TITUS": [
+    {
+      "id": "spec-titus-mortal-wound",
+      "name": "Mortal Wound",
+      "short": "MW",
+      "kind": "token"
+    }
+  ],
+  "TAU-VESP": [
+    {
+      "id": "tau-vesp-neutron-fragment",
+      "name": "Neutron Fragment",
+      "short": "NF",
+      "kind": "token"
+    },
+    {
+      "id": "tau-vesp-neutron-fallout",
+      "name": "Neutron Fallout",
+      "short": "NF",
+      "kind": "marker"
+    },
+    {
+      "id": "tau-vesp-skytorch",
+      "name": "Skytorch",
+      "short": "SKYT",
+      "kind": "marker"
+    }
+  ],
+  "AEL-VDT": [
+    {
+      "id": "ael-vdt-humbling-cruelty",
+      "name": "Humbling Cruelty",
+      "short": "HC",
+      "kind": "token"
+    }
+  ],
+  "CHAOS-WC": [
+    {
+      "id": "chaos-wc-temporal-flux",
+      "name": "Temporal Flux",
+      "short": "TF",
+      "kind": "marker"
+    },
+    {
+      "id": "chaos-wc-mindburn",
+      "name": "Mindburn",
+      "short": "MIND",
+      "kind": "token"
+    },
+    {
+      "id": "chaos-wc-alight",
+      "name": "Alight",
+      "short": "ALIG",
+      "kind": "token"
+    }
+  ],
+  "IMP-WS": [
+    {
+      "id": "imp-ws-storm",
+      "name": "Storm",
+      "short": "STOR",
+      "kind": "marker"
+    },
+    {
+      "id": "imp-ws-haywire-mine",
+      "name": "Haywire Mine",
+      "short": "HM",
+      "kind": "marker"
+    }
+  ],
+  "ORK-WK": [
+    {
+      "id": "ork-wk-demolition",
+      "name": "Demolition",
+      "short": "DEMO",
+      "kind": "marker"
+    },
+    {
+      "id": "ork-wk-pulsa",
+      "name": "Pulsa",
+      "short": "PULS",
+      "kind": "marker"
+    }
+  ],
+  "TYR-WB": [
+    {
+      "id": "tyr-wb-soulsight",
+      "name": "Soulsight",
+      "short": "SOUL",
+      "kind": "token"
+    }
+  ],
+  "TAU-XV26": [
+    {
+      "id": "tau-xv26-ambush",
+      "name": "Ambush",
+      "short": "AMBU",
+      "kind": "marker"
+    },
+    {
+      "id": "tau-xv26-homing-beacon",
+      "name": "Homing Beacon",
+      "short": "HB",
+      "kind": "marker"
+    }
+  ]
+}

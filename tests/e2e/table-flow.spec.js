@@ -1,0 +1,701 @@
+import { expect, test } from '@playwright/test'
+
+// Full table flow with three devices: projector + two iPads.
+// Screenshots land in test-results/flow-*.png for eyeballing layouts.
+
+const IPAD = { width: 1180, height: 820 }
+const PROJECTOR = { width: 1920, height: 1080 }
+
+const shot = (page, name) => page.screenshot({ path: `test-results/flow-${name}.png` })
+
+// On the map, tabs are switched from the left rail's Tabs flyout; elsewhere from the tab bar.
+const openTab = async (page, name) => {
+  if (await page.locator('.tool-rail').isVisible()) {
+    await page.getByRole('button', { name: 'Tabs', exact: true }).click()
+    await page.locator('.tab-flyout button', { hasText: name }).click()
+  } else {
+    await page.locator('.play-tabs button', { hasText: name }).click()
+  }
+}
+
+// Player boards must never spill text or graphics out of their boxes.
+const boardOverflows = (page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.pb-board .pb-section, .pb-board .pb-critop-body, .pb-board .pb-tacop')]
+      .filter((el) => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)
+      .map((el) => `${el.closest('.pb-board').dataset.seat}:${el.className}`),
+  )
+
+const readyUp = async (...pages) => {
+  for (const page of pages) {
+    await page.locator('.play-header').getByRole('button', { name: /^(Ready|Waiting for)/ }).click()
+  }
+}
+
+const dragOnMap = async (page, from, to) => {
+  const box = await page.locator('.map-stage svg').boundingBox()
+  const at = (fx, fy) => [box.x + box.width * fx, box.y + box.height * fy]
+  await page.mouse.move(...at(...from))
+  await page.mouse.down()
+  for (let step = 1; step <= 8; step += 1) {
+    const t = step / 8
+    await page.mouse.move(...at(from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t))
+  }
+  await page.mouse.up()
+}
+
+test('projector + two iPads play through setup into battle', async ({ browser }) => {
+  const tableContext = await browser.newContext({ viewport: PROJECTOR })
+  const table = await tableContext.newPage()
+  await table.goto('/table')
+  await expect(table.locator('.join-overlay')).toBeVisible()
+  await expect(table.locator('.join-qr')).toHaveCount(2)
+  await shot(table, '01-join')
+
+  const contextA = await browser.newContext({ viewport: IPAD, hasTouch: true })
+  const contextB = await browser.newContext({ viewport: IPAD, hasTouch: true })
+  const a = await contextA.newPage()
+  const b = await contextB.newPage()
+  await a.goto('/play?seat=A')
+  await b.goto('/play?seat=B')
+
+  await a.getByLabel('Your name').fill('Alice')
+  await a.getByLabel('Your name').press('Enter')
+  await b.getByLabel('Your name').fill('Bob')
+  await b.getByLabel('Your name').press('Enter')
+  await expect(table.locator('.join-seat-ok')).toHaveCount(2)
+
+  // The iPad header can hide the browser bars: it either goes full screen (Safari) or,
+  // where the browser doesn't allow it, explains Add to Home Screen.
+  await a.getByRole('button', { name: 'Full screen' }).click()
+  const exitButton = a.getByRole('button', { name: 'Exit full screen' })
+  const help = a.getByText('Add to Home Screen')
+  await expect(exitButton.or(help)).toBeVisible()
+  if (await exitButton.isVisible()) {
+    await exitButton.click()
+  } else {
+    await a.getByRole('dialog').getByRole('button', { name: 'Close' }).click()
+  }
+  await expect(a.getByRole('button', { name: 'Full screen' })).toBeVisible()
+  await expect(a.getByRole('dialog')).toHaveCount(0)
+  await expect(table.locator('.pb-name', { hasText: 'Alice' })).toBeVisible()
+
+  // A second device can't silently steal a seat.
+  const intruder = await (await browser.newContext({ viewport: IPAD })).newPage()
+  await intruder.goto('/play?seat=A')
+  await expect(intruder.getByText('Seat A is in use on another device')).toBeVisible()
+
+  // ---- setup ----
+  await readyUp(a, b)
+  await expect(a.getByText('1 · Your kill team')).toBeVisible()
+  await expect(table.locator('.join-overlay')).toHaveCount(0)
+
+  await a.getByPlaceholder('Search kill teams').fill('Hernkyn')
+  await a.getByRole('button', { name: /Hernkyn Yaegirs/ }).click()
+  await b.getByPlaceholder('Search kill teams').fill('Vespid')
+  await b.getByRole('button', { name: /Vespid Stingwings/ }).click()
+  await expect(b.getByText('Alice: Hernkyn Yaegirs')).toBeVisible()
+
+  // Killzone and crit op arrive pre-rolled; a re-roll on one iPad shows up on the other.
+  const killzone = a.locator('.roll-result').first()
+  const critOp = a.locator('.roll-result').nth(1)
+  const rolledKillzone = await killzone.textContent()
+  const rolledCritOp = await critOp.textContent()
+  await a.getByRole('button', { name: 'Re-roll' }).first().click()
+  await a.getByRole('button', { name: 'Re-roll' }).nth(1).click()
+  await expect(killzone).not.toHaveText(rolledKillzone)
+  await expect(critOp).not.toHaveText(rolledCritOp)
+  await expect(b.locator('.roll-result').first()).toHaveText(await killzone.textContent())
+  await expect(b.locator('.roll-result').nth(1)).toHaveText(await critOp.textContent())
+
+  // Pin Map 2 / Layout 04 manually so the rest of the run is deterministic.
+  await a.getByText('Choose manually').first().click()
+  await a.getByRole('button', { name: 'Map 2' }).click()
+  await a.getByRole('button', { name: 'Layout 04' }).click()
+  await expect(b.locator('.roll-result').first()).toHaveText('Map 2 · Layout 04')
+  // Approved Ops 2025: the roll-off winner decides who has initiative; that player
+  // picks the drop zone and the other gains the Re-roll initiative card.
+  await a.getByRole('button', { name: 'I won' }).click()
+  await expect(b.getByText('Alice decides who has initiative.')).toBeVisible()
+  await a.getByRole('button', { name: 'I take initiative' }).click()
+  await expect(b.getByText('You gain the Re-roll initiative card.')).toBeVisible()
+  await expect(b.getByRole('button', { name: /Drop zone/ })).toHaveCount(0)
+  await a.getByRole('button', { name: 'Drop zone A', exact: true }).click()
+  await expect(b.getByText('You’re in drop zone B.').or(b.getByText("You're in drop zone B."))).toBeVisible()
+  await shot(a, '02-setup-ipad')
+  await shot(table, '03-setup-table')
+
+  // ---- muster ----
+  await readyUp(a, b)
+  await expect(a.getByRole('button', { name: /Operatives/ })).toBeVisible()
+  // Yaegirs default to every operative; Vespids start empty.
+  await expect(a.locator('.unit-pick.is-selected')).toHaveCount(10)
+  const picks = b.locator('.unit-pick')
+  for (let index = 0; index < 6; index += 1) await picks.nth(index).locator('.unit-card, article, div').first().click({ position: { x: 20, y: 12 } })
+  await expect(b.locator('.unit-pick.is-selected')).toHaveCount(6)
+  // Up to four equipment options; nothing is pre-selected.
+  await a.locator('.segmented button', { hasText: 'Equipment' }).click()
+  await expect(a.getByText('0 of 4 equipment options chosen.', { exact: false })).toBeVisible()
+  // Approved Ops 2025 tac ops are text cards, limited to the kill team's archetypes.
+  await a.getByRole('button', { name: 'Tac op' }).click()
+  await expect(a.locator('.tacop-pick').first()).toBeVisible()
+  await a.locator('.tacop-pick').first().click()
+  await expect(a.locator('.tacop-pick').first()).toHaveAttribute('aria-pressed', 'true')
+  await shot(a, '04b-tacop-ipad')
+  await shot(b, '04-muster-ipad')
+  // The table only shows progress, never the tac op itself.
+  await expect(table.locator('.tacop-card')).toHaveCount(0)
+
+  // ---- deploy ----
+  await readyUp(a, b)
+  // Approved Ops 2025 has no scouting step.
+  await expect(a.getByRole('heading', { name: 'Deploy' })).toBeVisible()
+  await expect(a.getByText('You have initiative, so you set up first.')).toBeVisible()
+  await expect(a.getByText(/Scouting/)).toHaveCount(0)
+  await openTab(a, 'Map')
+  // Units pops a list of names out of its button; no options drawer at the bottom.
+  const unitsButton = a.getByRole('button', { name: 'Units', exact: true })
+  await unitsButton.click()
+  const unitsList = a.getByRole('navigation', { name: 'Place a unit' })
+  await expect(unitsList.getByRole('button')).toHaveCount(11)
+  await expect(a.locator('.options-drawer')).toHaveCount(0)
+  await shot(a, '05u-units-flyout')
+  // Picking a unit closes the list; tapping the map places it with − / + and its base size on the token.
+  await unitsList.getByRole('button').first().click()
+  await expect(unitsList).toHaveCount(0)
+  await dragOnMap(a, [0.5, 0.5], [0.5, 0.5])
+  await expect(table.locator('.board-token')).toHaveCount(1)
+  await expect(a.locator('.base-sizer-size')).toHaveText('28.5')
+  await shot(a, '05v-base-sizer')
+  const placedRadius = () => table.locator('.board-token-base').first().getAttribute('r').then(Number)
+  await a.getByRole('button', { name: 'Larger base' }).click()
+  await expect.poll(placedRadius).toBeCloseTo(32 / 25.4 / 2, 3)
+  await expect(a.locator('.base-sizer-size')).toHaveText('32')
+  await a.getByRole('button', { name: 'Smaller base' }).click()
+  await expect.poll(placedRadius).toBeCloseTo(28.5 / 25.4 / 2, 3)
+  // Tapping Units again fixes that base size and opens the list for the next unit.
+  await unitsButton.click()
+  await expect(a.locator('.base-sizer')).toHaveCount(0)
+  await expect(unitsList.getByRole('button')).toHaveCount(10)
+  await unitsList.getByRole('button', { name: 'Place all in my drop zone' }).click()
+  await expect(table.locator('.board-token')).toHaveCount(10)
+  await expect(unitsList).toHaveCount(0)
+
+  // Map mode: the board fills the iPad and the controls live in translucent drawers.
+  const mat = await a.locator('.map-stage .board-mat').boundingBox()
+  const screen = a.viewportSize()
+  expect((mat.width * mat.height) / (screen.width * screen.height)).toBeGreaterThan(0.8)
+  await a.getByRole('button', { name: 'Hide tools' }).click()
+  await expect(a.locator('.tool-drawer')).toHaveClass(/is-closed/)
+  await a.getByRole('button', { name: 'Show tools' }).click()
+  await expect(a.locator('.tool-drawer')).toHaveClass(/is-open/)
+  await shot(a, '05a-map-immersive')
+  // Yaegirs are on 28.5mm bases, so the projected token radius is 28.5mm / 2 in inches.
+  const radius = Number(await table.locator('.board-token-base').first().getAttribute('r'))
+  expect(radius).toBeCloseTo(28.5 / 25.4 / 2, 3)
+
+  // Before the battle, operatives drag freely (no 1" steps) and nothing stays on the board.
+  await a.getByRole('button', { name: 'Move', exact: true }).click()
+  // Tuck the tool drawer away so it doesn't cover the drop-zone column.
+  await a.getByRole('button', { name: 'Hide tools' }).click()
+  const stageBox = await a.locator('.map-stage svg').boundingBox()
+  const [, , viewW, viewH] = (await a.locator('.map-stage svg').getAttribute('viewBox')).split(' ').map(Number)
+  const pxPerInch = Math.min(stageBox.width / viewW, stageBox.height / viewH)
+  const deployToken = table.locator('.board-token-base').nth(1)
+  const deployCx = Number(await deployToken.getAttribute('cx'))
+  const deployBox = await a.locator('.map-stage .board-token-base').nth(1).boundingBox()
+  const dx = deployBox.x + deployBox.width / 2
+  const dy = deployBox.y + deployBox.height / 2
+  await a.mouse.move(dx, dy)
+  await a.mouse.down()
+  // Drag in an L: the measurement follows the route in straight 1" legs (2" across, then
+  // 1" toward the finger, then the part inch left over) rather than one straight line (2.9").
+  for (let i = 1; i <= 10; i += 1) await a.mouse.move(dx + (2.5 * pxPerInch * i) / 10, dy)
+  for (let i = 1; i <= 10; i += 1) await a.mouse.move(dx + 2.5 * pxPerInch, dy + (1.5 * pxPerInch * i) / 10)
+  await expect(table.locator('.overlay-measure .overlay-label')).toHaveText(/^3\.[3-8]"$/)
+  await expect(a.locator('.map-stage .overlay-measure polyline')).toHaveAttribute('points', /(\S+\s+){3,}/)
+  await shot(table, '05w-deploy-drag-path')
+  // A moving operative shows its 1" range.
+  await expect(table.locator('.board-token-ring')).toHaveCount(1)
+  await a.mouse.up()
+  // Lands where it was dropped (about 2.5" across), not snapped to a whole inch.
+  await expect
+    .poll(async () => Math.abs(Number(await deployToken.getAttribute('cx')) - deployCx - 2.5))
+    .toBeLessThan(0.25)
+  const deployMoved = Number(await deployToken.getAttribute('cx')) - deployCx
+  expect(Math.abs(deployMoved - Math.round(deployMoved))).toBeGreaterThan(0.05)
+  await expect(table.locator('.overlay-move')).toHaveCount(0)
+  await expect(table.locator('.overlay-measure')).toHaveCount(0)
+
+  await expect(table.locator('.board-token-ring')).toHaveCount(0)
+
+  await a.getByRole('button', { name: 'Show tools' }).click()
+  await a.getByRole('button', { name: 'Measure', exact: true }).click()
+  await dragOnMap(a, [0.3, 0.5], [0.6, 0.5])
+  await expect(table.locator('.overlay-measure .overlay-label')).toBeVisible()
+  await shot(a, '05-map-ipad')
+  await shot(table, '06-map-table')
+
+  // Switching tools clears the measurement; no separate Clear button.
+  await expect(a.getByRole('button', { name: 'Clear' })).toHaveCount(0)
+  await a.getByRole('button', { name: 'Sightline', exact: true }).click()
+  await expect(table.locator('.overlay-measure')).toHaveCount(0)
+  await dragOnMap(a, [0.2, 0.3], [0.8, 0.6])
+  await expect(table.locator('.overlay-los')).toBeVisible()
+  await shot(table, '07-los-table')
+  // Tapping the active tool again turns it off and clears its line.
+  await a.getByRole('button', { name: 'Sightline', exact: true }).click()
+  await expect(table.locator('.overlay-los')).toHaveCount(0)
+  await expect(a.getByRole('button', { name: 'Sightline', exact: true })).toHaveAttribute('aria-pressed', 'false')
+
+  // The rail also holds Fit and the Tabs flyout; the map has no top status bar or hint.
+  await expect(a.locator('.play-header')).toHaveCount(0)
+  await expect(a.getByRole('button', { name: 'Fit', exact: true })).toBeVisible()
+  // Full screen is in the map drawer too: it goes full screen, or explains Add to Home Screen.
+  await a.locator('.tool-rail').getByRole('button', { name: 'Full screen' }).click()
+  const railExit = a.locator('.tool-rail').getByRole('button', { name: 'Exit full screen' })
+  await expect(railExit.or(a.getByText('Add to Home Screen'))).toBeVisible()
+  if (await railExit.isVisible()) await railExit.click()
+  else await a.getByRole('dialog').getByRole('button', { name: 'Close' }).click()
+  await expect(a.locator('.tool-rail').getByRole('button', { name: 'Full screen' })).toBeVisible()
+  await a.getByRole('button', { name: 'Tabs', exact: true }).click()
+  await expect(a.locator('.tab-flyout')).toBeVisible()
+  await shot(a, '07b-map-tab-flyout')
+  await a.getByRole('button', { name: 'Tabs', exact: true }).click()
+  await expect(a.locator('.tab-flyout')).toHaveCount(0)
+
+  // ---- battle ----
+  await openTab(a, 'Deploy')
+  await readyUp(a, b)
+  await expect(a.getByText('Turning point 1 · strategy phase')).toBeVisible()
+  // Initiative roll-off every turning point: Bob holds the Re-roll card from setup.
+  await expect(a.getByRole('button', { name: 'Start firefight' })).toBeDisabled()
+  await expect(a.getByText('Both players gain 1CP in turning point 1.')).toBeVisible()
+  await expect(b.locator('.init-card')).toHaveText([/Re-roll/])
+  await expect(table.locator('.pb-board[data-seat="B"] .pb-init-card')).toHaveText(['Re-roll'])
+  // Bob plays his Re-roll card and wins; the roll-off loser (Alice) gains the ±1 card.
+  await b.locator('.init-card').first().click()
+  await expect(b.locator('.init-card').first()).toHaveClass(/is-used/)
+  await a.locator('.rolloff-option', { hasText: 'Bob' }).click()
+  await expect(a.getByText('Bob decides who has initiative.')).toBeVisible()
+  await expect(a.locator('.init-card')).toHaveText([/±1/])
+  await b.getByRole('button', { name: 'Alice takes it' }).click()
+  await expect(a.getByText('You have initiative.')).toBeVisible()
+  // Turning point 1 also has each player's secret primary op.
+  await expect(a.getByRole('button', { name: 'Start firefight' })).toBeDisabled()
+  await a.locator('.card-pick').first().click()
+  await shot(a, '08-strategy-ipad')
+  await a.getByRole('button', { name: 'Start firefight' }).click()
+  await expect(b.getByRole('button', { name: 'Start firefight' })).toBeDisabled()
+  await b.locator('.card-pick').nth(1).click()
+  await b.getByRole('button', { name: 'Start firefight' }).click()
+  await a.getByLabel('Score VP').click()
+  await a.getByLabel('Increase Crit op').click()
+  await a.getByLabel('Increase Crit op').click()
+  await a.getByRole('button', { name: 'Done' }).click()
+  await expect(a.getByLabel('Score VP')).toContainText('2')
+  // Alice's player board: VP/CP, turning point and one activation pip per operative.
+  const aliceBoard = table.locator('.pb-board[data-seat="A"]')
+  const bobBoard = table.locator('.pb-board[data-seat="B"]')
+  await expect(aliceBoard.locator('.pb-big-value').first()).toHaveText('2')
+  await expect(aliceBoard.locator('.pb-tp')).toHaveText('TP 1 / 4')
+  await expect(aliceBoard.locator('.pb-pips .pb-pip')).toHaveCount(10)
+  await expect(aliceBoard.locator('.pb-ready-count')).toContainText('10')
+  await expect(bobBoard.locator('.pb-kills')).toContainText('0 / 10')
+  await shot(a, '09-battle-ipad')
+  await shot(table, '10-battle-table')
+
+  // In battle, drag an operative in an L: it moves in whole-inch steps, the path stays, and undo puts it back.
+  await openTab(a, 'Map')
+  await a.getByRole('button', { name: 'Move', exact: true }).click()
+  const tableToken = table.locator('.board-token-base').first()
+  const startCx = await tableToken.getAttribute('cx')
+  const tokenBox = await a.locator('.map-stage .board-token-base').first().boundingBox()
+  const sx = tokenBox.x + tokenBox.width / 2
+  const sy = tokenBox.y + tokenBox.height / 2
+  await a.mouse.move(sx, sy)
+  await a.mouse.down()
+  for (let i = 1; i <= 20; i += 1) await a.mouse.move(sx + (4.3 * pxPerInch * i) / 20, sy)
+  // Mid-drag the count sits in the middle of the token and goes up in 0.1" steps.
+  await expect(table.locator('.overlay-move .move-count')).toHaveText(/^4\.\d"$/)
+  await shot(a, '06a-move-count-ipad')
+  for (let i = 1; i <= 20; i += 1) await a.mouse.move(sx + 4.3 * pxPerInch, sy + (3.3 * pxPerInch * i) / 20)
+  await a.mouse.up()
+  // Released, it snaps to the last whole inch and the count stays on the token.
+  const moveLabel = table.locator('.move-count[data-count-for="t1"]')
+  await expect(moveLabel).toHaveText(/^\d+\.0"$/)
+  expect(Number.parseFloat(await moveLabel.textContent())).toBeGreaterThanOrEqual(6)
+  await expect(tableToken).not.toHaveAttribute('cx', startCx)
+  await shot(table, '06b-move-path-table')
+  // Moving a ready operative in the Firefight phase activates it.
+  await expect(table.locator('[data-token-id="t1"]')).toHaveClass(/is-active/)
+  await expect(aliceBoard.locator('.pb-turn-badge')).toHaveText('Activating')
+  // No activation banner or undo drawer on the iPad: the board itself shows the status.
+  await expect(a.locator('.activation-pill')).toHaveCount(0)
+  // The moved operative keeps a 1" range ring, drawn over every name and base.
+  const movedId = await table.locator('.board-token').first().getAttribute('data-token-id')
+  await expect(table.locator('.board-token-ring')).toHaveCount(1)
+  await expect(table.locator('.board-token-ring')).toHaveAttribute('data-ring-for', movedId)
+  const layering = await table.locator('.table-board').evaluate((svg) => {
+    const follows = (a, b) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    const names = svg.querySelectorAll('.board-token-name')
+    const bodies = svg.querySelectorAll('.board-token')
+    const ring = svg.querySelector('.board-token-ring')
+    return {
+      namesUnderBases: follows(names[names.length - 1], bodies[0]),
+      ringOnTop: follows(bodies[bodies.length - 1], ring),
+    }
+  })
+  expect(layering).toEqual({ namesUnderBases: true, ringOnTop: true })
+  await expect(a.locator('.options-drawer')).toHaveCount(0)
+  await shot(a, '06c-map-after-move')
+  const firstLeg = Number.parseFloat(await moveLabel.textContent())
+
+  // Dragging the same operative again continues the movement from its original start.
+  const movedBox = await a.locator('.map-stage .board-token-base').first().boundingBox()
+  const mx = movedBox.x + movedBox.width / 2
+  const my = movedBox.y + movedBox.height / 2
+  await a.mouse.move(mx, my)
+  await a.mouse.down()
+  for (let i = 1; i <= 10; i += 1) await a.mouse.move(mx, my + (2.3 * pxPerInch * i) / 10)
+  await a.mouse.up()
+  await expect(moveLabel).toHaveText(`${firstLeg + 2}.0"`)
+  await expect(table.locator('.overlay-move-start')).toHaveCount(1)
+
+  // Tapping where the move started (with Move on) puts the operative back, ready again.
+  await a.mouse.click(sx, sy)
+  await expect(tableToken).toHaveAttribute('cx', startCx)
+  await expect(table.locator('[data-token-id="t1"]')).not.toHaveClass(/is-active/)
+  await expect(table.locator('.overlay-move')).toHaveCount(0)
+
+  const dragDown = async (index, inches) => {
+    const box = await a.locator('.map-stage .board-token-base').nth(index).boundingBox()
+    const x0 = box.x + box.width / 2
+    const y0 = box.y + box.height / 2
+    await a.mouse.move(x0, y0)
+    await a.mouse.down()
+    for (let i = 1; i <= 10; i += 1) await a.mouse.move(x0, y0 + (inches * pxPerInch * i) / 10)
+    await a.mouse.up()
+  }
+  // Back-tracking a move all the way to its start does the same.
+  await dragDown(0, 2.2)
+  await expect(table.locator('[data-token-id="t1"]')).toHaveClass(/is-active/)
+  await dragDown(0, -2.2)
+  await expect(tableToken).toHaveAttribute('cx', startCx)
+  await expect(table.locator('[data-token-id="t1"]')).not.toHaveClass(/is-active/)
+  await expect(table.locator('.overlay-move')).toHaveCount(0)
+
+  // Moving a second operative clears the first one's path: one path on the board at a time.
+  await dragDown(0, 1.4)
+  await expect(table.locator('.overlay-move.is-settled')).toHaveCount(1)
+  await dragDown(1, 2.4)
+  await expect(table.locator('.overlay-move.is-settled')).toHaveCount(1)
+  await expect(table.locator('.move-count[data-count-for="t2"]')).toHaveText('2.0"')
+  // The next operative to move expends the active one, flipping its order tag colour.
+  await expect(table.locator('[data-token-id="t1"]')).toHaveClass(/is-expended/)
+  await expect(table.locator('[data-order-for="t1"]')).toHaveAttribute('data-order-color', 'black')
+  await expect(table.locator('[data-token-id="t2"]')).toHaveClass(/is-active/)
+  await expect(aliceBoard.locator('.pb-turn-badge')).toHaveText('Activating')
+  await shot(table, '06e-activation-table')
+
+  // Token pops out categories, then that category's tokens; picking one closes the list.
+  const tokenButton = a.getByRole('button', { name: 'Token', exact: true })
+  const tokenMenu = a.locator('.tool-rail .anchored-flyout')
+  await expect(a.getByRole('button', { name: 'Marker', exact: true })).toHaveCount(0)
+  await tokenButton.click()
+  // Alice's (secret) tac op adds its own tokens: Plant Devices uses Device tokens.
+  await expect(tokenMenu.locator('.flyout-category')).toHaveText([
+    /Mission/,
+    /Equipment/,
+    /Hernkyn Yaegirs/,
+    /Tac op · Plant Devices/,
+    /Operative/,
+    /General/,
+  ])
+  await tokenMenu.getByRole('button', { name: /Hernkyn Yaegirs/ }).click()
+  await expect(tokenMenu.getByRole('button', { name: /Minefield/ })).toBeVisible()
+  await shot(a, '07c-token-faction-list')
+  await tokenMenu.getByRole('button', { name: '‹ Hernkyn Yaegirs' }).click()
+
+  // Blank tokens drag freely: no 1" steps and no movement path.
+  await tokenMenu.getByRole('button', { name: /General/ }).click()
+  await tokenMenu.getByRole('button', { name: /Blank base/ }).click()
+  await expect(tokenMenu).toHaveCount(0)
+  await a.mouse.click(stageBox.x + stageBox.width / 2, stageBox.y + stageBox.height / 2)
+  await expect(table.locator('.board-token')).toHaveCount(11)
+  await expect(a.locator('.options-drawer')).toHaveCount(0)
+  await a.getByRole('button', { name: 'Move', exact: true }).click()
+  const blank = table.locator('.board-token-base').last()
+  const blankCx = Number(await blank.getAttribute('cx'))
+  const blankBox = await a.locator('.map-stage .board-token-base').last().boundingBox()
+  const bx = blankBox.x + blankBox.width / 2
+  const by = blankBox.y + blankBox.height / 2
+  await a.mouse.move(bx, by)
+  await a.mouse.down()
+  for (let i = 1; i <= 10; i += 1) await a.mouse.move(bx + (1.5 * pxPerInch * i) / 10, by)
+  await a.mouse.up()
+  await expect.poll(async () => Number(await blank.getAttribute('cx')) - blankCx).toBeCloseTo(1.5, 1)
+  // A free drag adds no path; the second operative's path from above is still the only one.
+  await expect(table.locator('.overlay-move')).toHaveCount(1)
+
+  // Every operative has a red Conceal order tag; tapping your own switches it to Engage.
+  const theynTag = table.locator('[data-order-for="t1"]')
+  await expect(table.locator('.board-order-tag')).toHaveCount(10)
+  await expect(theynTag).toHaveAttribute('data-order', 'conceal')
+  // Theyn was expended by the second move above, so his tag is already black.
+  await expect(theynTag).toHaveAttribute('data-order-color', 'black')
+  await a.locator('.map-stage [data-order-for="t1"]').click()
+  await expect(theynTag).toHaveAttribute('data-order', 'engage')
+
+  // Equipment markers go on the killzone with no options shown.
+  await tokenButton.click()
+  await tokenMenu.getByRole('button', { name: /Equipment/ }).click()
+  await tokenMenu.getByRole('button', { name: /Ammo Cache/ }).click()
+  await a.mouse.click(stageBox.x + stageBox.width * 0.55, stageBox.y + stageBox.height * 0.2)
+  await expect(table.locator('[data-catalog-id="ammo-cache"]')).toHaveCount(1)
+  await expect(table.locator('[data-catalog-id="ammo-cache"] .board-marker-label')).toHaveText('Ammo Cache')
+  await expect(a.locator('.options-drawer')).toHaveCount(0)
+
+  // An operative token dropped on an operative rides on it and follows it around.
+  // With Token still on, its button reopens the last list used.
+  await tokenButton.click()
+  await tokenMenu.getByRole('button', { name: '‹ Equipment' }).click()
+  await tokenMenu.getByRole('button', { name: /Operative/ }).click()
+  await tokenMenu.getByRole('button', { name: /APL −1/ }).click()
+  await a.locator('.map-stage [data-token-id="t1"] .board-token-base').click()
+  const stun = table.locator('[data-catalog-id="apl-minus"]')
+  await expect(stun).toHaveAttribute('data-attached-to', 't1')
+  const stunCx = Number(await stun.locator('circle').getAttribute('cx'))
+  await a.getByRole('button', { name: 'Move', exact: true }).click()
+  const theynBox = await a.locator('.map-stage [data-token-id="t1"] .board-token-base').boundingBox()
+  const tx = theynBox.x + theynBox.width / 2
+  const ty = theynBox.y + theynBox.height / 2
+  await a.mouse.move(tx, ty)
+  await a.mouse.down()
+  for (let i = 1; i <= 10; i += 1) await a.mouse.move(tx + (2.2 * pxPerInch * i) / 10, ty)
+  await a.mouse.up()
+  await expect.poll(async () => Number(await stun.locator('circle').getAttribute('cx')) - stunCx).toBeCloseTo(2, 1)
+  await shot(table, '07d-token-rides-operative')
+
+  // On the projector Alice's pieces turn to read from Bob's seat (right edge, -90deg);
+  // on her iPad they stay upright.
+  await expect(table.locator('.board-token-name[data-facing="-90"]')).toHaveCount(10)
+  await expect(theynTag).toHaveAttribute('data-facing', '-90')
+  await expect(table.locator('[data-catalog-id="ammo-cache"] .board-marker-name')).toHaveAttribute('data-facing', '-90')
+  await expect(stun.locator('.board-marker-name')).toHaveAttribute('data-facing', '-90')
+  await expect(a.locator('.map-stage .board-token-name[data-facing="0"]')).toHaveCount(10)
+  await expect(a.locator('.map-stage [data-order-for="t1"]')).toHaveAttribute('data-facing', '0')
+
+  // Select edits anything on the board; the changes stay.
+  await a.getByRole('button', { name: 'Select', exact: true }).click()
+  // No hint panel until something is selected, and Select never moves what it touches.
+  const selectPanel = a.locator('.select-panel')
+  await expect(selectPanel).toHaveCount(0)
+  const selectCx = await table.locator('[data-token-id="t1"] .board-token-base').getAttribute('cx')
+  const selBox = await a.locator('.map-stage [data-token-id="t1"] .board-token-base').boundingBox()
+  await a.mouse.move(selBox.x + selBox.width / 2, selBox.y + selBox.height / 2)
+  await a.mouse.down()
+  for (let i = 1; i <= 10; i += 1) await a.mouse.move(selBox.x + selBox.width / 2 + (2 * pxPerInch * i) / 10, selBox.y + selBox.height / 2)
+  await a.mouse.up()
+  await expect(selectPanel).toBeVisible()
+  await expect(table.locator('[data-token-id="t1"] .board-token-base')).toHaveAttribute('cx', selectCx)
+  await selectPanel.getByRole('textbox').fill('Boss')
+  await selectPanel.getByRole('textbox').press('Enter')
+  await expect(table.locator('.board-token-name').filter({ hasText: 'Boss' })).toHaveCount(1)
+  await selectPanel.getByRole('button', { name: '3"', exact: true }).click()
+  await expect(table.locator('[data-ring-for="t1"][data-ring="3"]')).toHaveCount(1)
+  const theynBase = table.locator('[data-token-id="t1"] .board-token-base')
+  const theynR = Number(await theynBase.getAttribute('r'))
+  await selectPanel.getByRole('button', { name: 'Larger base' }).click()
+  await expect.poll(async () => Number(await theynBase.getAttribute('r'))).toBeGreaterThan(theynR)
+  await shot(a, '07e-select-panel')
+  await selectPanel.getByRole('button', { name: 'Smaller base' }).click()
+  await expect.poll(async () => Number(await theynBase.getAttribute('r'))).toBeCloseTo(theynR, 3)
+  // Deselecting keeps the ring.
+  await a.mouse.click(stageBox.x + stageBox.width * 0.75, stageBox.y + stageBox.height * 0.9)
+  await expect(selectPanel).toHaveCount(0)
+  await expect(table.locator('[data-ring-for="t1"][data-ring="3"]')).toHaveCount(1)
+  // Markers and tokens can be resized too (markers start at the official 20mm).
+  await a.locator('.map-stage [data-catalog-id="ammo-cache"] circle').click()
+  await expect(selectPanel).toContainText('20mm')
+  await selectPanel.getByRole('button', { name: 'Larger base' }).click()
+  await expect(table.locator('[data-catalog-id="ammo-cache"] circle')).toHaveAttribute('r', String(25 / 25.4 / 2))
+  await expect(selectPanel).toContainText('25mm')
+  // Remove the blank base again.
+  await a.locator('.map-stage .board-token:not(:has(.board-order-tag)) .board-token-base').last().click()
+  await selectPanel.getByRole('button', { name: 'Remove' }).click()
+  await expect(table.locator('.board-token')).toHaveCount(10)
+  await a.getByRole('button', { name: 'Select', exact: true }).click()
+
+
+  await openTab(a, 'Operatives')
+
+  // Unit card state drives the projector token: active glows, expended dims, dead goes off the board.
+  const theynCard = a.locator('.game-card', { hasText: 'Yeagir Theyn' })
+  const theynToken = table.locator('[data-token-id="t1"]')
+  // Theyn is expended; the status pill still works by hand (expended -> ready -> active).
+  await theynCard.locator('button.state-pill').click()
+  await expect(theynToken).not.toHaveClass(/is-expended/)
+  await theynCard.locator('button.state-pill').click()
+  await expect(theynToken).toHaveClass(/is-active/)
+  await expect(theynToken.locator('.board-token-glow')).toHaveCount(1)
+  await expect(aliceBoard.locator('.pb-pips .pb-pip.is-active')).toHaveCount(1)
+  await expect(aliceBoard.locator('.pb-ready-count')).toContainText('8')
+  await shot(table, '10b-active-glow')
+  await theynCard.locator('button.state-pill').click()
+  await expect(theynToken).toHaveClass(/is-expended/)
+  // Expending swaps the order tag's colour.
+  await expect(theynTag).toHaveAttribute('data-order-color', 'black')
+  await expect(theynToken.locator('.board-token-glow')).toHaveCount(0)
+  await expect(aliceBoard.locator('.pb-pips .pb-pip.is-expended')).toHaveCount(2)
+  const bladeCard = a.locator('.game-card', { hasText: 'Bladekyn' })
+  const bladeTag = table.locator('[data-order-for="t2"]')
+  // Bladekyn was expended in TP1 when Theyn activated after it.
+  await expect(bladeTag).toHaveAttribute('data-order-color', 'black')
+  const healthBar = theynCard.locator('.health-bar')
+  const barBox = await healthBar.boundingBox()
+  const hit = () => healthBar.click({ position: { x: 2, y: barBox.height / 2 } })
+  // Wound badge under the token: hidden at full health, n/total once damaged, red when injured.
+  const badge = theynToken.locator('.board-token-wounds')
+  await expect(badge).toHaveCount(0)
+  await hit()
+  await expect(badge).toHaveClass(/is-damaged/)
+  await expect(badge).toHaveText('8/9')
+  for (let i = 0; i < 4; i += 1) await hit()
+  await expect(badge).toHaveClass(/is-injured/)
+  await expect(badge).toHaveText('4/9')
+  await expect(badge.locator('.board-token-wounds-glow')).toHaveCount(1)
+  await shot(table, '10b2-injured-badge')
+  for (let i = 0; i < 4; i += 1) await hit()
+  await expect(badge).toHaveCount(0)
+  await expect(theynToken).toHaveClass(/is-dead/)
+  await expect(theynToken.locator('.board-token-skull')).toHaveCount(1)
+  // Dead operatives lose their order tag, rings and riding tokens.
+  await expect(theynTag).toHaveCount(0)
+  await expect(stun).toHaveCount(0)
+  await expect(table.locator('[data-ring-for="t1"]')).toHaveCount(0)
+  // Map 2, drop zone A: Alice sits on the left, facing her panel (left of the mat).
+  // Her left is the far (top) end, so the casualty sits above the mat, beside her panel.
+  const deadBase = theynToken.locator('.board-token-base')
+  expect(Number(await deadBase.getAttribute('cy'))).toBeLessThan(0)
+  const deadCx = Number(await deadBase.getAttribute('cx'))
+  expect(deadCx).toBeLessThan(-0.5)
+  expect(deadCx).toBeGreaterThan(-8.5)
+  await shot(table, '10c-dead-offboard')
+  expect(await boardOverflows(table)).toEqual([])
+  // Bob's board counts the kill against Alice's 10 starting operatives.
+  await expect(aliceBoard.locator('.pb-pips .pb-pip.is-dead')).toHaveCount(1)
+  await expect(bobBoard.locator('.pb-kills')).toContainText('1 / 10')
+  // The iPad map leaves dead operatives out (the projector keeps them in the casualty row).
+  await openTab(b, 'Map')
+  const projectorTokens = await table.locator('.board-token').count()
+  await expect(b.locator('.map-stage .board-token')).toHaveCount(projectorTokens - 1)
+  await expect(b.locator('.map-stage [data-token-id="t1"]')).toHaveCount(0)
+  await openTab(b, 'Operatives')
+
+  // Next TP asks for confirmation and explains what happens.
+  await a.getByRole('button', { name: 'Next TP' }).click()
+  await expect(a.getByRole('heading', { name: 'End turning point 1?' })).toBeVisible()
+  await shot(a, '11-end-turn-ipad')
+  await a.getByRole('button', { name: 'Start TP 2' }).click()
+  await expect(b.locator('.play-phase')).toContainText('Turning point 2')
+
+  // TP2: both gain 1 CP (3 -> 4); the player WITHOUT initiative gains 2 instead.
+  await expect(b.getByRole('button', { name: 'Start firefight' })).toBeDisabled()
+  await b.locator('.rolloff-option', { hasText: 'Alice' }).click()
+  await a.getByRole('button', { name: 'I take initiative' }).click()
+  await expect(b.getByText('You have no initiative: 2CP instead of 1')).toBeVisible()
+  await expect(a.getByText('Bob has no initiative: 2CP instead of 1')).toBeVisible()
+  // Bob's played Re-roll card is gone; losing this roll-off earned him the ±2 card.
+  await expect(b.locator('.init-card')).toHaveText([/±2/])
+  await expect(bobBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText('5')
+  await expect(aliceBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText('4')
+  await shot(b, '12-strategy-tp2-ipad')
+
+  // Order tag colours carry over the turning point: expended in TP1 (black) stays black,
+  // and expending again in TP2 swaps it back to red.
+  await expect(bladeTag).toHaveAttribute('data-order-color', 'black')
+  await a.getByRole('button', { name: 'Start firefight' }).click()
+  await bladeCard.locator('button.state-pill').click()
+  await bladeCard.locator('button.state-pill').click()
+  await expect(bladeTag).toHaveAttribute('data-order-color', 'red')
+
+  // Reloading an iPad reclaims the seat and the game.
+  await b.reload()
+  await expect(b.locator('.play-name')).toHaveText('Bob')
+  await expect(b.locator('.play-phase')).toContainText('Turning point 2')
+
+  // Play out to the end: primary op is revealed and counted.
+  for (const tp of [2, 3, 4]) {
+    if (tp > 2) {
+      await b.locator('.rolloff-option', { hasText: 'Bob' }).click()
+      await b.getByRole('button', { name: 'I take initiative' }).click()
+    }
+    await b.getByRole('button', { name: 'Start firefight' }).click()
+    await b.getByRole('button', { name: tp === 4 ? 'End game' : 'Next TP' }).click()
+    await b.getByRole('button', { name: tp === 4 ? 'End game' : `Start TP ${tp + 1}` }).last().click()
+  }
+  await expect(a.getByRole('heading', { name: 'Alice wins' })).toBeVisible()
+  await shot(a, '13-results-ipad')
+  await shot(table, '14-results-table')
+
+  // Map 1 puts players on the long edges, so the boards turn portrait (0deg / 180deg).
+  await table.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const socket = new WebSocket(`ws://${window.location.host}/ws`)
+        socket.onopen = () => {
+          socket.send(JSON.stringify({ type: 'hello', role: 'table' }))
+          socket.send(JSON.stringify({ type: 'action', action: { type: 'setup/map', mapId: 'map_01', arrangementId: 'arr_01' } }))
+          setTimeout(resolve, 300)
+        }
+      }),
+  )
+  await expect(table.locator('.pb-board.is-portrait')).toHaveCount(2)
+  // Map 1 seats A at the bottom and B at the top: A's names turn 180deg to face B, B's stay upright.
+  await table.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const socket = new WebSocket(`ws://${window.location.host}/ws`)
+        socket.onopen = () => {
+          socket.send(JSON.stringify({ type: 'hello', role: 'table' }))
+          socket.send(JSON.stringify({ type: 'action', action: { type: 'token/add', seat: 'A', label: 'Alpha', x: 10, y: 5 } }))
+          socket.send(JSON.stringify({ type: 'action', action: { type: 'token/add', seat: 'B', label: 'Bravo', x: 20, y: 20 } }))
+          setTimeout(resolve, 300)
+        }
+      }),
+  )
+  await expect(table.locator('.board-token-name', { hasText: 'Alpha' })).toHaveAttribute('data-facing', '180')
+  await expect(table.locator('.board-token-name', { hasText: 'Bravo' })).toHaveAttribute('data-facing', '0')
+  await shot(table, '15-portrait-boards')
+  expect(await boardOverflows(table)).toEqual([])
+})
+
+test('projector calibration warps the board and persists on the server', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: PROJECTOR })
+  const page = await context.newPage()
+  await page.goto('/table/calibrate')
+  const handles = page.locator('.calibrate-handle')
+  await expect(handles).toHaveCount(4)
+
+  // Drag the top-left corner in to simulate keystone correction.
+  const box = await handles.first().boundingBox()
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 120, box.y + 80, { steps: 5 })
+  await page.mouse.up()
+  await page.keyboard.press('2')
+  await page.keyboard.press('Shift+ArrowLeft')
+  await shot(page, '11-calibrate')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page).toHaveURL(/\/table$/)
+
+  // A fresh projector browser picks the calibration up from the server.
+  const fresh = await (await browser.newContext({ viewport: PROJECTOR })).newPage()
+  await fresh.goto('/table')
+  await expect(fresh.locator('.table-plane')).toHaveAttribute('style', /matrix3d/)
+  const transform = await fresh.locator('.table-plane').evaluate((element) => element.style.transform)
+  const original = await page.locator('.table-plane').evaluate((element) => element.style.transform)
+  expect(transform).toBe(original)
+  await shot(fresh, '12-calibrated')
+})

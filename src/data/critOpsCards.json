@@ -5,21 +5,6 @@
       "title": "CRIT OP",
       "opNumber": 1,
       "opName": "SECURE",
-      "missionAction": {
-        "title": "MISSION ACTION",
-        "subtitle": "SECURE",
-        "cost": "1AP",
-        "bullets": [
-          {
-            "type": "action",
-            "text": "One objective marker the active operative controls is secured by your kill team until the enemy kill team secures that objective marker"
-          },
-          {
-            "type": "restriction",
-            "text": "An operative cannot perform this action during the first turning point, or while within control range of an enemy operative."
-          }
-        ]
-      },
       "victoryPoints": {
         "title": "VICTORY POINTS",
         "text": "At the end of each turning point after the first:",
@@ -31,28 +16,30 @@
       "additionalRules": {
         "title": "ADDITIONAL RULES",
         "text": ""
-      }
+      },
+      "missionActions": [
+        {
+          "title": "MISSION ACTION",
+          "subtitle": "SECURE",
+          "cost": "1AP",
+          "bullets": [
+            {
+              "type": "action",
+              "text": "One objective marker the active operative controls is secured by your kill team until the enemy kill team secures that objective marker"
+            },
+            {
+              "type": "restriction",
+              "text": "An operative cannot perform this action during the first turning point, or while within control range of an enemy operative."
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "crit_ops_02",
       "title": "CRIT OP",
       "opNumber": 2,
       "opName": "LOOT",
-      "missionAction": {
-        "title": "MISSION ACTION",
-        "subtitle": "LOOT",
-        "cost": "1AP",
-        "bullets": [
-          {
-            "type": "action",
-            "text": "One objective marker the active operative controls is looted."
-          },
-          {
-            "type": "restriction",
-            "text": "An operative cannot perform this action during the first turning point, while within control range of an enemy operative, or if that objective marker has already been looted during this turning point."
-          }
-        ]
-      },
       "victoryPoints": {
         "title": "VICTORY POINTS",
         "text": "Whenever a friendly operative performs the Loot action, you score 1VP (to a maximum of 2VP per turning point).",
@@ -61,28 +48,30 @@
       "additionalRules": {
         "title": "ADDITIONAL RULES",
         "text": ""
-      }
+      },
+      "missionActions": [
+        {
+          "title": "MISSION ACTION",
+          "subtitle": "LOOT",
+          "cost": "1AP",
+          "bullets": [
+            {
+              "type": "action",
+              "text": "One objective marker the active operative controls is looted."
+            },
+            {
+              "type": "restriction",
+              "text": "An operative cannot perform this action during the first turning point, while within control range of an enemy operative, or if that objective marker has already been looted during this turning point."
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "crit_ops_03",
       "title": "CRIT OP",
       "opNumber": 3,
       "opName": "TRANSMISSION",
-      "missionAction": {
-        "title": "MISSION ACTION",
-        "subtitle": "INITIATE TRANSMISSION",
-        "cost": "",
-        "bullets": [
-          {
-            "type": "action",
-            "text": "One objective marker the active operative controls is transmitting until the start of the next turning point."
-          },
-          {
-            "type": "restriction",
-            "text": "An operative cannot perform this action during the first turning point, or while within control range of an enemy operative."
-          }
-        ]
-      },
       "victoryPoints": {
         "title": "VICTORY POINTS",
         "text": "At the end of each turning point after the first:",
@@ -94,198 +83,195 @@
       "additionalRules": {
         "title": "ADDITIONAL RULES",
         "text": ""
-      }
+      },
+      "missionActions": [
+        {
+          "title": "MISSION ACTION",
+          "subtitle": "INITIATE TRANSMISSION",
+          "cost": "",
+          "bullets": [
+            {
+              "type": "action",
+              "text": "One objective marker the active operative controls is transmitting until the start of the next turning point."
+            },
+            {
+              "type": "restriction",
+              "text": "An operative cannot perform this action during the first turning point, or while within control range of an enemy operative."
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "crit_ops_04",
       "title": "CRIT OP",
       "opNumber": 4,
-      "opName": "UPLOAD",
-      "missionAction": {
-        "title": "MISSION ACTION",
-        "subtitle": "UPLOAD",
-        "cost": "1AP",
-        "bullets": [
-          {
-            "type": "action",
-            "text": "Remove all of your opponent's Upload points (if any) from an objective marker the active operative controls."
-          },
-          {
-            "type": "action",
-            "text": "Then that objective marker gains 1 of your Upload points, unless it's already gained 1 of your Upload points during this turning point, or you've already scored from that objective marker. Use a dice as a token to keep track of your Upload points at that objective marker."
-          },
-          {
-            "type": "restriction",
-            "text": "An operative cannot perform this action during the first turning point, or while within control range of an enemy operative"
-          }
-        ]
-      },
+      "opName": "ORB",
+      "missionActions": [
+        {
+          "title": "MISSION ACTION",
+          "subtitle": "MOVE ORB",
+          "cost": "1AP",
+          "bullets": [
+            {
+              "type": "action",
+              "text": "If the active operative controls the objective marker that has the Orb token, move that token: from the centre objective marker to either player's objective marker (your choice), or from a player's objective marker to the centre objective marker."
+            },
+            {
+              "type": "restriction",
+              "text": "An operative cannot perform this action during the first turning point, while within control range of an enemy operative, or if it doesn't control the objective marker that has the Orb token."
+            }
+          ]
+        }
+      ],
       "victoryPoints": {
         "title": "VICTORY POINTS",
-        "text": "At the end of each turning point after the first, you can score from any objective markers that have 1 or more of your Upload points. For each that you do, remove all of your Upload points from it - you score the same number of VP. You can only score from each objective marker once, and note that friendly operatives don't have to control that objective marker to score from it.",
+        "text": "At the end of each turning point after the first, for each objective marker that friendly operatives control that doesn't have the Orb token, you score 1VP.",
         "bullets": []
       },
       "additionalRules": {
         "title": "ADDITIONAL RULES",
-        "text": ""
+        "text": "At the start of the battle, the centre objective marker has the Orb token."
       }
     },
     {
       "id": "crit_ops_05",
       "title": "CRIT OP",
       "opNumber": 5,
-      "opName": "INTEL",
-      "missionAction": {
-        "title": "MISSION ACTION",
-        "subtitle": "COMPILE INTEL",
-        "cost": "1AP",
-        "bullets": [
-          {
-            "type": "action",
-            "text": "One objective marker the active operative controls gains 1 Intel point. Use a dice as a token to keep track of Intel points at that objective marker."
-          },
-          {
-            "type": "restriction",
-            "text": "An operative cannot perform this action during the first turning point, while within control range of an enemy operative, or if that objective marker has already gained an Intel point during this turning point."
-          }
-        ]
-      },
+      "opName": "STAKE CLAIM",
+      "missionActions": [],
       "victoryPoints": {
         "title": "VICTORY POINTS",
-        "text": "At the end of the fourth turning point, for each objective marker friendly operatives control, you score a number of VP equal to its Intel points (i.e. 0-3).",
-        "bullets": []
+        "text": "At the end of each turning point after the first:",
+        "bullets": [
+          "If friendly operatives control more objective markers than enemy operatives do, you score 1VP.",
+          "If your selected claim is true, you score 1VP."
+        ]
       },
       "additionalRules": {
         "title": "ADDITIONAL RULES",
-        "text": "In each turning point after the first, the Pick Up Marker action can be performed upon each objective marker that has at least 1 Intel point. If it's performed, that marker cannot gain any more Intel points."
+        "text": "At the start of the Gambit step of each Strategy phase after the first, starting with the player with initiative, each player selects one objective marker and one claim for that turning point: friendly operatives will control that objective marker at the end of this turning point, or enemy operatives won't contest it at the end of this turning point. Each player must select each objective marker once during the battle. The Stake Claim marker is removed at the end of the turning point."
       }
     },
     {
       "id": "crit_ops_06",
       "title": "CRIT OP",
       "opNumber": 6,
-      "opName": "EXTRACTION",
-      "missionAction": {
-        "title": "MISSION ACTION",
-        "subtitle": "SEARCH",
-        "cost": "1AP",
-        "bullets": [
-          {
-            "type": "action",
-            "text": "One objective marker the active operative controls is searched. If it's the last objective marker to be searched, that marker becomes the extraction objective marker."
-          },
-          {
-            "type": "restriction",
-            "text": "An operative cannot perform this action during the first turning point, while within control range of an enemy operative, or if that objective marker has already been searched."
-          }
-        ]
-      },
+      "opName": "ENERGY CELLS",
+      "missionActions": [],
       "victoryPoints": {
         "title": "VICTORY POINTS",
-        "text": "Whenever a friendly operative performs the Search action, you score 1VP if it's the first or third objective marker to be searched, or 2VP if it's the second.\n\nAt the end of each turning point after the first, if friendly operatives control the extraction objective marker, you score 1VP, or 2VP if it's the fourth turning point.",
+        "text": "At the end of each turning point after the first, if friendly operatives control more objective markers than enemy operatives do, you score 1VP.\n\nAt the end of the battle, for each objective marker friendly operatives are carrying, you score 1VP.",
         "bullets": []
       },
       "additionalRules": {
         "title": "ADDITIONAL RULES",
-        "text": "The Pick Up Marker action can be performed upon the extraction objective marker. While an operative is carrying that marker, worsen the Hit stat of its weapons by 1, it cannot be removed and set up again more than 6\" away, and it cannot perform Charge or Dash actions."
+        "text": "Operatives can perform the Pick Up Marker action upon objective markers in turning point 2 for an additional 2AP, in turning point 3 for an additional 1AP (in both cases that action cannot be free and its AP cannot be reduced), and as normal in turning point 4. An operative carrying an objective marker cannot be removed and set up again more than 6\" away."
       }
     },
     {
       "id": "crit_ops_07",
       "title": "CRIT OP",
       "opNumber": 7,
-      "opName": "SABOTAGE",
-      "missionAction": {
-        "title": "MISSION ACTION",
-        "subtitle": "SABOTAGE",
-        "cost": "1AP",
-        "bullets": [
-          {
-            "type": "action",
-            "text": "If the active operative controls the objective marker wholly within your opponent's territory, that marker is sabotaged."
-          },
-          {
-            "type": "restriction",
-            "text": "An operative cannot perform this action during the first turning point, while within control range of an enemy operative, or if that objective marker has already been sabotaged during this turning point."
-          }
-        ]
-      },
+      "opName": "DOWNLOAD",
+      "missionActions": [
+        {
+          "title": "MISSION ACTION",
+          "subtitle": "DOWNLOAD",
+          "cost": "1AP",
+          "bullets": [
+            {
+              "type": "action",
+              "text": "One centre or opponent's objective marker the active operative controls is downloaded."
+            },
+            {
+              "type": "restriction",
+              "text": "An operative cannot perform this action during the first or second turning point, while within control range of an enemy operative, or if that objective marker has already been downloaded during the battle."
+            }
+          ]
+        }
+      ],
       "victoryPoints": {
         "title": "VICTORY POINTS",
-        "text": "Whenever a friendly operative performs the Sabotage action, you score 1VP.\n\nAt the end of each turning point after the first, you score 1VP for each of the following that friendly operatives control:",
-        "bullets": [
-          "The objective marker wholly within your territory (unless it's been sabotaged this turning point).",
-          "The objective marker on the centreline."
-        ],
-        "textAfter": "You can score a maximum of 2VP from this op per turning point."
-      },
-      "additionalRules": {
-        "title": "ADDITIONAL RULES",
-        "text": ""
+        "text": "At the end of each turning point after the first, if friendly operatives control more objective markers than enemy operatives do, you score 1VP. Ignore downloaded objective markers when determining this.\n\nWhenever a friendly operative performs the Download action during the third turning point, you score 1VP; during the fourth turning point, you score 2VP.",
+        "bullets": []
       }
     },
     {
       "id": "crit_ops_08",
       "title": "CRIT OP",
       "opNumber": 8,
-      "opName": "POWER SURGE",
-      "missionAction": {
-        "title": "MISSION ACTION",
-        "subtitle": "REROUTE POWER",
-        "cost": "1AP",
-        "bullets": [
-          {
-            "type": "action",
-            "text": "One surged objective marker the active operative controls is rerouted."
-          },
-          {
-            "type": "restriction",
-            "text": "An operative cannot perform this action during the first turning point, while within control range of an enemy operative, or if that objective marker has already been rerouted."
-          }
-        ]
-      },
+      "opName": "DATA",
+      "missionActions": [
+        {
+          "title": "MISSION ACTION",
+          "subtitle": "COMPILE DATA",
+          "cost": "1AP",
+          "bullets": [
+            {
+              "type": "action",
+              "text": "One objective marker the active operative controls gains 1 Data point. Use a dice as a token to keep track of Data points at that objective marker."
+            },
+            {
+              "type": "restriction",
+              "text": "An operative cannot perform this action during the first turning point, while within control range of an enemy operative, or if that objective marker has already gained a Data point during this turning point."
+            }
+          ]
+        },
+        {
+          "title": "MISSION ACTION",
+          "subtitle": "SEND DATA",
+          "cost": "1AP",
+          "bullets": [
+            {
+              "type": "action",
+              "text": "Remove all Data points from an objective marker the active operative controls."
+            },
+            {
+              "type": "restriction",
+              "text": "An operative cannot perform this action during the first, second or third turning point, while within control range of an enemy operative, or if that objective marker doesn't have any Data points to remove."
+            }
+          ]
+        }
+      ],
       "victoryPoints": {
         "title": "VICTORY POINTS",
-        "text": "Whenever a friendly operative performs the Reroute Power action, you score 1VP.\n\nAt the end of each turning point after the first: if friendly operatives control the surged objective marker, you score 1VP; if friendly operatives control more objective markers than enemy operatives do, you score 1VP.\n\nYou can score a maximum of 2VP from this op per turning point.",
+        "text": "At the end of the second and third turning point, if friendly operatives have performed more Compile Data actions during that turning point than enemy operatives have, you score 1VP.\n\nWhenever a friendly operative performs the Send Data action, you score a number of VP equal to the number of Data points removed.",
         "bullets": []
-      },
-      "additionalRules": {
-        "title": "ADDITIONAL RULES",
-        "text": "As a STRATEGIC GAMBIT in each turning point after the first, one player selects one objective marker to be surged until the start of the next turning point (they cannot select one previously surged). The player who doesn't have initiative selects first, then players alternate each turning point thereafter."
       }
     },
     {
       "id": "crit_ops_09",
       "title": "CRIT OP",
       "opNumber": 9,
-      "opName": "COORDINATES",
-      "missionAction": {
-        "title": "MISSION ACTION",
-        "subtitle": "INPUT COORDINATES",
-        "cost": "1AP",
-        "bullets": [
-          {
-            "type": "action",
-            "text": "One objective marker the active operative controls gains 1 of your Objective points. Use dice as a token to keep track of your Objective points at that objective marker."
-          },
-          {
-            "type": "restriction",
-            "text": "An operative cannot perform this action during the first turning point, while within control range of an enemy operative, or if that objective marker has already gained 1 of your Objective points during this turning point."
-          }
-        ]
-      },
+      "opName": "REBOOT",
+      "missionActions": [
+        {
+          "title": "MISSION ACTION",
+          "subtitle": "REBOOT",
+          "cost": "2AP",
+          "bullets": [
+            {
+              "type": "action",
+              "text": "One inert objective marker the active operative controls is no longer inert."
+            },
+            {
+              "type": "restriction",
+              "text": "An operative cannot perform this action during the first turning point, or while within control range of an enemy operative."
+            }
+          ]
+        }
+      ],
       "victoryPoints": {
         "title": "VICTORY POINTS",
-        "text": "At the end of the fourth turning point:",
-        "bullets": [
-          "For each objective marker that has at least 1 of your Objective points, you score 1VP, or 2VP if that objective marker is wholly within your opponent's territory.",
-          "For each objective marker that has more of your Objective points than your opponent's, you score 1VP."
-        ]
+        "text": "At the end of each turning point after the first, for each objective marker friendly operatives control, you score 1VP. Ignore inert objective markers when determining this.",
+        "bullets": []
       },
       "additionalRules": {
         "title": "ADDITIONAL RULES",
-        "text": ""
+        "text": "When setting up the battle, number the objective markers 1-3. At the start of the Gambit step of each Strategy phase, each player secretly selects one objective marker (hold that many dice in your hand), then both reveal: if they picked the same one, that objective marker is inert during this turning point; otherwise, the one neither player picked is inert."
       }
     }
-  ]
+  ],
+  "edition": "Approved Ops 2025 card pack (v3, August 2026)"
 }

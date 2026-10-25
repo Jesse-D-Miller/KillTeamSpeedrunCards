@@ -1,0 +1,275 @@
+.table-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+  color: #f5f5f0;
+  cursor: default;
+}
+
+.table-plane {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.table-board {
+  position: absolute;
+  inset: 0;
+  --board-mat: #0b0c0e;
+}
+
+.table-status,
+.table-offline {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2rem;
+  font-family: var(--font-display);
+  opacity: 0.8;
+}
+
+.table-offline {
+  top: 1rem;
+  transform: translateX(-50%);
+  font-size: 1rem;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  background: rgba(255, 92, 92, 0.85);
+  color: #fff;
+}
+
+.table-menu-button {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.6);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1.2rem;
+  opacity: 0.25;
+  transition: opacity 0.2s;
+}
+
+.table-menu-button:hover {
+  opacity: 1;
+}
+
+.table-menu {
+  position: absolute;
+  top: 3.75rem;
+  right: 0.75rem;
+  width: 18rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #16191e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  z-index: 10;
+}
+
+.table-menu-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table-menu button {
+  padding: 0.55rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #20252c;
+  color: inherit;
+  text-align: left;
+}
+
+.table-menu button.is-danger {
+  background: #7a1f1f;
+}
+
+.table-menu-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ---- join overlay ---- */
+
+.join-overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 2rem 2.5rem;
+  border-radius: 20px;
+  background: rgba(10, 11, 13, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+  z-index: 5;
+}
+
+.join-overlay h1 {
+  margin: 0;
+  font-size: 2.4rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.join-overlay p {
+  margin: 0.25rem 0 1.5rem;
+  opacity: 0.7;
+}
+
+.join-seats {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+}
+
+.join-seat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 240px;
+  padding: 1rem;
+  border-radius: 14px;
+  border: 2px solid var(--seat-color);
+}
+
+.join-seat-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--seat-color);
+}
+
+.join-seat-ok {
+  display: grid;
+  place-items: center;
+  width: 220px;
+  height: 220px;
+  font-size: 1.4rem;
+  color: var(--seat-color);
+}
+
+.join-qr {
+  border-radius: 8px;
+}
+
+.join-url {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+/* ---- player board slots (boards themselves: panel/playerBoard.css) ---- */
+
+.table-panel-slot {
+  position: absolute;
+  top: 0;
+}
+
+/* ---- calibration ---- */
+
+.calibrate-pattern {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.calibrate-pattern rect,
+.calibrate-pattern line,
+.calibrate-pattern path {
+  fill: none;
+  stroke: #62ffe6;
+  stroke-width: 0.05;
+}
+
+.calibrate-pattern text {
+  fill: #62ffe6;
+  font-size: 0.8px;
+}
+
+.calibrate-handle {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  border: 2px solid #62ffe6;
+  background: rgba(98, 255, 230, 0.15);
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  touch-action: none;
+  z-index: 20;
+}
+
+.calibrate-handle::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.calibrate-handle span {
+  position: absolute;
+  top: -26px;
+  font-weight: 700;
+  color: #62ffe6;
+}
+
+.calibrate-handle.is-selected {
+  background: rgba(98, 255, 230, 0.45);
+}
+
+.calibrate-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  max-width: min(56rem, 90vw);
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  background: rgba(10, 11, 13, 0.92);
+  border: 1px solid rgba(98, 255, 230, 0.4);
+  z-index: 15;
+}
+
+.calibrate-hint {
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.calibrate-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.calibrate-actions button {
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #20252c;
+  color: inherit;
+}
+
+.calibrate-actions button.is-primary {
+  background: #62ffe6;
+  color: #000;
+  border-color: transparent;
+}

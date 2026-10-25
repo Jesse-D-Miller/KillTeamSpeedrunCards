@@ -4,22 +4,22 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:server": "node server/wsServer.js",
-    "dev:server:watch": "nodemon --watch server --ext js --exec \"node server/wsServer.js\"",
-    "dev:all": "concurrently -k -n web,ws -c cyan,green \"npm run dev\" \"npm run dev:server:watch\"",
+    "dev": "concurrently -k -n web,table -c cyan,green \"vite\" \"nodemon --watch server --watch shared --ext js --ignore server/data --exec \\\"KT_SERVE_STATIC=0 node server/index.js\\\"\"",
+    "dev:web": "vite",
+    "dev:server": "KT_SERVE_STATIC=0 node server/index.js",
     "build": "vite build",
+    "start": "node server/index.js",
+    "table": "vite build && node server/index.js",
     "lint": "eslint .",
-    "preview": "vite preview",
     "test": "vitest",
-    "test:unit": "vitest",
+    "test:unit": "vitest run",
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "qrcode": "^1.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.1",
-    "redis": "^5.11.0",
     "ws": "^8.18.1"
   },
   "devDependencies": {

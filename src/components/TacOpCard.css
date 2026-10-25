@@ -1,0 +1,99 @@
+.tacop-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: #1b1d22;
+  color: #eceae4;
+  text-align: left;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.tacop-card.is-selected {
+  border-color: var(--seat-color, #e2553f);
+  box-shadow: 0 0 0 2px var(--seat-color, #e2553f);
+}
+
+.tacop-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 2px solid #e2553f;
+}
+
+.tacop-card-archetype {
+  color: #e2553f;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tacop-card-name {
+  margin: 0;
+  font-size: 1.05rem;
+  text-transform: uppercase;
+}
+
+.tacop-card p {
+  margin: 0;
+}
+
+.tacop-card-action {
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tacop-card-action-head {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.tacop-card-ap {
+  color: #e2553f;
+}
+
+.tacop-card-conditions,
+.tacop-card-cap {
+  color: rgba(236, 234, 228, 0.65);
+  font-size: 0.78rem;
+}
+
+.tacop-card-vp {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tacop-card-vp-title {
+  color: #e2553f;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Projector panel: sized from the board's container query units. */
+.tacop-card.is-compact {
+  gap: calc(1.2cqmin * var(--fit, 1));
+  padding: calc(2cqmin * var(--fit, 1));
+  border-radius: calc(2.6cqmin * var(--fit, 1));
+  font-size: calc(3.1cqmin * var(--fit, 1));
+}
+
+.tacop-card.is-compact .tacop-card-name {
+  font-size: calc(4.6cqmin * var(--fit, 1));
+}
+
+.tacop-card.is-compact .tacop-card-archetype,
+.tacop-card.is-compact .tacop-card-vp-title,
+.tacop-card.is-compact .tacop-card-cap {
+  font-size: calc(2.6cqmin * var(--fit, 1));
+}

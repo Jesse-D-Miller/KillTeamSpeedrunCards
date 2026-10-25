@@ -1,0 +1,108 @@
+/* Glass: translucent dark with a blur, so the map stays visible underneath. */
+.glass {
+  background: rgba(14, 16, 20, 0.62);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.drawer {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  pointer-events: none;
+  transition: transform 180ms ease;
+}
+
+.drawer-panel,
+.drawer-handle {
+  pointer-events: auto;
+}
+
+.drawer-panel {
+  border-radius: 16px;
+  max-width: 100%;
+}
+
+.drawer-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---- left ---- */
+.drawer.is-left {
+  left: max(10px, env(safe-area-inset-left, 0px));
+  top: 50%;
+  flex-direction: row;
+  align-items: center;
+  transform: translateY(-50%);
+}
+
+.drawer.is-left .drawer-handle {
+  width: 22px;
+  height: 64px;
+  margin-left: 4px;
+  border-radius: 0 12px 12px 0;
+}
+
+.drawer.is-left.is-closed .drawer-panel {
+  display: none;
+}
+
+.drawer.is-left.is-closed .drawer-handle {
+  margin-left: 0;
+}
+
+/* ---- top ---- */
+.drawer.is-top {
+  top: max(8px, env(safe-area-inset-top, 0px));
+  left: 50%;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+}
+
+.drawer.is-top .drawer-handle {
+  margin-top: 6px;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+}
+
+.drawer.is-top.is-closed .drawer-panel {
+  display: none;
+}
+
+/* ---- bottom ---- */
+.drawer.is-bottom {
+  bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  flex-direction: column-reverse;
+  align-items: center;
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+}
+
+.drawer.is-bottom .drawer-handle {
+  margin-top: 6px;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+}
+
+.drawer.is-bottom.is-closed .drawer-panel {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    transition: none;
+  }
+}

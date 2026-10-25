@@ -2,9 +2,7 @@
 
 Live site: https://ktspeedrun.jesse-miller.com/
 
-Demo note: full multiplayer flow is best tested with 3 browser sessions (2 players plus 1 map view).
-
-A full-stack React app for running fast, structured Kill Team match setup and tracking. The project combines a guided pre-game workflow, in-game board support, and multiplayer room sync over WebSockets.
+A full-stack React app that turns a dining table into a Kill Team game board. A ceiling-mounted projector shows the killzone, objectives, tokens and live measurements on the table at true scale, while each player uses an iPad for their private roster, ops and controls. Everything runs on the home Wi-Fi from one small Node server.
 
 ## Project story
 
@@ -50,107 +48,70 @@ The result is a project that was built fast enough to be useful early, but struc
 
 ## Core features
 
-- Multi-step match flow with routing from lobby to end-of-game results.
-- Team and operative selection, equipment loadouts, Tac Ops, and Primary Op choices.
-- Shared multiplayer lobby with room codes and ready-state flow.
-- Dedicated map participant mode for board-side controls.
-- Local persistence for key selections and multiplayer identity.
-- Test coverage across unit tests and Playwright end-to-end scenarios.
+- **Projector table view** (`/table`): the board is warped onto the physical table with a four-corner calibration (keystone + scale), so 1" on screen is 1" on the mat. Per-player side panels show VP/CP, turning point, initiative, active strat ploys, kill op, tac op and the crit op.
+- **iPad controllers** (`/play?seat=A|B`): scan a QR code from the projector to take a seat. A seat token keeps the iPad in its seat across reloads and sleep.
+- **Map tools on the iPad, shown live on the projector**: multi-leg measuring ruler, line of sight with heavy/light/door wall hits plus obscured/cover hints, operative tokens with range rings, equipment markers and pings. Two-finger pinch zooms the iPad view only.
+- **Guided match flow**: lobby → set up the battle (kill teams, killzone, crit op, roll-off, drop zones) → muster (operatives, weapons, equipment, tac op) → deploy (scouting, primary op) → turning points 1–4 → results.
+- **Hidden information stays hidden**: the server sends each device only what it may see. Tac ops, primary ops, scouting picks and rosters are revealed at the right moment.
+- **Scoring**: crit/kill/tac op VP (max 6 each), plus the primary op bonus revealed at the end.
 
 ## Tech stack
 
 - Frontend: React 19, React Router 7, Vite
-- Realtime: Native WebSocket API + Node.js ws server
-- State/persistence: React context + browser storage
-- Optional distributed room state: Redis
+- Realtime: WebSocket (Node `ws`), one authoritative game state on the server
+- Persistence: JSON file on the table computer (survives restarts)
 - Quality: Vitest, Testing Library, Playwright, ESLint
+
+## How sync works
+
+The server owns the single game state. Devices send small **actions** (`muster/toggleUnit`, `token/update`, `battle/nextTp`, …), the server applies them with a pure shared reducer (`shared/reducer.js`), saves the result and broadcasts a **role-filtered snapshot** (`shared/views.js`) to the projector and each iPad. Clients hold no game state of their own: a reconnecting device simply receives the latest snapshot. Live tool previews (a ruler being dragged, a sightline) are relayed as ephemeral messages at ~30 Hz and never stored.
 
 ## Project structure
 
-- `src/pages`: Feature pages for setup, gameplay flow, and results.
-- `src/components`: Reusable UI blocks (cards, board views, panels).
-- `src/state`: Shared app state, persistence, and multiplayer client utilities.
-- `src/data`: Static game data sources.
-- `server`: WebSocket room server and multiplayer room utilities.
-- `tests/e2e`: Playwright browser tests.
+- `shared/`: game model, reducer, role views, board geometry and homography (used by server and client).
+- `server/`: HTTP + WebSocket table server (`gameServer.js`) and the entry point that serves the built app (`index.js`).
+- `src/net/`: the client connection (`GameProvider`).
+- `src/board/`: the SVG board renderer shared by the projector and iPads, plus tool overlays.
+- `src/table/`: projector page, side panels, calibration, join QR codes.
+- `src/play/`: iPad pages: phase steps, map tools, team/rules and opponent tabs.
+- `src/rules/`: roster expansion, equipment effects, op cards, kill op counts.
+- `src/components/`: unit card, crit op card, kill op table.
+- `src/data/`: static game data.
+- `tests/e2e/`: Playwright tests that drive a projector and two iPads together.
+
+## Table setup (permanent install)
+
+1. On the computer connected to the projector (Node 20+): `npm install`, then `npm run table`. This builds the app and starts the server on port 3000. It prints the projector URL.
+2. Open `http://<computer-ip>:3000/table` full screen (kiosk mode) on the projector output.
+3. Open the ☰ menu → **Calibrate projector**. Drag the four handles onto the corners of the 30" × 22" mat, check the 6" rulers with a tape measure, then **Save**. Calibration is stored on the server, so it survives browser resets.
+4. Each player scans their QR code with an iPad on the same Wi-Fi. Use Safari's "Add to Home Screen" for a full-screen app.
+5. To start the server automatically, run `npm start` (after one `npm run build`) as a login item or service. The game state lives in `server/data/game.json`.
 
 ## Local development
 
-### Prerequisites
-
-- Node.js 20+
-- npm 10+
-
-### Install dependencies
-
 ```bash
 npm install
-```
-
-### Start frontend and WebSocket server together
-
-```bash
-npm run dev:all
-```
-
-This runs:
-
-- Vite frontend dev server
-- Node WebSocket server with watch mode
-
-### Run frontend only
-
-```bash
 npm run dev
 ```
 
-### Run WebSocket server only
-
-```bash
-npm run dev:server
-```
+This runs Vite (with hot reload, listening on your LAN) and the table server (restarts on changes). Open the printed `Network:` URL: `/table` in one window, `/play?seat=A` and `/play?seat=B` on iPads or in two other windows.
 
 ## Environment variables
 
-Client-side:
-
-- `VITE_WS_URL`: Explicit websocket URL for the frontend (example: `wss://your-domain.com`).
-
-Server-side:
-
-- `PORT`: WebSocket server port (default `8080`).
-- `DEBUG_WS=1`: Enables websocket debug logging.
-- `INSTANCE_ID`: Optional stable instance identifier for logs.
-- `REDIS_URL`: Enables shared room state across instances.
-- `REDIS_TTL_SECONDS`: Room snapshot TTL (default `21600`).
+- `PORT`: table server port (default `3000`). Vite's dev proxy follows it.
+- `KT_STATE_FILE`: where game state is saved (default `server/data/game.json`).
+- `KT_SERVE_STATIC=0`: WebSocket only, don't serve `dist/` (used in dev).
 
 ## Testing
 
 ```bash
 npm run test:unit
 npm run test:e2e
-```
-
-Additional checks:
-
-```bash
 npm run lint
 npm run build
 ```
 
-## Deployment notes
-
-- Frontend can be deployed as a static Vite build.
-- Current `vercel.json` rewrite supports SPA routes.
-- In production, set `VITE_WS_URL` so clients connect to your deployed websocket host.
-- For multi-instance websocket deployments, configure `REDIS_URL` to avoid process-local room desync.
-
-## Engineering highlights
-
-- Implemented full client/server realtime room flow with graceful reconnect handling and role-based lobby behavior.
-- Added durable user/session state for smoother multi-page workflows.
-- Built and maintained both component-level and end-to-end test coverage.
-- Organized domain data and UI into modular folders for maintainability and future feature growth.
+The e2e suite starts its own isolated server and state file, so it never touches a real game.
 
 ## Data attribution
 
