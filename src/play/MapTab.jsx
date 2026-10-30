@@ -80,6 +80,7 @@ const RADIAL_ACTIONS = [
   { id: 'fight', label: 'Fight', icon: 'fight', own: true },
   { id: 'range', label: 'Range', icon: 'range' },
   { id: 'vantage', label: 'Vantage', icon: 'vantage', own: true },
+  { id: 'edit', label: 'Edit', icon: 'edit' },
   { id: 'select', label: 'Select', icon: 'select' },
 ]
 
@@ -698,7 +699,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // activates it.
   const runAction = (id, token) => {
     // Some open a second ring of choices instead.
-    if (id === 'range' || id === 'vantage') {
+    if (id === 'range' || id === 'vantage' || id === 'edit') {
       setRadial((current) => current && { ...current, menu: id })
       return
     }
@@ -965,6 +966,49 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         back,
       ]
     }
+    // Edit: the operative's name, base size and removal, each with its own ring (as in
+    // the Select panel).
+    const openMenu = (menu) => () => setRadial((current) => ({ ...current, menu }))
+    if (radial.menu === 'edit') {
+      return [
+        { key: 'name', label: 'Name', icon: 'name', run: openMenu('name') },
+        { key: 'base', label: 'Base size', icon: 'base', run: openMenu('base') },
+        { key: 'remove', label: 'Remove', icon: 'remove', run: openMenu('remove') },
+        back,
+      ]
+    }
+    const backToEdit = { ...back, run: openMenu('edit') }
+    if (radial.menu === 'base') {
+      const current = radialToken.baseMm ?? DEFAULT_BASE_MM
+      return [
+        ...BASE_SIZES_MM.map((mm) => ({
+          key: `base-${mm}`,
+          label: `${mm}mm base`,
+          text: String(mm),
+          selected: current === mm,
+          run: () => {
+            act({ type: 'token/update', id: radialToken.id, baseMm: mm })
+            setRadial(null)
+          },
+        })),
+        backToEdit,
+      ]
+    }
+    if (radial.menu === 'remove') {
+      return [
+        {
+          key: 'remove-yes',
+          label: 'Remove',
+          icon: 'remove',
+          danger: true,
+          run: () => {
+            act({ type: 'token/remove', id: radialToken.id })
+            setRadial(null)
+          },
+        },
+        { ...backToEdit, key: 'remove-no', label: 'Keep' },
+      ]
+    }
     return RADIAL_ACTIONS.filter((action) => !action.own || radialToken.seat === seat).map((action) => ({
       key: action.id,
       label: action.label,
@@ -972,7 +1016,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       run: () => runAction(action.id, radialToken),
     }))
   }
-  const radialItems = ringItems()
+  const radialItems = radial?.menu === 'name' ? [] : ringItems()
   const reach = radialReach(radialItems.length)
 
   return (
@@ -1008,12 +1052,28 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             role="menu"
             aria-label={`${radialToken.label || 'Operative'} actions`}
           >
+            {radial.menu === 'name' ? (
+              <form
+                className="unit-radial-name glass"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  const label = new FormData(event.currentTarget).get('label').trim()
+                  if (label !== radialToken.label) act({ type: 'token/update', id: radialToken.id, label })
+                  setRadial(null)
+                }}
+              >
+                <input name="label" defaultValue={radialToken.label} maxLength={24} aria-label="Name" autoFocus />
+                <button type="submit" className="btn is-primary">
+                  Done
+                </button>
+              </form>
+            ) : null}
             {radialItems.map((item, index) => (
               <button
                 key={item.key}
                 type="button"
                 role="menuitem"
-                className={`unit-radial-button glass${item.selected ? ' is-selected' : ''}`}
+                className={`unit-radial-button glass${item.selected ? ' is-selected' : ''}${item.danger ? ' is-danger' : ''}`}
                 style={{
                   left: reach * Math.cos(((-90 + (index * 360) / radialItems.length) * Math.PI) / 180),
                   top: reach * Math.sin(((-90 + (index * 360) / radialItems.length) * Math.PI) / 180),

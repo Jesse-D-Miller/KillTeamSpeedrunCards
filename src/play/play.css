@@ -1058,6 +1058,35 @@
   color: #0b0b0b;
 }
 
+.unit-radial-button.is-danger {
+  border-color: #ff5c5c;
+  color: #ff8a80;
+}
+
+/* Edit › Name: a small name field where the ring was. */
+.unit-radial-name {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  border-radius: 14px;
+  transform: translate(-50%, -50%);
+}
+
+.unit-radial-name input {
+  width: 12rem;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+}
+
 .unit-radial-text {
   font-family: var(--font-display);
   font-size: 1.15rem;
