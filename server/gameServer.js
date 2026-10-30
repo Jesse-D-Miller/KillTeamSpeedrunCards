@@ -144,6 +144,8 @@ export const createGameServer = ({ server, persistPath = null, log = console.log
     socket.role = 'seat'
     socket.seat = seat
     socket.clientId = seat
+    socket.joinedAt = Date.now()
+    log(`Seat ${seat} connected`)
     send(socket, { type: 'welcome', role: 'seat', seat, token: seatTokens[seat] })
     broadcastState()
   }
@@ -208,7 +210,9 @@ export const createGameServer = ({ server, persistPath = null, log = console.log
       if (message.type === 'sync') return sendState(socket)
     })
 
-    socket.on('close', () => {
+    socket.on('close', (code) => {
+      // Why iPads drop shows up here: 1001 = page went away, 1006 = connection lost.
+      if (socket.seat) log(`Seat ${socket.seat} disconnected (code ${code}) after ${Math.round((Date.now() - socket.joinedAt) / 1000)}s`)
       if (socket.clientId) relay({ id: socket.clientId, socket }, null)
       if (socket.role) broadcastState()
     })
@@ -217,6 +221,7 @@ export const createGameServer = ({ server, persistPath = null, log = console.log
   const heartbeat = setInterval(() => {
     wss.clients.forEach((socket) => {
       if (!socket.isAlive) {
+        if (socket.seat) log(`Seat ${socket.seat} stopped answering; closing its connection`)
         socket.terminate()
         return
       }

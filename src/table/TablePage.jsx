@@ -13,6 +13,7 @@ import QrCode from './QrCode.jsx'
 import PlayerBoard from './panel/PlayerBoard.jsx'
 import { CASUALTY_MARGIN_IN, PANEL_GAP_IN, casualtyAreasFor, panelLayout } from './panelLayout.js'
 import { seatUrl, useJoinBase } from './useJoinUrl.js'
+import { useLongAbsence } from './useLongAbsence.js'
 import Calibrator from './Calibrator.jsx'
 import './table.css'
 
@@ -159,6 +160,7 @@ function TableMenu({ game, onClose, onCalibrate }) {
 
 function TablePage({ calibrating = false }) {
   const { state: game, presence, status, ephemerals, act } = useGame()
+  const longGone = useLongAbsence(presence)
   const navigate = useNavigate()
   const size = useWindowSize()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -211,7 +213,8 @@ function TablePage({ calibrating = false }) {
   const panels = panelLayout(game, panelInches)
   const showPanels = panelInches > 0 && !calibrating
   const casualtyAreas = showPanels ? casualtyAreasFor(panels) : undefined
-  const showJoin = !calibrating && (game.phase === 'lobby' || SEATS.some((seat) => !presence?.[seat]))
+  // Mid-game, the join codes come back only for an iPad that's been gone a while.
+  const showJoin = !calibrating && (game.phase === 'lobby' || longGone.length > 0)
   const panelWidth = panelInches * PX
 
   return (

@@ -21,10 +21,11 @@ const EPHEMERAL_STALE_MS = 15000
 const EPHEMERAL_KEEPALIVE_MS = 4000
 
 const PING_MS = 4000
-// No reply to a ping for this long: the connection is dead, whatever it says.
-const PONG_LIMIT_MS = 6000
+// No reply to a ping for this long: the connection is dead, whatever it says. Generous,
+// so an iPad that's busy for a moment (a big redraw) isn't mistaken for a dead line.
+const PONG_LIMIT_MS = 9000
 // Just woke up: a working connection answers well within this.
-const WAKE_PROBE_MS = 2500
+const WAKE_PROBE_MS = 4000
 const CONNECT_TIMEOUT_MS = 5000
 // An action still unconfirmed after this long is given up on.
 const ACTION_TIMEOUT_MS = 20000

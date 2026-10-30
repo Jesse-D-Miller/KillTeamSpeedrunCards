@@ -163,8 +163,8 @@
 }
 
 .play-offline {
-  /* Over the screen, never pushing it down; and only once a reconnect takes a moment
-     (taps made meanwhile still show, and go through when it's back). */
+  /* Over the screen, never pushing it down; and only after 15s, as short drops
+     reconnect by themselves (taps made meanwhile still show, and go through after). */
   position: absolute;
   top: 0;
   left: 0;
@@ -176,7 +176,7 @@
   font-size: 0.85rem;
   text-align: center;
   pointer-events: none;
-  animation: play-offline-in 0.2s 1.5s both;
+  animation: play-offline-in 0.2s 15s both;
 }
 
 @keyframes play-offline-in {

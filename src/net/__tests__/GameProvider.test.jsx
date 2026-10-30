@@ -143,7 +143,7 @@ describe('GameProvider', () => {
 
     act(() => vi.advanceTimersByTime(5000))
     expect(first.ofType('ping')).toHaveLength(1)
-    act(() => vi.advanceTimersByTime(7000))
+    act(() => vi.advanceTimersByTime(9500))
     expect(screen.getByTestId('status')).toHaveTextContent('offline')
     // Still shown while it waits to go through.
     expect(screen.getByTestId('name')).toHaveTextContent('Jesse')
@@ -173,7 +173,7 @@ describe('GameProvider', () => {
     join(first)
     act(() => document.dispatchEvent(new Event('visibilitychange')))
     expect(first.ofType('ping')).toHaveLength(1)
-    act(() => vi.advanceTimersByTime(3000))
+    act(() => vi.advanceTimersByTime(4500))
     expect(latest()).not.toBe(first)
   })
 
