@@ -17,9 +17,11 @@ import { maxWoundsFor, tokenLabelFor } from '../rules/roster.js'
 import Drawer from './Drawer.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
 import { SelectPanel, TokenFlyout, UnitsFlyout, WeaponFlyout } from './RailFlyouts.jsx'
-import { rangedWeaponsFor } from '../rules/weaponRules.js'
+import { meleeWeaponsFor, rangedWeaponsFor } from '../rules/weaponRules.js'
+import AttackDrawer from './AttackDrawer.jsx'
 import ToolIcon from './ToolIcon.jsx'
 import { usePlayer } from './usePlayer.js'
+import { useAttack } from './useAttack.js'
 
 // The iPad is the controller: everything drawn here is streamed to the projector.
 // One finger uses the active tool; two fingers pan/zoom the iPad view only.
@@ -28,6 +30,7 @@ const TOOLS = [
   ['move', 'Move'],
   ['measure', 'Measure'],
   ['los', 'Sightline'],
+  ['attack', 'Shoot/Fight'],
   ['units', 'Units'],
   ['token', 'Token'],
   ['select', 'Select'],
@@ -128,6 +131,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // Token tool: which list is popped out ('categories', a category id, or null),
   // the last category used, and the catalogue entry waiting to be placed.
   const [tokenMenu, setTokenMenu] = useState(null)
+  // Shoot/Fight: the weapon list pops out when an attacker is picked and closes on a choice.
+  const [weaponMenuOpen, setWeaponMenuOpen] = useState(false)
   const [lastCategory, setLastCategory] = useState('categories')
   const [pendingEntry, setPendingEntry] = useState(null)
   const [railOpen, setRailOpen] = useState(true)
@@ -345,11 +350,13 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       publish({ tool: 'measure', points: [point, point] })
       return
     }
-    // Sightline: tap a shooter, then a target. Drag the white point to start the
+    // Sightline (just the line-of-sight check) and Shoot/Fight (an attack with a
+    // weapon): tap an operative, then an enemy. Drag the white point to start the
     // targeting lines from another part of the shooter's base.
-    if (tool === 'los') {
-      const current = overlay?.tool === 'target' ? overlay : null
-      const shown = shooterPointOf(current)
+    if (tool === 'los' || tool === 'attack') {
+      const kind = tool === 'los' ? 'target' : 'attack'
+      const current = overlay?.tool === kind ? overlay : null
+      const shown = current?.mode === 'fight' ? null : shooterPointOf(current)
       const reach = GRAB_PX / viewMetrics(svgRef.current.getBoundingClientRect(), viewRef.current).scale
       if (shown && distance(shown, point) <= reach) {
         gestureRef.current = { type: 'target-point' }
@@ -359,14 +366,28 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       const alive = tapped?.unitKey && !game.players[tapped.seat]?.unitState?.[tapped.unitKey]?.dead
       if (!alive || tapped.id === current?.shooterId) {
         clearTool()
+        setWeaponMenuOpen(false)
         return
       }
       const shooter = tokens.find((token) => token.id === current?.shooterId)
-      publish(
-        shooter && tapped.seat !== shooter.seat
-          ? { ...current, targetId: tapped.id }
-          : { tool: 'target', shooterId: tapped.id, targetId: null, point: null, weaponId: null },
-      )
+      if (shooter && tapped.seat !== shooter.seat) {
+        publish({ ...current, targetId: tapped.id })
+      } else if (kind === 'target') {
+        publish({ tool: 'target', shooterId: tapped.id, targetId: null, point: null })
+      } else {
+        // A new attacker: pick its weapon first. It's a fight if an enemy is already
+        // within its control range (the switch in the list changes it).
+        const engaged = tokens.some(
+          (enemy) =>
+            enemy.unitKey &&
+            enemy.seat &&
+            enemy.seat !== tapped.seat &&
+            !game.players[enemy.seat]?.unitState?.[enemy.unitKey]?.dead &&
+            distance(enemy, tapped) - tokenRadiusIn(enemy) - tokenRadiusIn(tapped) <= 1,
+        )
+        publish({ tool: 'attack', mode: engaged ? 'fight' : 'shoot', shooterId: tapped.id, targetId: null, point: null, weaponId: null })
+        setWeaponMenuOpen(true)
+      }
       return
     }
     if (tool === 'ping') {
@@ -522,7 +543,15 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     clearTool()
     setSelectedId(null)
     endPlacing()
+    setWeaponMenuOpen(false)
     setTool(next === tool ? null : next)
+  }
+
+  // The Shoot/Fight button reopens the weapon list for the current attacker; with the
+  // list open (or no attacker), it turns the tool off.
+  const pressAttack = () => {
+    if (tool === 'attack' && attacker && !weaponMenuOpen) setWeaponMenuOpen(true)
+    else selectTool('attack')
   }
 
   // Fix the base size of the unit just placed; from now on it can only be moved.
@@ -679,8 +708,10 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const overlays = [...remoteOverlays, ...(overlay ? [{ owner: seat, payload: overlay }] : [])]
   if (dragPreview) dragOverlays(dragPreview).forEach((overlay) => overlays.push({ owner: seat, payload: overlay }))
 
-  const sightlineShooter =
-    tool === 'los' && overlay?.tool === 'target' ? tokens.find((token) => token.id === overlay.shooterId) ?? null : null
+  const attacker =
+    tool === 'attack' && overlay?.tool === 'attack' ? tokens.find((token) => token.id === overlay.shooterId) ?? null : null
+  // The stats drawer: my attack once it has a target and weapon, or one aimed at my operative.
+  const attack = useAttack(tool === 'attack' ? overlay : null)
 
   // Units, Token and Select each pop a panel out beside their button.
   const flyouts = {
@@ -712,16 +743,22 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           }
         />
       ) : null,
-    // Sightline: the shooter's ranged weapons (and grenades), to apply their rules.
-    los: sightlineShooter ? (
-      <WeaponFlyout
-        weapons={rangedWeaponsFor(game, sightlineShooter)}
-        selectedId={overlay.weaponId ?? null}
-        onChoose={(weaponId) => publish({ ...overlay, weaponId })}
-      />
-    ) : null,
+    // Shoot/Fight: the switch, then the attacker's ranged or melee weapons.
+    attack:
+      attacker && weaponMenuOpen ? (
+        <WeaponFlyout
+          mode={overlay.mode}
+          onMode={(mode) => publish({ ...overlay, mode, weaponId: null })}
+          weapons={overlay.mode === 'fight' ? meleeWeaponsFor(game, attacker) : rangedWeaponsFor(game, attacker)}
+          selectedId={overlay.weaponId ?? null}
+          onChoose={(weaponId) => {
+            publish({ ...overlay, weaponId })
+            setWeaponMenuOpen(false)
+          }}
+        />
+      ) : null,
   }
-  const pressTool = { units: pressUnits, token: pressToken }
+  const pressTool = { units: pressUnits, token: pressToken, attack: pressAttack }
 
   return (
     <section className="map-tab">
@@ -748,6 +785,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           ) : null}
         </BoardSvg>
       </div>
+      <AttackDrawer {...attack} />
 
       <Drawer
         side="left"

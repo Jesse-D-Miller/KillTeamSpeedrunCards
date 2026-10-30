@@ -83,7 +83,8 @@ const enterPhase = (state, phase, random) => {
   // Killzone and crit op are rolled for the players; they can re-roll from setup.
   if (phase === 'setup') next = rollCritOp(rollKillzone(next, random), random)
   if (phase === 'battle' && !state.battle.startedAt) {
-    next = { ...next, battle: { ...next.battle, startedAt: Date.now() } }
+    // Shot card toggles tried out while deploying don't carry into the battle.
+    next = { ...next, battle: { ...next.battle, startedAt: Date.now(), shots: {} } }
     // Ready step of the first turning point.
     SEATS.forEach((seat) => {
       next = updatePlayer(next, seat, (player) => ({ cp: player.cp + READY_CP }))
@@ -149,9 +150,10 @@ const sanitizeUnitPatch = (patch) => {
 const MAX_PATH_POINTS = 200
 
 // Put a token at the end of its movement path; a path with no steps means "not moved".
-const setMovePath = (state, id, from, path) => {
+// extra: more to remember about the move (see prevMovedTp).
+const setMovePath = (state, id, from, path, extra = {}) => {
   const end = path[path.length - 1]
-  const lastMove = path.length > 1 ? { from, path, inches: path.length - 1 } : null
+  const lastMove = path.length > 1 ? { from, path, inches: path.length - 1, ...extra } : null
   return {
     ...state,
     tokens: state.tokens.map((token) => {
@@ -272,6 +274,21 @@ const returnToStart = (state, token) => {
 }
 
 const clearAuto = (state) => (state.battle.lastAuto ? { ...state, battle: { ...state.battle, lastAuto: null } } : state)
+
+// Rules like "until the end of the turning point, if it moved" need to know when an
+// operative last moved: unitState.movedTp. A move remembers the value before it
+// (lastMove.prevMovedTp) so undoing the whole move puts it back.
+const operativeUnit = (state, token) =>
+  token?.unitKey && isSeat(token.seat) ? state.players[token.seat].unitState[token.unitKey] ?? null : null
+
+const restoreMovedTp = (state, token) => {
+  if (!token.lastMove || !operativeUnit(state, token)) return state
+  return patchUnit(state, token.seat, token.unitKey, { movedTp: token.lastMove.prevMovedTp ?? null })
+}
+
+// Sightline shot cards keep their toggles for the latest few shooter/target pairs.
+const MAX_SHOTS = 12
+const emptyShot = () => ({ toggles: { A: {}, B: {} }, spent: { A: {}, B: {} } })
 
 const sanitizeRing = (value) => clamp(toNumber(value), 0, 12)
 
@@ -587,7 +604,7 @@ const handlers = {
     if (state.battle.tp >= MAX_TP) return enterPhase(state, 'results', Math.random)
     let next = {
       ...state,
-      battle: { ...state.battle, tp: state.battle.tp + 1, lastAuto: null },
+      battle: { ...state.battle, tp: state.battle.tp + 1, lastAuto: null, shots: {} },
       tokens: state.tokens.map((token) => (token.lastMove ? { ...token, lastMove: null } : token)),
     }
     SEATS.forEach((seat) => {
@@ -603,6 +620,67 @@ const handlers = {
       }))
     })
     return next
+  },
+
+  // Sightline shot card: a player turns one of their own modifiers on or off for the
+  // shot `key` (shooterId|targetId). A cost (CP) and a limit (uses per turning point,
+  // e.g. 1 for a firefight ploy) are spent when it's turned on, and refunded if it's
+  // turned off again in the same shot.
+  'shot/toggle': (state, action, actor) => {
+    const seat = resolveSeat(action, actor)
+    const key = String(action.key ?? '').slice(0, 80)
+    const id = String(action.id ?? '').slice(0, 80)
+    if (!key || !id) fail('Missing modifier.')
+    const on = Boolean(action.on)
+    const cost = clamp(Math.round(toNumber(action.cost)), 0, 3)
+    const limit = action.limit == null ? null : clamp(Math.round(toNumber(action.limit)), 1, 9)
+    const { tp } = state.battle
+    const shots = state.battle.shots ?? {}
+    const shot = shots[key] ?? emptyShot()
+    const spent = { ...shot.spent[seat] }
+    let next = state
+    if ((cost || limit) && on && !(id in spent)) {
+      requirePhase(state, 'battle')
+      const player = state.players[seat]
+      const uses = player.usesByTp?.[tp]?.[id] ?? 0
+      if (limit && uses >= limit) fail(limit === 1 ? 'Already used this turning point.' : `Already used ${limit} times this turning point.`)
+      if (player.cp < cost) fail('Not enough CP.')
+      next = updatePlayer(next, seat, (current) => ({
+        cp: current.cp - cost,
+        usesByTp: { ...current.usesByTp, [tp]: { ...current.usesByTp?.[tp], [id]: uses + 1 } },
+      }))
+      spent[id] = cost
+    } else if (!on && id in spent) {
+      next = updatePlayer(next, seat, (current) => ({
+        cp: current.cp + spent[id],
+        usesByTp: {
+          ...current.usesByTp,
+          [tp]: { ...current.usesByTp?.[tp], [id]: Math.max(0, (current.usesByTp?.[tp]?.[id] ?? 1) - 1) },
+        },
+      }))
+      delete spent[id]
+    }
+    const updated = {
+      ...shot,
+      toggles: { ...shot.toggles, [seat]: { ...shot.toggles[seat], [id]: on } },
+      spent: { ...shot.spent, [seat]: spent },
+    }
+    // Most recent last; the oldest shots drop off.
+    const rest = Object.entries(shots).filter(([candidate]) => candidate !== key).slice(-(MAX_SHOTS - 1))
+    return { ...next, battle: { ...next.battle, shots: Object.fromEntries([...rest, [key, updated]]) } }
+  },
+
+  // A fight's defender picks the melee weapon they retaliate with (per player, per fight).
+  'shot/weapon': (state, action, actor) => {
+    const seat = resolveSeat(action, actor)
+    const key = String(action.key ?? '').slice(0, 80)
+    if (!key) fail('Missing fight.')
+    const weaponId = action.weaponId == null ? null : String(action.weaponId).slice(0, 80)
+    const shots = state.battle.shots ?? {}
+    const shot = shots[key] ?? emptyShot()
+    const updated = { ...shot, weapons: { ...shot.weapons, [seat]: weaponId } }
+    const rest = Object.entries(shots).filter(([candidate]) => candidate !== key).slice(-(MAX_SHOTS - 1))
+    return { ...state, battle: { ...state.battle, shots: Object.fromEntries([...rest, [key, updated]]) } }
   },
 
   'battle/prevTp': (state) => {
@@ -668,23 +746,31 @@ const handlers = {
     if (!token) fail('Token not found.')
     const from = token.lastMove?.from ?? { x: token.x, y: token.y }
     const steps = (Array.isArray(action.path) ? action.path : []).slice(1, MAX_PATH_POINTS).map(sanitizePoint)
-    const moved = setMovePath(state, id, from, [from, ...steps])
+    const prevMovedTp = token.lastMove ? token.lastMove.prevMovedTp ?? null : operativeUnit(state, token)?.movedTp ?? null
+    const moved = setMovePath(state, id, from, [from, ...steps], { prevMovedTp })
     // Back-tracking all the way to where it started undoes the move and its activation.
-    if (!steps.length) return returnToStart(moved, token)
-    return autoActivate(moved, token, token.maxWounds ?? action.maxWounds)
+    if (!steps.length) return returnToStart(restoreMovedTp(moved, token), token)
+    const maxWounds = token.maxWounds ?? action.maxWounds
+    const marked =
+      state.phase === 'battle' && token.unitKey && isSeat(token.seat)
+        ? patchUnit(moved, token.seat, token.unitKey, { movedTp: state.battle.tp }, maxWounds)
+        : moved
+    return autoActivate(marked, token, maxWounds)
   },
 
   // Undoing the whole move also undoes the activation (or counteraction) it started.
   'token/undoMove': (state, action) => {
     const token = state.tokens.find((candidate) => candidate.id === String(action.id ?? ''))
     if (!token?.lastMove) fail('Nothing to undo.')
-    return returnToStart(setMovePath(state, token.id, token.lastMove.from, [token.lastMove.from]), token)
+    return returnToStart(restoreMovedTp(setMovePath(state, token.id, token.lastMove.from, [token.lastMove.from]), token), token)
   },
 
   'token/undoStep': (state, action) => {
     const token = state.tokens.find((candidate) => candidate.id === String(action.id ?? ''))
     if (!token?.lastMove) fail('Nothing to undo.')
-    return setMovePath(state, token.id, token.lastMove.from, token.lastMove.path.slice(0, -1))
+    const path = token.lastMove.path.slice(0, -1)
+    const next = setMovePath(state, token.id, token.lastMove.from, path, { prevMovedTp: token.lastMove.prevMovedTp ?? null })
+    return path.length > 1 ? next : restoreMovedTp(next, token)
   },
 
   // Removing a token also removes the tokens riding on it.

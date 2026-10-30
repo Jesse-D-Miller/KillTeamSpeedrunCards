@@ -82,6 +82,10 @@ const liveOperatives = (tokens, players, seat) =>
 //   samples: how many targeting lines to draw across the target's facing side.
 //   weapon: the chosen weapon's parsed rules (src/rules/weaponRules.js), if any.
 //   markers: board markers (Smoke Grenade markers make smoke).
+//   vantageBonus: inches the shooter counts as higher for Vantage's first two
+//     features, as if on Vantage terrain (Vespid Ocelli: 3).
+//   assumeCover: the target is in cover from Light terrain this can't see (e.g. a
+//     Portable Barricade it's connected to).
 export const analyseTarget = ({
   tokens,
   players,
@@ -94,6 +98,8 @@ export const analyseTarget = ({
   samples = ARC_SAMPLES,
   weapon = null,
   markers = [],
+  vantageBonus = 0,
+  assumeCover = false,
 }) => {
   const shooterStatus = statusOf(players, shooter)
   const targetStatus = statusOf(players, target)
@@ -101,7 +107,8 @@ export const analyseTarget = ({
   const shooterR = tokenRadiusIn(shooter)
   const gap = edgeDistance(shooter, target)
   const tooClose = gap <= NO_COVER_WITHIN
-  const height = shooterStatus.vantage - targetStatus.vantage
+  const height = shooterStatus.vantage + vantageBonus - targetStatus.vantage
+  const onVantage = shooterStatus.vantage > 0 || vantageBonus > 0
 
   // Heavy terrain of the feature an operative on Vantage stands on doesn't obscure.
   const standingOn = (token, status) =>
@@ -149,18 +156,21 @@ export const analyseTarget = ({
     line.redFrom = blocking ? blocking.t : 1
   })
   const crossings = lines.flatMap((line) => line.crossings)
-  const coverCrossings = tooClose ? [] : crossings.filter((crossing) => crossing.covers)
+  const assumed = assumeCover ? [{ kind: 'light', featureId: 'assumed-cover', covers: true, obscures: false }] : []
+  const coverCrossings = tooClose ? [] : [...crossings.filter((crossing) => crossing.covers), ...assumed]
   const obscureCrossings = crossings.filter((crossing) => crossing.obscures)
   // From Vantage, a Conceal target 2"+ lower can't use Light terrain for cover; Seek
   // weapons ignore terrain for cover, Seek Light ignores Light terrain. Either way
   // only target selection changes: the cover save stays.
-  const vantageLightRule = shooterStatus.vantage > 0 && height >= 2 && targetStatus.order === 'conceal'
+  const vantageLightRule = onVantage && height >= 2 && targetStatus.order === 'conceal'
   const coverForTargeting = weapon?.seek
     ? []
     : coverCrossings.filter(
         (crossing) => !((vantageLightRule || weapon?.seekLight) && crossing.kind === 'light'),
       )
   const cover = coverCrossings.length > 0
+  // ...but the defender can then retain that cover save as a crit, or one more.
+  const vantageCoverImprove = cover && vantageLightRule && coverCrossings.some((crossing) => crossing.kind === 'light')
   // Smoke: an operative wholly within a Smoke Grenade's 1" area is obscured to
   // operatives more than 2" away, and vice versa.
   const smoke = markers
@@ -176,13 +186,17 @@ export const analyseTarget = ({
   const distinctFeatures = [...coverFeatures].some((a) => [...obscureFeatures].some((b) => a !== b))
   const chooseOne = cover && terrainObscured && !smokeObscured && !distinctFeatures
 
-  const reasons = []
-  if (hidden) reasons.push('Wholly behind Heavy terrain (not visible)')
+  // Why it isn't a valid target, each with a code so other rules can lift it.
+  const blocks = []
+  if (hidden) blocks.push({ code: 'hidden', text: 'Wholly behind Heavy terrain (not visible)' })
   if (liveOperatives(tokens, players, shooter.seat).some((friend) => edgeDistance(friend, target) <= CONTROL_RANGE)) {
-    reasons.push('A friendly operative is within its control range')
+    blocks.push({ code: 'friendly', text: 'A friendly operative is within its control range' })
   }
-  if (targetStatus.order === 'conceal' && coverForTargeting.length) reasons.push('Conceal order in cover')
-  if (weapon?.range && gap > weapon.range) reasons.push(`Out of range (Rng ${weapon.range}")`)
+  if (targetStatus.order === 'conceal' && coverForTargeting.length) {
+    blocks.push({ code: 'conceal-cover', text: 'Conceal order in cover' })
+  }
+  if (weapon?.range && gap > weapon.range) blocks.push({ code: 'range', text: `Out of range (Rng ${weapon.range}")` })
+  const reasons = blocks.map((block) => block.text)
 
   const shooterWarnings = []
   if (shooterStatus.order === 'conceal' && !weapon?.silent) shooterWarnings.push('CONCEAL · CAN’T SHOOT (SILENT ONLY)')
@@ -217,8 +231,7 @@ export const analyseTarget = ({
   if (maxWounds && wounds < maxWounds / 2) shooterChips.push('INJURED · HIT WORSE BY 1')
   if (shooterStatus.order === 'conceal' && weapon?.silent) shooterChips.push('SILENT · CAN SHOOT ON CONCEAL')
   // Accurate from Vantage and from the weapon: two Accurate rules count as Accurate 2.
-  const vantageAccurate =
-    shooterStatus.vantage > 0 && targetStatus.order === 'engage' && height >= 2 ? (height >= 4 ? 2 : 1) : 0
+  const vantageAccurate = onVantage && targetStatus.order === 'engage' && height >= 2 ? (height >= 4 ? 2 : 1) : 0
   const weaponAccurate = weapon?.accurate ?? 0
   if (vantageAccurate || weaponAccurate) {
     const total = vantageAccurate && weaponAccurate ? 2 : Math.max(vantageAccurate, weaponAccurate)
@@ -235,9 +248,17 @@ export const analyseTarget = ({
     distance: gap,
     valid: reasons.length === 0,
     reasons,
+    blocks,
     shooterWarnings,
     targetChips,
     shooterChips,
+    terrainObscured,
+    smokeObscured,
+    // Piercing 2 counts as Piercing 1 against it (wholly in smoke, more than 2" away).
+    smokePiercing: targetInSmoke && gap > NO_COVER_WITHIN,
+    vantageAccurate,
+    vantageLightRule,
+    vantageCoverImprove,
   }
 }
 
@@ -251,8 +272,22 @@ export const glanceStatus = (analysis) =>
 // - x" Devastating: every other operative visible to and within x of it (on a crit);
 // - Stun grenade: every other operative within 1" of it.
 // Visibility from the primary target uses the same "wholly behind Heavy terrain" test.
+//   immuneToDevastating(token): operatives that ignore x" Devastating unless they're
+//   the target (e.g. Hernkyn Yaegirs with a KV-Ceramide Undersuit).
 //   -> [{ token, kind, friendly }]
-export const splashTargets = ({ tokens, players, walls, areas = [], markers = [], shooter, target, point, weapon, maxWoundsOf }) => {
+export const splashTargets = ({
+  tokens,
+  players,
+  walls,
+  areas = [],
+  markers = [],
+  shooter,
+  target,
+  point,
+  weapon,
+  maxWoundsOf,
+  immuneToDevastating = () => false,
+}) => {
   if (!weapon) return []
   const others = tokens.filter(
     (token) => token.unitKey && token.seat && token.id !== target.id && !statusOf(players, token).dead,
@@ -275,7 +310,7 @@ export const splashTargets = ({ tokens, players, walls, areas = [], markers = []
   }
   if (weapon.devastating?.distance) {
     others
-      .filter((token) => within(token, weapon.devastating.distance) && visibleFromTarget(token))
+      .filter((token) => within(token, weapon.devastating.distance) && !immuneToDevastating(token) && visibleFromTarget(token))
       .forEach((token) => add(token, 'devastating'))
   }
   if (weapon.stunArea) others.filter((token) => within(token, weapon.stunArea)).forEach((token) => add(token, 'stun'))

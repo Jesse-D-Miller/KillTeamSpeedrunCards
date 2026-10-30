@@ -2,6 +2,7 @@ import { otherSeat, turnState } from '../../../shared/game.js'
 import { getKillteamById } from '../../data/ktData.js'
 import { getCritOp } from '../../board/boardData.js'
 import { seatColor } from '../../board/colors.js'
+import CombatBoard from './CombatBoard.jsx'
 import CritOpSummary from './CritOpSummary.jsx'
 import IdentityBar from './IdentityBar.jsx'
 import KillOpTrack from './KillOpTrack.jsx'
@@ -18,7 +19,9 @@ import './playerBoard.css'
 // The board is laid out upright (portrait 8"x22" on Map 1, landscape 22"x8" on Map 2)
 // and then rotated to face its player.
 //   widthPx/heightPx: the slot on the table plane; rotation: degrees toward the player.
-function PlayerBoard({ game, seat, rotation, connected, widthPx, heightPx }) {
+//   combat: a shot or fight in progress (computeAttack); while this player is in it,
+//   everything below their name swaps to their half of it.
+function PlayerBoard({ game, seat, rotation, connected, widthPx, heightPx, combat = null }) {
   const player = game.players[seat]
   const enemy = game.players[otherSeat(seat)]
   const killteam = getKillteamById(player.killteamId)
@@ -33,6 +36,8 @@ function PlayerBoard({ game, seat, rotation, connected, widthPx, heightPx }) {
   // Firefight phase: whose activation it is.
   const firefight = game.phase === 'battle' && game.battle.firefightTp === tp
   const turn = firefight ? turnState(game) : null
+  const inCombat = Boolean(combat) && (combat.shooter.seat === seat || combat.target.seat === seat)
+  const layoutClass = inCombat ? 'is-combat' : inGame ? 'is-game' : 'is-setup'
   const turnBadge = !turn
     ? null
     : turn.activeSeat === seat
@@ -47,7 +52,7 @@ function PlayerBoard({ game, seat, rotation, connected, widthPx, heightPx }) {
     <div className="pb-slot">
       <div
         ref={boardRef}
-        className={`pb-board ${landscape ? 'is-landscape' : 'is-portrait'} ${inGame ? 'is-game' : 'is-setup'}`}
+        className={`pb-board ${landscape ? 'is-landscape' : 'is-portrait'} ${layoutClass}`}
         style={{ ...size, '--seat-color': color, transform: `translate(-50%, -50%) rotate(${rotation}deg)` }}
         data-seat={seat}
       >
@@ -58,10 +63,15 @@ function PlayerBoard({ game, seat, rotation, connected, widthPx, heightPx }) {
             connected={connected}
             hasInitiative={inGame && game.battle.initiativeByTp[tp] === seat}
             turnBadge={turnBadge}
+            compact={inCombat}
           />
         </div>
 
-        {inGame ? (
+        {inCombat ? (
+          <div className="pb-area-combat">
+            <CombatBoard combat={combat} seat={seat} player={player} />
+          </div>
+        ) : inGame ? (
           <>
             <div className="pb-area-score">
               <ScoreBlock player={player} final={final} />
@@ -87,10 +97,12 @@ function PlayerBoard({ game, seat, rotation, connected, widthPx, heightPx }) {
           </>
         )}
 
-        <div className="pb-area-cards">
-          <TacOpSlot player={player} color={color} />
-          <CritOpSummary card={critOp} />
-        </div>
+        {inCombat ? null : (
+          <div className="pb-area-cards">
+            <TacOpSlot player={player} color={color} />
+            <CritOpSummary card={critOp} />
+          </div>
+        )}
       </div>
     </div>
   )

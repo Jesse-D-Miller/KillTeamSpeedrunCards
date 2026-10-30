@@ -4,6 +4,8 @@ import { SEATS } from '../../shared/game.js'
 import { computeHomography, toCssMatrix3d } from '../../shared/homography.js'
 import { useGame } from '../net/gameContext.js'
 import BoardSvg from '../board/BoardSvg.jsx'
+import { getLayout } from '../board/boardData.js'
+import { computeAttack } from '../rules/shooting/index.js'
 import { dragOverlays } from '../board/dragOverlays.js'
 import { BOARD } from '../board/boardData.js'
 import { seatColor } from '../board/colors.js'
@@ -198,6 +200,14 @@ function TablePage({ calibrating = false }) {
     }
   })
 
+  // A shot or fight being set up on an iPad: the two players' side bars show it.
+  const attackPayload = Object.values(ephemerals).find(
+    (payload) => payload.tool === 'attack' && payload.weaponId && payload.targetId,
+  )
+  const combat = attackPayload
+    ? computeAttack({ game, layout: getLayout(game.table.mapId, game.table.arrangementId), payload: attackPayload })
+    : null
+
   const panels = panelLayout(game, panelInches)
   const showPanels = panelInches > 0 && !calibrating
   const casualtyAreas = showPanels ? casualtyAreasFor(panels) : undefined
@@ -234,6 +244,7 @@ function TablePage({ calibrating = false }) {
                   connected={Boolean(presence?.[panels[side].seat])}
                   widthPx={panelWidth}
                   heightPx={BOARD.height * PX}
+                  combat={combat}
                 />
               </div>
             ))

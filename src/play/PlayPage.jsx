@@ -23,7 +23,9 @@ import MusterStep from './steps/MusterStep.jsx'
 import ResultsStep from './steps/ResultsStep.jsx'
 import SetupStep from './steps/SetupStep.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
+import AttackDrawer from './AttackDrawer.jsx'
 import { usePlayer } from './usePlayer.js'
+import { useAttack } from './useAttack.js'
 import './play.css'
 
 const SP_KILLTEAMS = new Set(['VOT-HKY', 'TAU-VESP'])
@@ -242,6 +244,12 @@ function ErrorToast() {
   )
 }
 
+// The stats drawer for an attack on one of my operatives, over whichever tab is open
+// (the map has its own, which also shows my own attacks).
+function IncomingAttack() {
+  return <AttackDrawer {...useAttack()} />
+}
+
 function SeatScreen() {
   const { status, state, seat, takeover } = useGame()
   const [tab, setTab] = useState('main')
@@ -299,6 +307,7 @@ function SeatScreen() {
         {!immersive && phase.tabs.length > 1 ? (
           <TabBar tabs={phase.tabs} activeTab={activeTab} mainLabel={phase.main} onSelect={setTab} />
         ) : null}
+        {activeTab !== 'map' ? <IncomingAttack /> : null}
         <ErrorToast />
       </div>
     </RuleProvider>

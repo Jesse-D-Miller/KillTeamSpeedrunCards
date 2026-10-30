@@ -61,6 +61,31 @@
   margin-left: 0;
 }
 
+/* ---- right ---- */
+.drawer.is-right {
+  right: max(10px, env(safe-area-inset-right, 0px));
+  top: 50%;
+  flex-direction: row-reverse;
+  align-items: center;
+  max-height: calc(100% - 20px);
+  transform: translateY(-50%);
+}
+
+.drawer.is-right .drawer-handle {
+  width: 30px;
+  min-height: 64px;
+  margin-right: 4px;
+  border-radius: 12px 0 0 12px;
+}
+
+.drawer.is-right.is-closed .drawer-panel {
+  display: none;
+}
+
+.drawer.is-right.is-closed .drawer-handle {
+  margin-right: 0;
+}
+
 /* ---- top ---- */
 .drawer.is-top {
   top: max(8px, env(safe-area-inset-top, 0px));

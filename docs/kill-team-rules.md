@@ -113,8 +113,11 @@ The working rules reference for this project: what the official rules say, in ou
 ### Fighting sequence
 
 1. **Target:** pick an enemy within control range; it **retaliates**.
+   - A Conceal order doesn't stop the Fight action; it stops Shoot and Charge.
+   - A rule that says an operative can't retaliate still lets it be fought; its dice just aren't rolled.
 2. **Rolls:** both sides pick a melee weapon and roll at the same time.
-   - **Assist:** each other friendly operative within the target's control range (and not within another enemy's control range) improves Hit by 1.
+   - **Assist:** each other friendly operative within the enemy's control range (and not within another enemy's control range) improves Hit by 1. No maximum is stated, and it applies to whichever operative is assisted, attacker or retaliator.
+   - Injured operatives' Hit is worse by 1 here too.
 3. **Resolve:** starting with the attacker, players alternate resolving one success: either **strike** (deal damage) or **block** (cancel one opposing unresolved success, using the block rules above).
    - When one side runs out, the other resolves the rest.
    - It ends early if either operative is incapacitated.
@@ -217,6 +220,10 @@ The working rules reference for this project: what the official rules say, in ou
 | Silent | Can Shoot while on Conceal. |
 | Stun | If any crit is kept, the target gets −1 APL until the end of its next activation. |
 | Torrent x | Pick a primary target, then any number of other valid targets within x of it that aren't within a friendly operative's control range. Shoot each, rolled separately. |
+
+- **The same rule twice** (appendix): a weapon gains no benefit from having a weapon rule more than once. For a rule with an x (Lethal, Piercing, Blast…), pick which x to use. Accurate is the exception: two or more instances count as Accurate 2.
+- **Obscured beats crit rules:** an obscured target's crits are kept as normal successes and "cannot be changed to critical successes (this takes precedence over all other rules)". So Punishing, Rending, Severe, Devastating, Piercing Crits and Stun can't trigger.
+- **"Cannot be selected as a valid target, taking precedence over all other rules (e.g. Seek, Vantage terrain) except being within 2"":** used by In Position (Hernkyn Yaegirs), Evasive Drone (Vespid Oversight Drone) and Sneaky Zogger (Kommando Grot). Being in cover counts even against Seek and Vantage, but nobody is in cover within 2".
 
 ## 6. Terrain and killzones
 
@@ -556,7 +563,10 @@ All of these were replaced in Approved Ops 2025.
 - **Visibility stand-in (user's choice, 25 Oct 2026):** the rules check visibility from the shooter's head to any part of the target model, in 3D, separately from the base-to-base targeting lines. The app can't see heights, so it treats Heavy terrain as tall and solid. If every targeting line crosses Heavy terrain (wholly intervening), the target counts as not visible, so not a valid target. Partly behind Heavy terrain it's obscured, as the rules say. At the table, a model seen over a low wall or through a window is really obscured, not hidden.
 
 **Shooting measurements (25 Oct 2026, Sightline weapon picker, `src/rules/weaponRules.js`):**
-- **Picking a weapon:** with a shooter chosen, pick a ranged weapon profile (filtered by loadout) or a grenade the player took (Frag, Krak, Stun).
+- **Picking a weapon:** with a shooter chosen, pick one of these:
+  - a ranged weapon profile, filtered by loadout;
+  - an equipment weapon the player took, for the operatives it's for, such as Kommando Dynamite or Harpoon ("excluding BOMB SQUIG and GROT");
+  - a grenade: Frag, Krak or Stun from equipment, or from the operative's own Grenadier-style ability (frag and krak with Hit +1). Kommando Boys' Tactical Wot-Notz gives the Stun grenade.
 - **Range:** a dashed ring; targets out of range are invalid.
 - **Area rules:**
   - **Blast:** every operative within x of the target, friendlies included, visible to the target.
@@ -572,6 +582,97 @@ All of these were replaced in Approved Ops 2025.
   - Heavy and the rest show as chips.
 - **Smoke** (Smoke Grenade markers): wholly within the 1" area means obscured to anything more than 2" away, and vice versa; Piercing 2 drops to 1.
 
+**Sightline vs Shoot/Fight (26 Oct 2026):**
+- **Sightline:** the line-of-sight check only: scan, badges and cover/obscured/not-valid chips, with no weapons.
+- **Shoot/Fight:**
+  - Tap an operative. Its weapon list opens with a **Shoot | Fight** switch; it starts on Fight if an enemy is within its control range.
+  - The list shows every ranged or melee weapon for that action, including equipment weapons and grenades.
+  - Then tap the enemy.
+
+**Shot and fight stats (25–26 Oct 2026, `src/rules/shooting/`):** with an attacker, a target and a weapon picked, Shoot/Fight shows what each player rolls.
+- **Where it shows:**
+  - **Projector:** nothing in the play area. Each player's side bar keeps their name and initiative, and swaps the rest for their half of the attack (with their CP) until the tool is cleared.
+    - Shoot: the scan, range and area rings stay on the mat.
+    - Fight: the attacker's 1" ring, a line to the enemy, and ASSIST +1 tags.
+    - The side bars list what applies; the options still on offer are only on the iPads.
+  - **iPads:** a stats drawer on the right edge, **closed for each new attack** until its handle (Shot / Fight) is tapped. It shows on the attacker's map, and on the defender's iPad (any tab) when the attack is on their operative.
+- **Fights:**
+  - Both halves are attack dice: the attacker's chosen melee weapon, and the defender's retaliation weapon, which the defender picks in their drawer (`shot/weapon`; it defaults to their first).
+  - Assists and injured change Hit; Brutal, Shock and the rest show as rules.
+  - A resolve reminder covers strike or block, normal blocks normal, crit blocks either.
+  - Not within control range: can't fight.
+  - **Hand-checked melee rules:**
+    - Hernkyn Yaegirs: Masterful Bladework (fighting, or retaliating on Conceal); Plasma Knives (Balanced on the better datacard knife); Fallen Kin; Tracker (fighting only).
+    - Vespid Stingwings: Sting; Hardened Exoskeleton (less damage to it); Vicious Venom and Aggression Stimulant (fighting only, not the Drone).
+    - Kommandos: WAAAGH!; Kunnin' But Brutal (a toggle, since the charge isn't tracked); Just A Scratch; the Choppas equipment weapon.
+  - Other teams get fight suggestions read from their text, as for shooting.
+- **Colours:** green means better than the datacard for whoever rolls it; red means worse. Colour always comes with an arrow (▲ / ▼), never on its own.
+- **Why it changed:**
+  - Every changed number lists its causes as pills right under it, each naming its source, e.g. "▼ Piercing 1 · Neutron Charge" (or "· weapon"), "▲ Assist · Hit +1", "▼ Obscured: crits count as normal", "▲ Ignores Piercing · Camouflaged".
+  - The engine records each applied rule's effect (`effects.trace`), and `profile.js` turns that into reasons.
+  - The projector shows up to 3 per number.
+- **Attack numbers:**
+  - **Dice:** Atk, with "rest + n AUTO" for Accurate.
+  - **Hit:** never better than 2+ or worse than 6+.
+  - **Crit:** Lethal, but a crit must also be a success. With obscured it shows "—" and the crit rules are struck out.
+  - **Damage:** Normal/Crit, plus Devastating per crit.
+  - **Re-rolls and rules:** listed, with added rules green, rules stopped by obscured struck out, and rules removed by the defender (e.g. Piercing ignored) in red.
+- **Defence numbers:**
+  - **Dice:** 3 minus Piercing (smoke turns Piercing 2 into 1; Piercing Crits shows "n if crit kept").
+  - **Auto saves:** the cover save, none against Saturate. Vantage or Weavewërke give "1 crit or 2 normal", Camouflaged makes them crits, Skulk About adds one more.
+  - **Save** and how many dice are rolled.
+- **Modifiers:**
+  - **What they are:** every rule that applies, or could, listed under the half whose player controls it. That includes core rules, strategy ploys active this turning point, firefight ploys, faction rules, abilities, equipment and weapon rules.
+  - **States:** ✓ applies (its conditions are checked), ● / ○ on or off, i note, – in play but its conditions aren't met (with the reason), ! stops or limits the shot.
+  - **Toggling:** each player toggles only their own, on their own iPad (`shot/toggle`), and the projector and the other iPad follow. Toggles are kept per shooter and target for the turning point.
+- **Firefight ploys and limited equipment:**
+  - Turning one on spends its CP and counts a use this turning point.
+  - Turning it off again in the same shot refunds both.
+  - Once used, another shot shows it as USED.
+  - Command Re-roll can be used more than once.
+- **Hand-checked teams:** Hernkyn Yaegirs, Vespid Stingwings and Kommandos, checked against the current team rules.
+  - **Hernkyn Yaegirs:**
+    - Hidden Engagement: in cover from every point of the target's base, since the opponent picks the point.
+    - In Position.
+    - Tough Survivalists, as a note.
+    - Sturdy.
+    - Stalwart Defence.
+    - The Fallen Kin marker within 3".
+    - Pan Spectral Visor.
+    - Tracker.
+    - Bipod.
+    - Weavewërke Cloak.
+    - Firestorm and Stabilised Bolt Shells.
+    - KV-Ceramide Undersuit: re-roll vs Blast/Torrent, and no x" Devastating splash.
+    - Outright Conviction, Brazen Killer and Concealed Position, as notes.
+  - **Vespid Stingwings:**
+    - Airborne Predators.
+    - Aerial Agility.
+    - Neutron Charge, using `unitState.movedTp` to remember moving this turning point.
+    - Communion, both the targeting point and the re-roll.
+    - Warrior Instincts: off once a Communion point is spent.
+    - Aerial Guidance: the shooter must be visible to and within 6" of a drone that can see the target.
+    - Ocelli: +3" for Vantage.
+    - Neutron Overload.
+    - Camouflaged, Ghost Rig and Evasive Drone.
+    - Skytorch: only operatives in the torch zone between the start and end of its move; no cover or obscured.
+  - **Kommandos:**
+    - DAKKA! DAKKA! DAKKA!
+    - Skulk About.
+    - Just A Scratch (not Bomb Squigs or Grots).
+    - Sneaky Zogger.
+    - Collapsible Stocks.
+    - Explosive: the Squig is the primary target.
+    - Boom!, as a note.
+- **Communion, how the app reads it:**
+  - The rule says a Stingwing "can only target the closest enemy operative within 8"" without a Communion point. The app reads that literally: the closest enemy, valid target or not, ignoring enemies within control range of other Stingwings.
+  - The official FAQ adds that a target more than 8" away always needs a point.
+- **Other teams:** suggestions are read from their rules text: active strategy ploys, firefight ploys (with their 1CP), equipment taken, and the two operatives' abilities.
+  - **Recognised:** granted weapon rules, Hit/Atk/Dmg/Save changes (including "to a maximum of 3+"), ignore Piercing/Saturate, extra or crit cover saves, re-rolls, "cannot be obscured", "not a valid target" and damage reduction.
+  - **When they apply:** only plain, unconditional text from an active strategy ploy or an ability applies by itself. Everything else is offered as a toggle marked "check its conditions".
+  - **Left out:** rules with several options under headings.
+- **Moved this activation:** the operative is active (or counteracting) and still holds the latest move on the board.
+
 **Not modelled:** scoring is entered by hand, and the app doesn't automate VP conditions.
 
 **Order tags:** the red/black swap is the user's table convention. The rules flip every token to its light (ready) side in each Ready step; tracking ready/expended by alternating colours each TP gives the same information.
@@ -579,4 +680,10 @@ All of these were replaced in Approved Ops 2025.
 ## 13. Data caveats in this repo
 
 - **Kill team data:** `src/data/kt24_v4.json` (from vjosset/killteamjson) can lag behind balance dataslates; for example, it may not have the Aug 2026 Raveners Wounds change or the Apr 2026 Tomb Crawler 18W. **Spectre Squad** (released May 2026 with Terror on Devlan) is missing.
+- **Corrected against the current rules (25 Oct 2026):** every weapon profile of the three hand-checked teams was compared with Wahapedia's team pages. Fixed:
+  - Hernkyn Yaegir bolt shotgun (long range) is 4 / 5+ / **2/3**, not 2/2 (Theyn and Warrior).
+  - Stabilised Bolt Shells also give **Accurate 1**.
+  - The Kommando Burna Boy's burna (deluge) has **Seek**, not Seek Light.
+  - The Comms Boy's weapon is the **shokka pistol** (Collapsible Stocks names it).
+  - Vespid Stingwings matched the June 2026 official rules.
 - **Kill team archetypes:** each team's tac op archetypes are in the `archetypes` field (e.g. "Seek & Destroy/Security").

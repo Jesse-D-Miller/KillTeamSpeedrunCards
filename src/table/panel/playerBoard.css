@@ -65,6 +65,31 @@
     'facts phase cards';
 }
 
+.pb-board.is-portrait.is-combat {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-areas: 'id' 'combat' 'mods';
+}
+
+/* Nothing extra in effect: the numbers take the whole board. */
+.pb-board.is-portrait.is-combat:not(:has(.pb-combat-mods)) {
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: 'id' 'combat';
+}
+
+.pb-board.is-landscape.is-combat:not(:has(.pb-combat-mods)) {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'id' 'combat';
+}
+
+.pb-board.is-landscape.is-combat {
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'id mods'
+    'combat mods';
+}
+
 .pb-area-id { grid-area: id; min-width: 0; }
 .pb-area-score { grid-area: score; min-width: 0; }
 .pb-area-turn { grid-area: turn; min-width: 0; }
@@ -748,4 +773,355 @@
   border: 0;
   background: var(--seat-color);
   color: #0b0d10;
+}
+
+/* ---- combat: a shot or fight in progress takes over the board ----
+   Read from across the table: the outcome numbers are the biggest thing on the board,
+   then the reasons each changed (arrow + colour, never colour alone), then the rules. */
+
+.pb-area-combat {
+  display: contents;
+}
+
+.pb-board.is-combat {
+  --good: #4ade80;
+  --good-ink: #b6f5cd;
+  --bad: #f87171;
+  --bad-ink: #fecaca;
+}
+
+.pb-combat {
+  grid-area: combat;
+  align-self: start;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(2.4cqmin * var(--fit, 1));
+  border-color: color-mix(in srgb, var(--seat-color) 60%, transparent);
+}
+
+.pb-combat-mods {
+  grid-area: mods;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pb-combat-band {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(2cqmin * var(--fit, 1));
+}
+
+.pb-section .pb-combat-role {
+  color: var(--seat-color);
+  font-size: calc(6.4cqmin * var(--fit, 1));
+  letter-spacing: 0.14em;
+}
+
+.pb-combat-cp {
+  padding: calc(0.4cqmin * var(--fit, 1)) calc(2.4cqmin * var(--fit, 1));
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.1);
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  font-size: calc(5.4cqmin * var(--fit, 1));
+  font-weight: 600;
+}
+
+.pb-combat-who {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(2cqmin * var(--fit, 1));
+}
+
+.pb-combat-name {
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  font-size: calc(7.2cqmin * var(--fit, 1));
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.pb-combat-wounds {
+  color: var(--muted);
+  font-size: calc(4.8cqmin * var(--fit, 1));
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.pb-combat-weapon {
+  font-size: calc(5.2cqmin * var(--fit, 1));
+}
+
+.pb-combat-weapon span {
+  margin-left: calc(1.5cqmin * var(--fit, 1));
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pb-combat-status {
+  margin: 0;
+  padding: calc(1.5cqmin * var(--fit, 1)) calc(2.5cqmin * var(--fit, 1));
+  border-radius: calc(2.5cqmin * var(--fit, 1));
+  font-size: calc(4.8cqmin * var(--fit, 1));
+  font-weight: 700;
+}
+
+.pb-combat-status.is-bad {
+  background: rgba(248, 113, 113, 0.16);
+  color: var(--bad-ink);
+}
+
+.pb-combat-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(1.6cqmin * var(--fit, 1));
+}
+
+.pb-board.is-landscape .pb-combat-tiles {
+  grid-template-columns: none;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+}
+
+/* Portrait boards are tall and narrow: the numbers become a ledger, one stat per row,
+   the big value on the left and the reasons it changed stacked beside it. */
+.pb-board.is-portrait .pb-combat-tiles {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pb-board.is-portrait .pb-combat-tile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'label label'
+    'value reasons'
+    'meta meta';
+  align-items: center;
+  column-gap: calc(3cqmin * var(--fit, 1));
+  padding: calc(2.4cqmin * var(--fit, 1)) calc(3.2cqmin * var(--fit, 1));
+}
+
+.pb-board.is-portrait .pb-combat-label {
+  grid-area: label;
+  font-size: calc(5cqmin * var(--fit, 1));
+}
+
+.pb-board.is-portrait .pb-combat-value {
+  grid-area: value;
+  font-size: calc(22cqmin * var(--fit, 1));
+}
+
+.pb-board.is-portrait .pb-combat-meta {
+  grid-area: meta;
+  font-size: calc(4.8cqmin * var(--fit, 1));
+}
+
+.pb-board.is-portrait .pb-combat-mods {
+  align-self: start;
+}
+
+.pb-board.is-portrait .pb-combat-reasons {
+  grid-area: reasons;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
+}
+
+.pb-board.is-portrait .pb-combat-reasons li {
+  font-size: calc(5cqmin * var(--fit, 1));
+}
+
+.pb-board.is-portrait .pb-section .pb-combat-role {
+  font-size: calc(8cqmin * var(--fit, 1));
+}
+
+.pb-board.is-portrait .pb-combat-cp {
+  font-size: calc(7cqmin * var(--fit, 1));
+}
+
+.pb-board.is-portrait .pb-combat-name {
+  font-size: calc(9cqmin * var(--fit, 1));
+}
+
+.pb-board.is-portrait .pb-combat-weapon,
+.pb-board.is-portrait .pb-combat-wounds {
+  font-size: calc(6cqmin * var(--fit, 1));
+}
+
+.pb-board.is-portrait .pb-combat-rules li,
+.pb-board.is-portrait .pb-combat-mods li,
+.pb-board.is-portrait .pb-combat-status {
+  font-size: calc(5.4cqmin * var(--fit, 1));
+}
+
+.pb-combat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.6cqmin * var(--fit, 1));
+  min-width: 0;
+  padding: calc(1.8cqmin * var(--fit, 1)) calc(2.2cqmin * var(--fit, 1));
+  border: calc(0.4cqmin * var(--fit, 1)) solid transparent;
+  border-radius: calc(3cqmin * var(--fit, 1));
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pb-combat-tile.is-better {
+  border-color: rgba(74, 222, 128, 0.4);
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.pb-combat-tile.is-worse {
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.13);
+}
+
+.pb-combat-label,
+.pb-combat-meta {
+  color: var(--muted);
+  font-size: calc(3.9cqmin * var(--fit, 1));
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pb-combat-meta {
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.pb-combat-value {
+  display: flex;
+  align-items: baseline;
+  gap: calc(1cqmin * var(--fit, 1));
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  font-size: calc(16cqmin * var(--fit, 1));
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.pb-combat-tile.is-better > .pb-combat-value,
+.pb-combat-value .is-better {
+  color: var(--good);
+}
+
+.pb-combat-tile.is-worse > .pb-combat-value,
+.pb-combat-value .is-worse {
+  color: var(--bad);
+}
+
+.pb-combat-value .is-same {
+  color: var(--ink);
+}
+
+.pb-combat-arrow {
+  font-size: 0.4em;
+}
+
+.pb-combat-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(1cqmin * var(--fit, 1));
+  margin: calc(0.8cqmin * var(--fit, 1)) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pb-combat-reasons li {
+  padding: calc(0.4cqmin * var(--fit, 1)) calc(2cqmin * var(--fit, 1));
+  border-radius: 99px;
+  font-size: calc(4.4cqmin * var(--fit, 1));
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.pb-combat-reasons li.is-better {
+  background: rgba(74, 222, 128, 0.22);
+  color: var(--good-ink);
+}
+
+.pb-combat-reasons li.is-worse {
+  background: rgba(248, 113, 113, 0.24);
+  color: var(--bad-ink);
+}
+
+.pb-combat-reasons li.is-info {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+}
+
+.pb-combat-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(1.4cqmin * var(--fit, 1));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pb-combat-rules li {
+  padding: calc(0.6cqmin * var(--fit, 1)) calc(2.4cqmin * var(--fit, 1));
+  border: calc(0.4cqmin * var(--fit, 1)) solid rgba(255, 255, 255, 0.24);
+  border-radius: 99px;
+  font-size: calc(4.4cqmin * var(--fit, 1));
+  font-weight: 600;
+}
+
+.pb-combat-rules li.is-added {
+  border-color: rgba(74, 222, 128, 0.6);
+  color: var(--good-ink);
+}
+
+.pb-combat-rules li.is-blocked {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.pb-combat-rules li.is-removed {
+  border-color: rgba(248, 113, 113, 0.6);
+  color: var(--bad-ink);
+  text-decoration: line-through;
+}
+
+.pb-combat-mods ul {
+  display: flex;
+  flex-direction: column;
+  gap: calc(1.4cqmin * var(--fit, 1));
+  margin: calc(2cqmin * var(--fit, 1)) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pb-combat-mods li {
+  display: flex;
+  align-items: baseline;
+  gap: calc(2cqmin * var(--fit, 1));
+  padding: calc(1.2cqmin * var(--fit, 1)) calc(2.2cqmin * var(--fit, 1));
+  border-radius: calc(2.4cqmin * var(--fit, 1));
+  background: rgba(255, 255, 255, 0.05);
+  font-size: calc(4.6cqmin * var(--fit, 1));
+  line-height: 1.3;
+}
+
+.pb-combat-mods li.is-on {
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.pb-combat-mods li.is-on.is-bad,
+.pb-combat-mods li.is-warning {
+  background: rgba(248, 113, 113, 0.16);
+  color: var(--bad-ink);
+}
+
+.pb-combat-mods li > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.pb-combat-icon {
+  flex: none;
+  font-weight: 800;
 }

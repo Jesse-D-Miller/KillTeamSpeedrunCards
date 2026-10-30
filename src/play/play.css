@@ -1344,6 +1344,15 @@
   max-width: 19rem;
 }
 
+.weapon-mode {
+  flex-wrap: nowrap;
+  padding-bottom: 0.25rem;
+}
+
+.weapon-mode button {
+  flex: 1;
+}
+
 .rail-flyout button.flyout-weapon {
   display: flex;
   flex-direction: column;
@@ -1362,4 +1371,557 @@
 
 .rail-flyout button.flyout-weapon.is-selected .flyout-weapon-rules {
   color: rgba(11, 11, 11, 0.7);
+}
+
+/* ---- stats drawer (right edge): what each player rolls in a shot or fight ----
+   Read top-down: matchup and status, my side, their side. Within a side the outcome
+   numbers are largest, each with the reasons it changed directly underneath. Better and
+   worse use colour and an arrow (never colour alone); text colours keep 4.5:1 or more
+   on the dark glass. Spacing follows a 4/8/12/16 scale; touch targets are 44px+. */
+
+.attack-drawer {
+  --good: #4ade80;
+  --good-ink: #a7f3c0;
+  --good-tint: rgba(74, 222, 128, 0.12);
+  --bad: #f87171;
+  --bad-ink: #fecaca;
+  --bad-tint: rgba(248, 113, 113, 0.13);
+  --line: rgba(255, 255, 255, 0.1);
+  --faint: rgba(255, 255, 255, 0.05);
+}
+
+.attack-drawer .drawer-panel {
+  width: min(400px, 44vw);
+  max-height: calc(100dvh - 24px);
+  padding: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--text);
+  -webkit-overflow-scrolling: touch;
+}
+
+.attack-handle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0;
+  writing-mode: vertical-rl;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.attack-handle .tool-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.attack-handle-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--seat-color, var(--accent));
+  animation: attack-dot 1.2s ease-in-out infinite;
+}
+
+@keyframes attack-dot {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.combat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* summary: what's happening, and whether it can */
+.combat-summary {
+  display: grid;
+  gap: 4px;
+}
+
+.combat-kind {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.combat-matchup {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.combat-matchup span {
+  color: var(--text-muted);
+  padding: 0 2px;
+}
+
+.combat-status {
+  justify-self: start;
+  margin: 2px 0 0;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.combat-status.is-ok {
+  background: var(--good-tint);
+  color: var(--good-ink);
+}
+
+.combat-status.is-bad {
+  background: var(--bad-tint);
+  color: var(--bad-ink);
+  border-radius: 10px;
+}
+
+/* a side: header, weapon, numbers, rules, modifiers */
+.combat-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--side);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.combat-side.is-mine {
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.combat-side-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  column-gap: 8px;
+}
+
+.combat-role {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--side);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.combat-you {
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--side) 22%, transparent);
+  color: var(--text);
+  letter-spacing: 0.06em;
+}
+
+.combat-side-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.combat-wounds {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.combat-wounds-bar {
+  width: 44px;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--faint);
+}
+
+.combat-wounds-bar span {
+  display: block;
+  height: 100%;
+  background: var(--good);
+}
+
+.combat-wounds-bar span.is-injured {
+  background: var(--bad);
+}
+
+.combat-weapon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.combat-weapon span {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.combat-picker {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--faint);
+}
+
+.combat-picker button {
+  flex: 1;
+  min-height: 40px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.combat-picker button.is-selected {
+  background: color-mix(in srgb, var(--side) 30%, transparent);
+  color: var(--text);
+}
+
+/* the numbers: two per row, each with its reasons underneath */
+.combat-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.combat-tiles > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.combat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--faint);
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.combat-tile.is-better {
+  border-color: color-mix(in srgb, var(--good) 35%, transparent);
+  background: var(--good-tint);
+}
+
+.combat-tile.is-worse {
+  border-color: color-mix(in srgb, var(--bad) 35%, transparent);
+  background: var(--bad-tint);
+}
+
+.combat-tile-label,
+.combat-tile-meta {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.combat-tile-meta {
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.combat-tile-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.combat-tile.is-better > .combat-tile-value,
+.combat-tile-value .is-better {
+  color: var(--good);
+}
+
+.combat-tile.is-worse > .combat-tile-value,
+.combat-tile-value .is-worse {
+  color: var(--bad);
+}
+
+.combat-tile-value .is-same {
+  color: var(--text);
+}
+
+.combat-tile-arrow {
+  font-size: 0.9rem;
+}
+
+.combat-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.combat-reason {
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.combat-reason.is-better {
+  background: color-mix(in srgb, var(--good) 22%, transparent);
+  color: var(--good-ink);
+}
+
+.combat-reason.is-worse {
+  background: color-mix(in srgb, var(--bad) 24%, transparent);
+  color: var(--bad-ink);
+}
+
+.combat-reason.is-info {
+  background: var(--faint);
+  color: var(--text-muted);
+}
+
+/* weapon rules and re-rolls */
+.combat-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.combat-rules li {
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.combat-rules em {
+  color: var(--text-muted);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.combat-rules li.is-added {
+  border-color: color-mix(in srgb, var(--good) 55%, transparent);
+  color: var(--good-ink);
+}
+
+.combat-rules li.is-blocked {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.combat-rules li.is-removed {
+  border-color: color-mix(in srgb, var(--bad) 55%, transparent);
+  color: var(--bad-ink);
+  text-decoration: line-through;
+}
+
+/* modifiers */
+.combat-group {
+  display: grid;
+  gap: 6px;
+}
+
+.combat-group h4,
+.combat-reminders summary {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.combat-reminders summary {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.combat-mods,
+.combat-warnings {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.combat-mod {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--faint);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.combat-mod.is-on {
+  background: var(--good-tint);
+}
+
+.combat-mod.is-on.is-bad,
+.combat-mod.is-warning {
+  background: var(--bad-tint);
+  color: var(--bad-ink);
+}
+
+.combat-mod.is-note,
+.combat-mod.is-inactive {
+  color: var(--text-muted);
+}
+
+.combat-mod-icon {
+  flex: none;
+  width: 1em;
+  font-weight: 900;
+  text-align: center;
+}
+
+.combat-mod-text {
+  min-width: 0;
+}
+
+.combat-options {
+  display: grid;
+  gap: 6px;
+}
+
+.combat-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--faint);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.combat-option.is-on {
+  border-color: color-mix(in srgb, var(--good) 55%, transparent);
+  background: var(--good-tint);
+}
+
+.combat-option:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.combat-switch {
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: background-color 150ms ease;
+}
+
+.combat-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 150ms ease;
+}
+
+.combat-option.is-on .combat-switch {
+  background: var(--good);
+}
+
+.combat-option.is-on .combat-switch::after {
+  transform: translateX(16px);
+}
+
+.combat-option-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.combat-option-text span {
+  color: var(--text-muted);
+}
+
+.combat-cost {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(250, 204, 21, 0.16);
+  color: #fde68a;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.combat-cost.is-used {
+  background: var(--faint);
+  color: var(--text-muted);
+}
+
+.combat-footnote {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combat-tile,
+  .combat-option,
+  .combat-switch,
+  .combat-switch::after {
+    transition: none;
+  }
+
+  .attack-handle-dot {
+    animation: none;
+  }
 }

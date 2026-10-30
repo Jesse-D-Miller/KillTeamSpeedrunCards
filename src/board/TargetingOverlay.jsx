@@ -1,20 +1,20 @@
-import {
-  analyseTarget,
-  clampToBase,
-  defaultShooterPoint,
-  glanceStatus,
-  splashTargets,
-  statusOf,
-} from '../../shared/targeting.js'
-import { rangedWeaponsFor, weaponLabel, weaponRuleChips } from '../rules/weaponRules.js'
+import { useMemo } from 'react'
+import { clampToBase, splashTargets, statusOf } from '../../shared/targeting.js'
 import { tokenRadiusIn } from '../../shared/game.js'
+import { computeFight } from '../rules/shooting/fight.js'
+import { computeShot, glanceShot } from '../rules/shooting/index.js'
+import { rangedWeaponsFor } from '../rules/weaponRules.js'
 import { BOARD, toSvgY } from './boardData.js'
 
-// The Sightline tool's picture (see shared/targeting.js for the rules):
-// - a status badge on every enemy of the shooter, at a glance;
+// The Sightline and Shoot/Fight tools' pictures (rules: shared/targeting.js and
+// src/rules/shooting):
+// - a status badge on every enemy of the shooter, at a glance, with every rule applied;
 // - for the chosen target, a scan from the shooter's point over the facing side of
 //   its base: green where it's clear, red behind Heavy terrain that obscures it;
-// - chips beside the target and shooter with the roll effects that apply.
+// - Sightline: chips beside the target and shooter say what applies;
+// - Shoot: the weapon's range and area rings, and who an area rule catches. The numbers
+//   go to the players' side bars (projector) and stats drawers (iPads), not the board;
+// - Fight: the attacker's control range, a line to the enemy, and who's assisting.
 
 const BADGE = { valid: '✓', cover: 'C', obscured: 'O', invalid: '✕' }
 const CHIP_HEIGHT = 0.4
@@ -81,11 +81,11 @@ function Chips({ token, chips }) {
 }
 
 const toneOf = (text) =>
-  /CAN’T|NOT VALID|FRIENDLY/.test(text)
+  /CAN’T|NOT VALID|FRIENDLY|INJURED/.test(text)
     ? 'bad'
     : /ACCURATE|CAN SHOOT/.test(text)
       ? 'good'
-      : /AWAY|VISIBILITY|WEAPON|RNG|BLAST|TORRENT|DEVASTATING|HEAVY|PIERCING|LETHAL/.test(text)
+      : /WEAPON|RNG|BLAST|TORRENT|DEVASTATING|HEAVY|PIERCING|LETHAL/.test(text)
         ? 'info'
         : 'warn'
 
@@ -95,77 +95,156 @@ const SPLASH_LABEL = { blast: 'BLAST', torrent: 'TORRENT', stun: 'STUN' }
 const areaOf = (rules) =>
   rules?.blast ?? rules?.torrent ?? rules?.devastating?.distance ?? rules?.stunArea ?? null
 
-// payload: { shooterId, targetId, point: { dx, dy } | null } (point is relative to the
-// shooter; without it the lines start at the shooter's edge closest to each target).
-// payload.weaponId: one of rangedWeaponsFor(shooter); its rules feed the checks.
-function TargetingOverlay({ tokens, players, markers = [], layout, payload, maxWoundsOf }) {
-  const shooter = tokens.find((token) => token.id === payload.shooterId)
-  if (!shooter || statusOf(players, shooter).dead) return null
-  const weapon = payload.weaponId
-    ? rangedWeaponsFor({ players }, shooter).find((candidate) => candidate.id === payload.weaponId) ?? null
-    : null
-  const rules = weapon?.rules ?? null
-  const pointFor = (target) =>
-    payload.point
-      ? clampToBase(shooter, { x: shooter.x + payload.point.dx, y: shooter.y + payload.point.dy })
-      : defaultShooterPoint(shooter, target)
-  const analyse = (target) =>
-    analyseTarget({
-      tokens,
-      players,
-      walls: layout.walls,
-      areas: layout.areas,
-      shooter,
-      target,
-      point: pointFor(target),
-      maxWoundsOf,
-      samples: SCAN_SAMPLES,
-      weapon: rules,
-      markers,
-    })
-  const enemies = tokens.filter(
-    (token) => token.unitKey && token.seat && token.seat !== shooter.seat && !statusOf(players, token).dead,
+// What the target's chips say without a weapon: why it can't be shot, or its cover
+// and obscured status once every rule is applied.
+const targetChipsOf = (shot) => {
+  if (!shot.valid) return shot.blocks.map((block) => `✕ NOT VALID · ${block.text.toUpperCase()}`)
+  const { analysis, state } = shot
+  const chips = []
+  if (state.choose) chips.push('COVER OR OBSCURED · DEFENDER CHOOSES')
+  else {
+    if (state.cover) chips.push(analysis.vantageCoverImprove ? 'VANTAGE · COVER SAVE AS CRIT, OR +1 COVER SAVE' : 'COVER · 1 AUTO SAVE')
+    if (state.obscured) chips.push(analysis.terrainObscured ? 'OBSCURED · −1 SUCCESS · NO CRITS' : 'SMOKE · OBSCURED · −1 SUCCESS · NO CRITS')
+  }
+  if (!state.cover && analysis.tooClose && analysis.lines.some((line) => line.crossings.some((crossing) => crossing.covers))) {
+    chips.push('WITHIN 2" · NO COVER')
+  }
+  return chips
+}
+
+// And the shooter's: what stops it shooting, injured, and Accurate from Vantage.
+const shooterChipsOf = (shot) =>
+  shot.modifiers.attack
+    .filter((modifier) => modifier.on && modifier.source === 'core')
+    .map((modifier) =>
+      modifier.mode === 'warning'
+        ? `CAN’T SHOOT · ${modifier.text.toUpperCase()}`
+        : modifier.id === 'core-injured'
+          ? 'INJURED · HIT WORSE BY 1'
+          : modifier.id === 'core-vantage-accurate'
+            ? `VANTAGE · ACCURATE ${modifier.effect.accurate}`
+            : null,
+    )
+    .filter(Boolean)
+
+// game: the shared game state (tokens, players, markers, battle.shots).
+// payload: { shooterId, targetId, point: { dx, dy } | null, weaponId } (point is
+// relative to the shooter; without it the lines start at the shooter's edge closest
+// to each target).
+// payload.tool 'target' (Sightline) or 'attack' (Shoot/Fight, with mode and weaponId).
+function TargetingOverlay({ game, layout, payload }) {
+  if (payload.tool === 'attack' && payload.mode === 'fight') return <FightOverlay game={game} layout={layout} payload={payload} />
+  return <ShootOverlay game={game} layout={layout} payload={payload} />
+}
+
+const FIGHT_TAG = 'ASSIST +1'
+
+// A fight: the attacker's 1" control range, a line to the enemy, and assist tags.
+function FightOverlay({ game, layout, payload }) {
+  const fight = useMemo(() => computeFight({ game, layout, payload }), [game, layout, payload])
+  const tokens = game.tokens ?? []
+  const attacker = tokens.find((token) => token.id === payload.shooterId)
+  if (!attacker || statusOf(game.players, attacker).dead) return null
+  const target = fight ? tokens.find((token) => token.id === payload.targetId) : null
+  const assisting = fight ? [...fight.assists.attacker, ...fight.assists.defender] : []
+  return (
+    <g className="targeting is-fight" data-shooter={attacker.id} data-target={target?.id}>
+      <circle className="fight-range-ring" cx={attacker.x} cy={toSvgY(attacker.y)} r={tokenRadiusIn(attacker) + 1} />
+      {target ? (
+        <>
+          <line
+            className={`fight-line${fight.valid ? '' : ' is-invalid'}`}
+            x1={attacker.x}
+            y1={toSvgY(attacker.y)}
+            x2={target.x}
+            y2={toSvgY(target.y)}
+            data-fight-line
+          />
+          <circle className="fight-target-ring" cx={target.x} cy={toSvgY(target.y)} r={tokenRadiusIn(target) + 0.12} />
+          {fight.valid ? null : <Chips token={target} chips={[{ text: '✕ NOT WITHIN CONTROL RANGE', tone: 'bad' }]} />}
+        </>
+      ) : null}
+      {assisting.map((id) => {
+        const token = tokens.find((candidate) => candidate.id === id)
+        if (!token) return null
+        const width = FIGHT_TAG.length * CHIP_CHAR + 0.3
+        const y = toSvgY(token.y) + tokenRadiusIn(token) + 0.05
+        return (
+          <g key={id} className="target-splash is-assist" data-assist-for={id}>
+            <rect x={token.x - width / 2} y={y} width={width} height={CHIP_HEIGHT} rx={CHIP_HEIGHT / 2} />
+            <text x={token.x} y={y + CHIP_HEIGHT / 2} textAnchor="middle" dominantBaseline="central" style={{ fontSize: CHIP_FONT }}>
+              {FIGHT_TAG}
+            </text>
+          </g>
+        )
+      })}
+    </g>
   )
-  const target = enemies.find((token) => token.id === payload.targetId) ?? null
-  const result = target ? analyse(target) : null
-  const caught =
-    target && rules
-      ? splashTargets({
-          tokens,
-          players,
-          walls: layout.walls,
-          areas: layout.areas,
-          markers,
-          shooter,
-          target,
-          point: pointFor(target),
-          weapon: rules,
-          maxWoundsOf,
-        })
-      : []
+}
+
+function ShootOverlay({ game, layout, payload }) {
+  // Only the Shoot tool has a weapon; the Sightline is the line-of-sight check alone.
+  const shooting = payload.tool === 'attack'
+  const view = useMemo(() => {
+    const { tokens = [], players, markers = [] } = game
+    const shooter = tokens.find((token) => token.id === payload.shooterId)
+    if (!shooter || statusOf(players, shooter).dead) return null
+    const weapon =
+      shooting && payload.weaponId
+        ? rangedWeaponsFor(game, shooter).find((candidate) => candidate.id === payload.weaponId) ?? null
+        : null
+    const enemies = tokens.filter(
+      (token) => token.unitKey && token.seat && token.seat !== shooter.seat && !statusOf(players, token).dead,
+    )
+    const target = enemies.find((token) => token.id === payload.targetId) ?? null
+    const shot = target ? computeShot({ game, layout, payload, samples: SCAN_SAMPLES }) : null
+    const statusOfShot = (result) =>
+      !result.valid ? 'invalid' : result.state.obscured ? 'obscured' : result.state.cover ? 'cover' : 'valid'
+    const badges = enemies.map((enemy) => ({
+      enemy,
+      status: enemy === target ? statusOfShot(shot) : glanceShot({ game, layout, payload: { ...payload, targetId: enemy.id } }),
+    }))
+    const rules = shot?.rules ?? weapon?.rules ?? null
+    const caught =
+      shot && rules
+        ? splashTargets({
+            tokens,
+            players,
+            walls: layout.walls,
+            areas: layout.areas,
+            markers,
+            shooter,
+            target,
+            point: shot.point,
+            weapon: rules,
+            immuneToDevastating: shot.immuneToDevastating,
+          })
+        : []
+    return { shooter, weapon, target, shot, badges, rules, caught }
+  }, [game, layout, payload, shooting])
+  if (!view) return null
+  const { shooter, target, shot, badges, rules, caught } = view
+
   const friendlyHits = caught.filter((entry) => entry.kind === 'blast' && entry.friendly).length
   const area = target ? areaOf(rules) : null
-  const point = target ? pointFor(target) : payload.point ? pointFor(shooter) : null
-
-  const targetChips = result
-    ? [
-        ...result.reasons.map((reason) => `✕ NOT VALID · ${reason.toUpperCase()}`),
-        ...result.targetChips,
-        ...(friendlyHits ? [`BLAST HITS ${friendlyHits} FRIENDLY`] : []),
-        `${result.distance.toFixed(1)}" AWAY`,
-        'VISIBILITY: CHECK AT THE TABLE',
-      ].map((text) => ({ text, tone: toneOf(text) }))
-    : []
-  // The weapon's name, then its rules (split so neither chip runs off the mat).
-  const ruleText = weapon ? weaponRuleChips(rules).join(' · ') : ''
-  const weaponChip = weapon ? [`WEAPON · ${weaponLabel(weapon).toUpperCase()}`, ...(ruleText ? [ruleText] : [])] : []
-  const shooterChips = [...weaponChip, ...(result ? result.shooterChips : [])].map((text) => ({
-    text,
-    tone: toneOf(text),
-  }))
+  const point = shot
+    ? shot.point
+    : payload.point
+      ? clampToBase(shooter, { x: shooter.x + payload.point.dx, y: shooter.y + payload.point.dy })
+      : null
+  // Shooting, the side bars (projector) and stats drawers (iPads) say it all.
+  const showChips = !shooting
+  const targetChips =
+    shot && showChips
+      ? [...targetChipsOf(shot), ...(friendlyHits ? [`BLAST HITS ${friendlyHits} FRIENDLY`] : [])].map((text) => ({
+          text,
+          tone: toneOf(text),
+        }))
+      : []
+  const shooterChips = showChips && shot ? shooterChipsOf(shot).map((text) => ({ text, tone: toneOf(text) })) : []
 
   return (
-    <g className="targeting" data-shooter={shooter.id} data-target={target?.id}>
+    <g className={`targeting${shooting ? ' is-shoot' : ''}`} data-shooter={shooter.id} data-target={target?.id}>
       {rules?.range ? (
         <circle
           className="target-range-ring"
@@ -175,7 +254,7 @@ function TargetingOverlay({ tokens, players, markers = [], layout, payload, maxW
           data-range-ring={rules.range}
         />
       ) : null}
-      {result ? <Scan lines={result.lines} /> : null}
+      {shot ? <Scan lines={shot.analysis.lines} /> : null}
       {area ? (
         <circle
           className="target-area-ring"
@@ -204,8 +283,7 @@ function TargetingOverlay({ tokens, players, markers = [], layout, payload, maxW
           </g>
         )
       })}
-      {enemies.map((enemy) => {
-        const status = glanceStatus(enemy === target ? result : analyse(enemy))
+      {badges.map(({ enemy, status }) => {
         const r = tokenRadiusIn(enemy)
         return (
           <g key={enemy.id} className={`target-badge is-${status}`} data-badge-for={enemy.id} data-status={status}>

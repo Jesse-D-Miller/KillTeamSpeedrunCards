@@ -547,6 +547,36 @@
   fill: rgba(255, 255, 255, 0.75);
 }
 
+/* Shoot/Fight in a fight: the attacker's 1" control range, a line to the enemy, and
+   assist tags (the numbers are in the side bars and stats drawers). */
+.fight-range-ring {
+  fill: rgba(249, 115, 22, 0.08);
+  stroke: #f97316;
+  stroke-width: 0.04;
+  stroke-dasharray: 0.25 0.15;
+}
+
+.fight-line {
+  stroke: #f97316;
+  stroke-width: 0.08;
+  stroke-linecap: round;
+}
+
+.fight-line.is-invalid {
+  stroke: #6b7280;
+  stroke-dasharray: 0.2 0.15;
+}
+
+.fight-target-ring {
+  fill: none;
+  stroke: #f97316;
+  stroke-width: 0.06;
+}
+
+.target-splash.is-assist rect {
+  fill: #4ade80;
+}
+
 .board-vantage {
   fill: #fff;
   font-size: 0.28px;

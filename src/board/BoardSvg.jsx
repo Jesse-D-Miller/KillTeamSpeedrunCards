@@ -480,16 +480,8 @@ function BoardSvg({
       )}
 
       {overlays.map(({ owner, payload }) =>
-        payload.tool === 'target' ? (
-          <TargetingOverlay
-            key={owner}
-            tokens={tokens}
-            players={players}
-            markers={markers}
-            layout={layout}
-            payload={payload}
-            maxWoundsOf={maxWoundsOf}
-          />
+        payload.tool === 'target' || payload.tool === 'attack' ? (
+          <TargetingOverlay key={owner} game={game} layout={layout} payload={payload} />
         ) : (
           <Overlay key={owner} owner={owner} payload={payload} />
         ),

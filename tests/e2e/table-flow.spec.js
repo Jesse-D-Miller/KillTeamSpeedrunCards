@@ -18,11 +18,20 @@ const openTab = async (page, name) => {
   }
 }
 
-// Player boards must never spill text or graphics out of their boxes.
+// Player boards must never spill text or graphics out of their boxes (or into their
+// bottom padding, which scroll sizes don't count for flex columns).
 const boardOverflows = (page) =>
   page.evaluate(() =>
     [...document.querySelectorAll('.pb-board .pb-section, .pb-board .pb-critop-body, .pb-board .pb-tacop')]
-      .filter((el) => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)
+      .filter((el) => {
+        if (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1) return true
+        const last = el.lastElementChild
+        if (!last || last.offsetParent !== el.offsetParent) return false
+        const style = getComputedStyle(el)
+        const limit = el.offsetTop + el.offsetHeight - parseFloat(style.borderBottomWidth) - parseFloat(style.paddingBottom)
+        // Offsets are whole pixels (the same 2px tolerance as useBoardFit).
+        return last.offsetTop + last.offsetHeight > limit + 2
+      })
       .map((el) => `${el.closest('.pb-board').dataset.seat}:${el.className}`),
   )
 
@@ -284,6 +293,10 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await dragPx(at(0.35, 0.3), at(0.35, 0.3, 1.5))
   await expect.poll(inchesOf).toBeCloseTo(1.5, 0)
   await expect(table.locator('.overlay-measure')).toHaveCount(1)
+  // Left alone, the ruler stays on the projector as long as it's on the iPad (other
+  // devices drop previews they haven't heard about for 15s, so the iPad keeps re-sending).
+  await table.waitForTimeout(17000)
+  await expect(table.locator('.overlay-measure')).toHaveCount(1)
   await shot(table, '06-map-table')
 
   // Switching tools clears the measurement; no separate Clear button.
@@ -344,17 +357,37 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     Number(await table.locator('.target-point circle').last().getAttribute('cx')) - Number(await sniperBase.getAttribute('cx'))
   await expect.poll(pointOffset).toBeLessThan(-0.3)
   expect(Math.abs(await pointOffset())).toBeLessThanOrEqual(Number(await sniperBase.getAttribute('r')) + 0.001)
-  // Pick a weapon: its rules apply. A Blast 2" profile rings the target and tags
-  // everyone it would also hit.
+  // Sightline is just the line-of-sight check: no weapons.
   const weaponList = a.getByRole('navigation', { name: 'Choose a weapon' })
-  await expect(weaponList.getByRole('button')).toHaveCount(4)
+  await expect(weaponList).toHaveCount(0)
+  // Shoot/Fight: tap the shooter and its weapon list pops out, set to Shoot (no enemy
+  // is within its control range). The switch shows its melee weapons instead.
+  const attackButton = a.getByRole('button', { name: 'Shoot/Fight', exact: true })
+  await attackButton.click()
+  await tapToken(sniper)
+  await expect(weaponList.getByRole('button', { name: 'Shoot', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(weaponList.locator('.flyout-weapon')).toHaveCount(3)
+  await weaponList.getByRole('button', { name: 'Fight', exact: true }).click()
+  await expect(weaponList.locator('.flyout-weapon')).toHaveText([/Fists/])
+  await weaponList.getByRole('button', { name: 'Shoot', exact: true }).click()
   await shot(a, '07b-weapon-list')
-  await tapToken(edge)
+  // Choosing closes the list. A Blast 2" profile rings the target and tags everyone it
+  // would also hit.
   await weaponList.getByRole('button', { name: /BLAST 2"/ }).click()
+  await expect(weaponList).toHaveCount(0)
+  await tapToken(edge)
   await expect(table.locator('[data-area-ring="2"]')).toHaveCount(1)
   await expect(table.locator(`[data-splash-for="${behind}"]`)).toHaveAttribute('data-splash', 'blast')
-  await expect(table.locator(`[data-chips-for="${sniper}"]`)).toContainText('WEAPON ·')
-  await expect(table.locator(`[data-chips-for="${sniper}"]`)).toContainText('BLAST 2"')
+  // The numbers stay off the play area: the shooter's side bar on the projector swaps
+  // to the attack, and the iPad has them in a stats drawer.
+  const aliceCombat = table.locator('.pb-board[data-seat="A"] [data-combat="attack"]')
+  await expect(aliceCombat).toContainText('APM Launcher · Breaching')
+  await expect(aliceCombat.locator('[data-rule-state]', { hasText: 'Blast 2"' })).toHaveCount(1)
+  // Partly behind Heavy terrain: obscured, so no crits.
+  await expect(aliceCombat.locator('[data-cell="crit"]')).toHaveAttribute('data-tone', 'worse')
+  await expect(table.locator('.pb-board[data-seat="B"] [data-combat="defence"]')).toBeVisible()
+  await expect(table.locator(`[data-chips-for="${sniper}"], [data-chips-for="${edge}"]`)).toHaveCount(0)
+  await expect(a.getByRole('button', { name: 'Show the shot' })).toBeVisible()
   await shot(table, '07c-blast-table')
   // Smoke: the operative in the open, wholly inside a Smoke Grenade's 1", is obscured.
   await tableActions(table, [
@@ -363,10 +396,14 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator(`[data-badge-for="${inOpen}"]`)).toHaveAttribute('data-status', 'obscured')
   const smokeId = await table.locator('[data-catalog-id="smoke-grenade"]').getAttribute('data-marker-id')
   await tableActions(table, [{ type: 'marker/remove', id: smokeId }])
-  // Tapping the active tool again turns it off and clears it.
-  await a.getByRole('button', { name: 'Sightline', exact: true }).click()
+  // Tapping Shoot/Fight reopens the weapon list; tapping it again turns the tool off,
+  // and the side bars go back to normal.
+  await attackButton.click()
+  await expect(weaponList).toBeVisible()
+  await attackButton.click()
   await expect(table.locator('.targeting')).toHaveCount(0)
-  await expect(a.getByRole('button', { name: 'Sightline', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  await expect(table.locator('[data-combat]')).toHaveCount(0)
+  await expect(attackButton).toHaveAttribute('aria-pressed', 'false')
   // On Vantage (set with Select): shooting down at an Engage target gives Accurate.
   await a.getByRole('button', { name: 'Select', exact: true }).click()
   await tapToken(sniper)
@@ -671,6 +708,145 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator('.board-token')).toHaveCount(10)
   await a.getByRole('button', { name: 'Select', exact: true }).click()
 
+  // ---- shot card ----
+  // Bob's Vespid Warrior has just moved (activating it) with Airborne Predators up,
+  // and aims its neutron blaster at a Yaegir Warrior in the open.
+  const aliceCp = Number(await aliceBoard.locator('.pb-stat.is-cp .pb-big-value').textContent())
+  const bobCp = Number(await bobBoard.locator('.pb-stat.is-cp .pb-big-value').textContent())
+  const beforeShot = await table.locator('.board-token').count()
+  await tableActions(table, [
+    { type: 'token/add', seat: 'B', label: 'Stinger', unitKey: 'TAU-VESP-WAR-9', maxWounds: 9, x: 8, y: 7.5, baseMm: 28.5, baseLocked: true },
+    { type: 'token/add', seat: 'A', label: 'Mark', unitKey: 'VOT-HKY-WAR-9', maxWounds: 8, x: 8, y: 4, baseMm: 28.5, baseLocked: true },
+    { type: 'unit/update', seat: 'B', unitKey: 'TAU-VESP-WAR-9', patch: { order: 'engage' } },
+    { type: 'battle/togglePloy', seat: 'B', ployId: 'TAU-VESP-S-AP' },
+  ])
+  await expect(table.locator('.board-token')).toHaveCount(beforeShot + 2)
+  const [stinger, mark] = (
+    await table.locator('.board-token').evaluateAll((nodes) => nodes.map((node) => node.dataset.tokenId))
+  ).slice(-2)
+  await tableActions(table, [{ type: 'token/move', id: stinger, path: [{ x: 8, y: 7.5 }, { x: 8, y: 8.5 }] }])
+  await expect(table.locator(`[data-token-id="${stinger}"]`)).toHaveClass(/is-active/)
+  await openTab(b, 'Map')
+  const bobAttack = b.getByRole('button', { name: 'Shoot/Fight', exact: true })
+  await bobAttack.click()
+  await b.locator(`.map-stage [data-token-id="${stinger}"] .board-token-base`).click()
+  await b.getByRole('navigation', { name: 'Choose a weapon' }).getByRole('button', { name: /Neutron Blaster/ }).click()
+  await b.locator(`.map-stage [data-token-id="${mark}"] .board-token-base`).click()
+  // The projector keeps the play area clear: Bob's side bar swaps to his attack and
+  // Alice's to her defence. No distance or "check at the table" pills any more.
+  const shotAttack = bobBoard.locator('[data-combat="attack"]')
+  const shotDefence = aliceBoard.locator('[data-combat="defence"]')
+  await expect(table.locator('.target-chip', { hasText: /AWAY|VISIBILITY/ })).toHaveCount(0)
+  await expect(table.locator('.board-svg [data-combat], .board-svg .shot-card')).toHaveCount(0)
+  // Neutron blaster 4 / 4+ / 3/3, Devastating 2. Warrior Instincts gives Accurate 1:
+  // roll 3 and keep 1 without rolling.
+  await expect(shotAttack.locator('[data-cell="dice"]')).toContainText('3 rolled + 1 auto')
+  await expect(shotAttack.locator('[data-cell="dice"] [data-reason]')).toContainText(['Accurate 1 · Warrior Instincts'])
+  await expect(shotAttack.locator('[data-cell="hit"]')).toContainText('4+')
+  await expect(shotAttack.locator('[data-cell="dmg"]')).toContainText('3/3')
+  await expect(shotAttack.locator('[data-cell="dmg"]')).toContainText('Devastating 2 per crit')
+  // Strategy ploy and faction rule: Airborne Predators (Balanced) and Neutron Charge
+  // (moved this turning point: Piercing 1, so the Yaegir rolls 2 dice, in red).
+  await expect(bobBoard.locator('[data-modifier="TAU-VESP-S-AP"]')).toHaveAttribute('data-on', 'true')
+  await expect(shotAttack.locator('[data-reroll]')).toHaveText(['↻ Balanced (1 die)'])
+  await expect(shotDefence.locator('[data-cell="dice"]')).toHaveAttribute('data-tone', 'worse')
+  await expect(shotDefence.locator('[data-cell="dice"]')).toContainText('2')
+  // ...and says why, in a red pill: the weapon's Piercing 1, from Neutron Charge.
+  const piercingPill = shotDefence.locator('[data-cell="dice"] [data-reason][data-tone="worse"]')
+  await expect(piercingPill).toHaveText('▼ Piercing 1 · Neutron Charge')
+  await expect(shotDefence.locator('[data-cell="save"]')).toContainText('4+')
+  expect(await boardOverflows(table)).toEqual([])
+  // Both iPads have a stats drawer on the right, closed until opened, with their own
+  // half first.
+  const bobDrawer = b.locator('.attack-drawer')
+  const aliceDrawer = a.locator('.attack-drawer')
+  await expect(bobDrawer).toHaveClass(/is-closed/)
+  await expect(aliceDrawer).toHaveClass(/is-closed/)
+  await b.getByRole('button', { name: 'Show the shot' }).click()
+  await a.getByRole('button', { name: 'Show the incoming shot' }).click()
+  await expect(bobDrawer.locator('[data-shot-half]').first()).toHaveAttribute('data-shot-half', 'attack')
+  await expect(aliceDrawer.locator('.combat-matchup')).toHaveText('Vespid Warrior → Yaegir Warrior')
+  await expect(aliceDrawer.locator('.combat-kind')).toHaveText('Incoming shot')
+  await expect(aliceDrawer.locator('[data-shot-half]').first()).toHaveAttribute('data-shot-half', 'defence')
+  await expect(aliceDrawer.locator('[data-shot-half="defence"] [data-cell="dice"] [data-reason][data-tone="worse"]')).toHaveText(
+    '▼ Piercing 1 · Neutron Charge',
+  )
+  await shot(table, '07f-shot-sidebars-table')
+  await shot(b, '07g-shot-drawer-attacker')
+  // Alice uses Sturdy from her iPad: it spends her CP, and the attacker's crits become
+  // normal successes (red on the projector and on Bob's iPad).
+  const sturdy = aliceDrawer.locator('button[data-modifier="VOT-HKY-T-STRD"]')
+  await expect(sturdy).toContainText('1CP')
+  await sturdy.click()
+  await expect(sturdy).toHaveAttribute('aria-pressed', 'true')
+  await expect(shotDefence.locator('..').locator('.pb-combat-cp')).toHaveText(`${aliceCp - 1} CP`)
+  await expect(shotAttack.locator('[data-cell="crit"]')).toHaveAttribute('data-tone', 'worse')
+  await expect(bobDrawer.locator('[data-cell="crit"]')).toHaveClass(/is-worse/)
+  // Bob can't touch Alice's modifiers.
+  await expect(bobDrawer.locator('button[data-modifier="VOT-HKY-T-STRD"]')).toHaveCount(0)
+  await shot(a, '07h-shot-drawer-defender')
+  // Turning it off again in the same shot refunds it.
+  await sturdy.click()
+  await expect(aliceBoard.locator('.pb-combat-cp')).toHaveText(`${aliceCp} CP`)
+  await expect(shotAttack.locator('[data-cell="crit"]')).toHaveAttribute('data-tone', 'same')
+  // Done: Shoot/Fight reopens the weapon list, then turns off; the side bars go back.
+  await bobAttack.click()
+  await bobAttack.click()
+  await expect(table.locator('[data-combat]')).toHaveCount(0)
+  await expect(aliceBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText(String(aliceCp))
+  await expect(aliceDrawer).toHaveCount(0)
+  await tableActions(table, [
+    { type: 'token/remove', id: stinger },
+    { type: 'token/remove', id: mark },
+    { type: 'battle/togglePloy', seat: 'B', ployId: 'TAU-VESP-S-AP' },
+  ])
+  await expect(bobBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText(String(bobCp))
+  await expect(table.locator('.board-token')).toHaveCount(beforeShot)
+
+  // ---- fight ----
+  // Bob's Vespid Warrior is in base contact with a Yaegir Warrior, and his Shadestrain
+  // is also within its control range (an assist).
+  await tableActions(table, [
+    { type: 'token/add', seat: 'B', label: 'Biter', unitKey: 'TAU-VESP-WAR-8', maxWounds: 9, x: 8, y: 12, baseMm: 28.5, baseLocked: true },
+    { type: 'token/add', seat: 'A', label: 'Brawler', unitKey: 'VOT-HKY-WAR-8', maxWounds: 8, x: 8, y: 10.8, baseMm: 28.5, baseLocked: true },
+    { type: 'token/add', seat: 'B', label: 'Helper', unitKey: 'TAU-VESP-VSS-8', maxWounds: 9, x: 9.2, y: 10.8, baseMm: 28.5, baseLocked: true },
+  ])
+  await expect(table.locator('.board-token')).toHaveCount(beforeShot + 3)
+  const [biter, brawler, helper] = (
+    await table.locator('.board-token').evaluateAll((nodes) => nodes.map((node) => node.dataset.tokenId))
+  ).slice(-3)
+  // An enemy is within its control range, so the list opens on Fight with its melee weapons.
+  await bobAttack.click()
+  await b.locator(`.map-stage [data-token-id="${biter}"] .board-token-base`).click()
+  const bobWeapons = b.getByRole('navigation', { name: 'Choose a weapon' })
+  await expect(bobWeapons.getByRole('button', { name: 'Fight', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await bobWeapons.getByRole('button', { name: /Claws/ }).click()
+  await b.locator(`.map-stage [data-token-id="${brawler}"] .board-token-base`).click()
+  await expect(table.locator('[data-fight-line]')).toHaveCount(1)
+  await expect(table.locator(`[data-assist-for="${helper}"]`)).toHaveCount(1)
+  // Claws 3 / 4+ / 3/4, one assist: Hit 3+ (green). Alice retaliates with her first
+  // melee weapon until she picks another in her drawer.
+  const fightAttack = bobBoard.locator('[data-combat="attack"]')
+  const retaliation = aliceBoard.locator('[data-combat="defence"]')
+  await expect(fightAttack.locator('h3')).toHaveText('Fight')
+  await expect(fightAttack.locator('[data-cell="hit"]')).toHaveAttribute('data-tone', 'better')
+  await expect(fightAttack.locator('[data-cell="hit"]')).toContainText('3+')
+  await expect(fightAttack.locator('[data-cell="hit"] [data-reason][data-tone="better"]')).toHaveText('▲ Assist · Hit +1')
+  await expect(retaliation.locator('h3')).toHaveText('Retaliate')
+  await expect(retaliation).toContainText('Fists')
+  await a.getByRole('button', { name: 'Show the incoming fight' }).click()
+  await aliceDrawer.getByRole('group', { name: 'Retaliate with' }).getByRole('button', { name: 'Plasma Knife' }).click()
+  await expect(retaliation).toContainText('Plasma Knife')
+  await expect(retaliation.locator('[data-cell="dice"]')).toContainText('4')
+  expect(await boardOverflows(table)).toEqual([])
+  await shot(table, '07i-fight-sidebars-table')
+  await shot(a, '07j-fight-drawer-defender')
+  await bobAttack.click()
+  await bobAttack.click()
+  await expect(table.locator('[data-combat]')).toHaveCount(0)
+  await tableActions(table, [biter, brawler, helper].map((id) => ({ type: 'token/remove', id })))
+  await expect(table.locator('.board-token')).toHaveCount(beforeShot)
+  await openTab(b, 'Operatives')
 
   await openTab(a, 'Operatives')
 
@@ -813,6 +989,30 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator('.board-token-name', { hasText: 'Bravo' })).toHaveAttribute('data-facing', '0')
   await shot(table, '15-portrait-boards')
   expect(await boardOverflows(table)).toEqual([])
+
+  // Portrait side bars during a shot: the numbers become a ledger that uses the tall
+  // bar, the text keeps its size, and nothing spills.
+  await tableActions(table, [
+    { type: 'token/add', seat: 'B', label: 'Gun', unitKey: 'TAU-VESP-WAR-7', maxWounds: 9, x: 12, y: 15, baseMm: 28.5, baseLocked: true },
+    { type: 'token/add', seat: 'A', label: 'Prey', unitKey: 'VOT-HKY-WAR-7', maxWounds: 8, x: 12, y: 11, baseMm: 28.5, baseLocked: true },
+    { type: 'unit/update', seat: 'B', unitKey: 'TAU-VESP-WAR-7', patch: { order: 'engage' } },
+  ])
+  const [gun, prey] = (await table.locator('.board-token').evaluateAll((nodes) => nodes.map((node) => node.dataset.tokenId))).slice(-2)
+  await openTab(b, 'Map')
+  await b.getByRole('button', { name: 'Shoot/Fight', exact: true }).click()
+  await b.locator(`.map-stage [data-token-id="${gun}"] .board-token-base`).click()
+  await b.getByRole('navigation', { name: 'Choose a weapon' }).getByRole('button', { name: /Neutron Blaster/ }).click()
+  await b.locator(`.map-stage [data-token-id="${prey}"] .board-token-base`).click()
+  await expect(table.locator('.pb-board.is-portrait.is-combat')).toHaveCount(2)
+  const tileLefts = await table
+    .locator('.pb-board[data-seat="B"] [data-combat="attack"] [data-cell]')
+    .evaluateAll((tiles) => tiles.map((tile) => tile.offsetLeft))
+  expect(new Set(tileLefts).size).toBe(1)
+  const fits = () =>
+    table.locator('.pb-board').evaluateAll((boards) => boards.map((board) => Number(board.style.getPropertyValue('--fit') || 1)))
+  await expect.poll(async () => Math.min(...(await fits()))).toBeGreaterThanOrEqual(0.8)
+  expect(await boardOverflows(table)).toEqual([])
+  await shot(table, '16-portrait-combat')
 })
 
 test('projector calibration warps the board and persists on the server', async ({ browser }) => {

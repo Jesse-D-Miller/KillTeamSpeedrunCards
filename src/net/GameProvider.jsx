@@ -6,7 +6,11 @@ import { GameContext } from './gameContext.js'
 // and immediately when an iPad wakes up.
 
 const EPHEMERAL_INTERVAL_MS = 33
+// Other devices drop a preview they haven't heard about for this long (a device that
+// vanished without clearing it), so whatever this device is showing is re-sent well
+// within it, and again after reconnecting: it stays up exactly as long as it does here.
 const EPHEMERAL_STALE_MS = 15000
+const EPHEMERAL_KEEPALIVE_MS = 4000
 
 const tokenKey = (seat) => `kt-seat-token-${seat}`
 
@@ -73,6 +77,7 @@ export function GameProvider({ role, seat = null, children }) {
         case 'welcome':
           if (message.token) writeToken(seat, message.token)
           setStatus('online')
+          if (ephemeralRef.current.payload) socket.send(JSON.stringify({ type: 'ephemeral', payload: ephemeralRef.current.payload }))
           break
         case 'seat_taken':
           setStatus('seat_taken')
@@ -207,6 +212,17 @@ export function GameProvider({ role, seat = null, children }) {
     },
     [sendRaw],
   )
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      const slot = ephemeralRef.current
+      if (slot.payload && !slot.timer && Date.now() - slot.lastSent >= EPHEMERAL_KEEPALIVE_MS) {
+        slot.lastSent = Date.now()
+        sendRaw({ type: 'ephemeral', payload: slot.payload })
+      }
+    }, 1000)
+    return () => window.clearInterval(interval)
+  }, [sendRaw])
 
   const takeover = useCallback(() => {
     takeoverRef.current = true

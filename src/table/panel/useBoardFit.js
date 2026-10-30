@@ -3,7 +3,22 @@ import { useLayoutEffect, useRef } from 'react'
 // Shrinks a player board's text until nothing overflows its box.
 //  --fit on the board scales every size; the crit op body has its own --crit-fit
 //  on top, so one long mission doesn't shrink the whole board.
-const overflows = (elements) => elements.some((el) => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)
+// Scroll sizes miss content that spills into a flex column's bottom padding (Chrome
+// doesn't count that padding), so the last child is also checked against the padding
+// edge. Offsets are layout values, unaffected by the board's rotation; they're whole
+// pixels, hence the 2px tolerance.
+const spillsIntoPadding = (el) => {
+  const last = el.lastElementChild
+  if (!last || last.offsetParent !== el.offsetParent) return false
+  const style = getComputedStyle(el)
+  const limit = el.offsetTop + el.offsetHeight - Number.parseFloat(style.borderBottomWidth) - Number.parseFloat(style.paddingBottom)
+  return last.offsetTop + last.offsetHeight > limit + 2
+}
+
+export const overflows = (elements) =>
+  elements.some(
+    (el) => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1 || spillsIntoPadding(el),
+  )
 
 const fitVariable = (target, name, elements) => {
   target.style.setProperty(name, '1')

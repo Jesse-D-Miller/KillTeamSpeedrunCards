@@ -54404,7 +54404,7 @@
                 "profileName": "Long Range",
                 "ATK": "4",
                 "HIT": "5+",
-                "DMG": "2/2",
+                "DMG": "2/3",
                 "WR": ""
               }
             ]
@@ -55158,7 +55158,7 @@
                 "profileName": "Long Range",
                 "ATK": "4",
                 "HIT": "5+",
-                "DMG": "2/2",
+                "DMG": "2/3",
                 "WR": ""
               }
             ]
@@ -57052,7 +57052,7 @@
         "killteamId": "VOT-HKY",
         "seq": 4,
         "eqName": "Stabilized Bolt Shells",
-        "description": "Up to twice per turning point, whenever a friendly HERNKYN YAEGIR operative is performing the Shoot action and you selected a bolt shotgun (long range), you can use this rule.\nIf you do, until the end of that action, improve the Hit stat of that weapon by 1 and add 1 to both of its damage stats.",
+        "description": "Up to twice per turning point, whenever a friendly HERNKYN YAEGIR operative is performing the Shoot action and you selected a bolt shotgun (long range), you can use this rule.\nIf you do, until the end of that action, improve the Hit stat of that weapon by 1 and add 1 to both of its damage stats, and that weapon has the Accurate 1 weapon rule.",
         "effects": ""
       },
       {
@@ -76116,7 +76116,7 @@
             "wepId": "ORK-KOM-COMMS-SHO",
             "opTypeId": "ORK-KOM-COMMS",
             "seq": 1,
-            "wepName": "Shokka",
+            "wepName": "Shokka Pistol",
             "wepType": "R",
             "isDefault": true,
             "profiles": [
@@ -76226,7 +76226,7 @@
                 "ATK": "4",
                 "HIT": "2+",
                 "DMG": "3/3",
-                "WR": "Rng 4\", Sat, Seek Light, *Torrent 0\""
+                "WR": "Rng 4\", Sat, Seek, *Torrent 0\""
               }
             ]
           },

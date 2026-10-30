@@ -49,6 +49,8 @@ export const createPlayer = (seat) => ({
   score: { critOp: 0, killOp: 0, tacOp: 0 },
   sp: 0,
   ploysByTp: {},
+  // Ploys and equipment used from shot cards: { [tp]: { [id]: times } }.
+  usesByTp: {},
   unitState: {},
 })
 
@@ -87,6 +89,8 @@ export const createGame = (settings = DEFAULT_SETTINGS) => ({
     // Each turning point's initiative roll-off winner, and who then took initiative.
     rollOffByTp: {},
     initiativeByTp: {},
+    // Sightline shot cards: { 'shooterId|targetId': { toggles: { A, B }, spent: { A, B } } }.
+    shots: {},
     startedAt: null,
     endedAt: null,
   },

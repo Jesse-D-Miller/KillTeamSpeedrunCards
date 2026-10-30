@@ -352,7 +352,7 @@ describe('token movement', () => {
   it('moves along the path and remembers it', () => {
     const state = moved()
     expect(state.tokens[0]).toMatchObject({ x: 4, y: 3 })
-    expect(state.tokens[0].lastMove).toEqual({ from: { x: 2, y: 2 }, path, inches: 3 })
+    expect(state.tokens[0].lastMove).toEqual({ from: { x: 2, y: 2 }, path, inches: 3, prevMovedTp: null })
   })
 
   it('a second drag continues the same movement from its original start', () => {
@@ -445,9 +445,31 @@ describe('semi-automatic activations', () => {
     expect(unit(move(state, 't3', 'B', 5), 'B', 'b1').activation).toBe('active')
   })
 
-  it('does nothing before the Firefight phase starts', () => {
+  it('does nothing before the Firefight phase starts (but the move still counts as moving)', () => {
     const state = move(battle({ firefight: false }), 't1', 'A')
-    expect(unit(state, 'A', 'a1')).toBeUndefined()
+    expect(unit(state, 'A', 'a1')).toMatchObject({ activation: 'ready', movedTp: 1 })
+    expect(turnState(state).activeSeat).toBeNull()
+  })
+
+  it('remembers the turning point an operative last moved in, and undoing the move forgets it', () => {
+    let state = move(battle(), 't1', 'A')
+    expect(unit(state, 'A', 'a1').movedTp).toBe(1)
+    state = applyAction(state, { type: 'token/undoMove', id: 't1' }, 'A')
+    expect(unit(state, 'A', 'a1').movedTp).toBeNull()
+    // Back-tracking to the start forgets it too.
+    state = move(state, 't1', 'A')
+    state = applyAction(state, { type: 'token/move', id: 't1', path: [{ x: 2, y: 2 }] }, 'A')
+    expect(unit(state, 'A', 'a1').movedTp).toBeNull()
+  })
+
+  it('an earlier move this turning point still counts after a later one is undone', () => {
+    let state = move(battle({ firefight: false }), 't1', 'A')
+    // Another operative moves (so t1's path is cleared), then t1 moves again and undoes it.
+    state = move(state, 't2', 'A')
+    state = applyAction(state, { type: 'battle/startFirefight' }, 'A')
+    state = move(state, 't1', 'A', 5)
+    state = applyAction(state, { type: 'token/undoMove', id: 't1' }, 'A')
+    expect(unit(state, 'A', 'a1').movedTp).toBe(1)
   })
 
   it('undoing the move reverts the activation and the operative it expended', () => {
@@ -507,5 +529,70 @@ describe('semi-automatic activations', () => {
     state = applyAction(move(state, 't3', 'B'), { type: 'battle/endActivation' }, 'B')
     state = move(state, 't3', 'B', 4)
     expect(unit(state, 'B', 'b1').counteractedTp).toBeUndefined()
+  })
+})
+
+describe('shot cards', () => {
+  const battle = () =>
+    run(createGame(), [
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+    ])
+  const toggle = (state, actor, patch) => applyAction(state, { type: 'shot/toggle', key: 't1|t2', ...patch }, actor)
+
+  it('keeps each player’s toggles for the shot', () => {
+    let state = toggle(battle(), 'A', { id: 'ammo-cache', on: true })
+    state = toggle(state, 'B', { id: 'portable-barricade', on: true })
+    expect(state.battle.shots['t1|t2'].toggles).toEqual({ A: { 'ammo-cache': true }, B: { 'portable-barricade': true } })
+    state = toggle(state, 'A', { id: 'ammo-cache', on: false })
+    expect(state.battle.shots['t1|t2'].toggles.A).toEqual({ 'ammo-cache': false })
+  })
+
+  it('a firefight ploy spends its CP once per turning point, and turning it off in the same shot refunds it', () => {
+    const start = battle()
+    const cp = start.players.B.cp
+    let state = toggle(start, 'B', { id: 'VOT-HKY-T-STRD', on: true, cost: 1, limit: 1 })
+    expect(state.players.B.cp).toBe(cp - 1)
+    expect(state.players.B.usesByTp[1]).toEqual({ 'VOT-HKY-T-STRD': 1 })
+    // Already used this turning point: another shot can't use it again.
+    expect(() =>
+      applyAction(state, { type: 'shot/toggle', key: 't3|t4', id: 'VOT-HKY-T-STRD', on: true, cost: 1, limit: 1 }, 'B'),
+    ).toThrow(/Already used/)
+    state = toggle(state, 'B', { id: 'VOT-HKY-T-STRD', on: false, cost: 1, limit: 1 })
+    expect(state.players.B.cp).toBe(cp)
+    expect(state.players.B.usesByTp[1]).toEqual({ 'VOT-HKY-T-STRD': 0 })
+  })
+
+  it('needs enough CP, and the battle phase, to spend it', () => {
+    const broke = run(battle(), [[{ type: 'battle/score', field: 'cp', delta: -10 }, 'B']])
+    expect(() => toggle(broke, 'B', { id: 'ploy', on: true, cost: 1, limit: 1 })).toThrow(/Not enough CP/)
+    expect(() => toggle(createGame(), 'B', { id: 'ploy', on: true, cost: 1, limit: 1 })).toThrow(/Not available/)
+    // Free toggles work in any phase.
+    expect(toggle(createGame(), 'B', { id: 'note', on: true }).battle.shots['t1|t2'].toggles.B).toEqual({ note: true })
+  })
+
+  it('equipment limited to twice per turning point counts its uses', () => {
+    let state = toggle(battle(), 'A', { id: 'VOT-HKY-SBS', on: true, limit: 2 })
+    state = applyAction(state, { type: 'shot/toggle', key: 't1|t5', id: 'VOT-HKY-SBS', on: true, limit: 2 }, 'A')
+    expect(state.players.A.usesByTp[1]['VOT-HKY-SBS']).toBe(2)
+    expect(() =>
+      applyAction(state, { type: 'shot/toggle', key: 't1|t6', id: 'VOT-HKY-SBS', on: true, limit: 2 }, 'A'),
+    ).toThrow(/2 times/)
+  })
+
+  it('a fight’s defender picks their retaliation weapon, kept alongside their toggles', () => {
+    let state = applyAction(battle(), { type: 'shot/toggle', key: 'fight|t1|t2', id: 'ploy', on: true }, 'B')
+    state = applyAction(state, { type: 'shot/weapon', key: 'fight|t1|t2', weaponId: 'claws' }, 'B')
+    expect(state.battle.shots['fight|t1|t2']).toMatchObject({ weapons: { B: 'claws' }, toggles: { B: { ploy: true } } })
+  })
+
+  it('only the latest shots are kept, and a new turning point clears them', () => {
+    let state = battle()
+    for (let index = 0; index < 15; index += 1) {
+      state = applyAction(state, { type: 'shot/toggle', key: `t1|x${index}`, id: 'm', on: true }, 'A')
+    }
+    expect(Object.keys(state.battle.shots)).toHaveLength(12)
+    expect(Object.keys(state.battle.shots).at(-1)).toBe('t1|x14')
+    state = applyAction(state, { type: 'battle/nextTp', fromTp: 1 }, 'A')
+    expect(state.battle.shots).toEqual({})
   })
 })
