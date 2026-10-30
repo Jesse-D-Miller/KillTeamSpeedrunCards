@@ -72,18 +72,19 @@ const FLOORS = [
   { height: 2, floor: 1, label: '1st floor' },
   { height: 4, floor: 2, label: '2nd floor' },
 ]
+// An opponent's operative offers only Ping and Unit card.
 const RADIAL_ACTIONS = [
   { id: 'move', label: 'Move', icon: 'move', own: true },
-  { id: 'measure', label: 'Measure', icon: 'measure' },
-  { id: 'los', label: 'Sightline', icon: 'los' },
+  { id: 'measure', label: 'Measure', icon: 'measure', own: true },
+  { id: 'los', label: 'Sightline', icon: 'los', own: true },
   { id: 'shoot', label: 'Shoot', icon: 'attack', own: true },
   { id: 'fight', label: 'Fight', icon: 'fight', own: true },
-  { id: 'range', label: 'Range', icon: 'range' },
+  { id: 'range', label: 'Range', icon: 'range', own: true },
   { id: 'vantage', label: 'Vantage', icon: 'vantage', own: true },
-  { id: 'edit', label: 'Edit', icon: 'edit' },
+  { id: 'edit', label: 'Edit', icon: 'edit', own: true },
   { id: 'ping', label: 'Ping', icon: 'ping' },
   { id: 'card', label: 'Unit card', icon: 'card' },
-  { id: 'select', label: 'Select', icon: 'select' },
+  { id: 'select', label: 'Select', icon: 'select', own: true },
 ]
 
 const distanceToSegment = (point, a, b) => {
