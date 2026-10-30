@@ -1,6 +1,16 @@
 // The opening screen's logo, burning: a fiery aura whose edges lick and writhe (SVG
-// noise displacing a glow), an angry double-thump heartbeat under it, and embers
-// rising off the emblem. Still, with no embers, under Reduce Motion.
+// noise displacing a glow), long waves of fire rolling out from behind it and fading
+// as they spread, a slow uneven heartbeat under it, and embers rising off the emblem.
+// Still, with no waves or embers, under Reduce Motion.
+
+// Fire waves: each takes its own time to roll out and starts at its own point in the
+// cycle, so the pulses come unevenly and never settle into a rhythm.
+const WAVES = [
+  { duration: 7.4, delay: 0 },
+  { duration: 8.9, delay: -2.3 },
+  { duration: 6.8, delay: -4.1 },
+  { duration: 9.6, delay: -6.7 },
+]
 
 // Embers: where each starts (% across), how big, how long it takes to rise, and how
 // far it drifts sideways. Fixed, so the fire looks the same on every load.
@@ -32,9 +42,36 @@ const tongue = ([x, tip, half]) =>
 function HomeLogo() {
   return (
     <div className="home-logo">
+      {WAVES.map((wave, index) => (
+        <svg
+          key={index}
+          className="home-wave"
+          viewBox="0 0 200 200"
+          aria-hidden="true"
+          style={{ '--wave': `${wave.duration}s`, '--wave-delay': `${wave.delay}s` }}
+        >
+          <circle cx="100" cy="100" r="96" fill="url(#home-wave-band)" filter="url(#home-wave-lick)" />
+        </svg>
+      ))}
       <span className="home-throb" aria-hidden="true" />
       <svg className="home-fire" viewBox="0 0 400 300" aria-hidden="true">
         <defs>
+          {/* A wave: a soft band of fire, bright on its inner edge and smoky outside. */}
+          <radialGradient id="home-wave-band" cx="50%" cy="50%" r="50%">
+            <stop offset="0" stopColor="#ff8a1c" stopOpacity="0" />
+            <stop offset="0.5" stopColor="#ff8a1c" stopOpacity="0" />
+            <stop offset="0.66" stopColor="#ff7a1a" stopOpacity="0.5" />
+            <stop offset="0.78" stopColor="#d8300e" stopOpacity="0.38" />
+            <stop offset="0.9" stopColor="#7a0e04" stopOpacity="0.12" />
+            <stop offset="1" stopColor="#8a1205" stopOpacity="0" />
+          </radialGradient>
+          <filter id="home-wave-lick" x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="9" result="noise">
+              <animate attributeName="baseFrequency" dur="7s" values="0.035;0.05;0.035" repeatCount="indefinite" />
+            </feTurbulence>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" />
+            <feGaussianBlur stdDeviation="1.5" />
+          </filter>
           <radialGradient id="home-fire-core" cx="50%" cy="50%" r="50%">
             <stop offset="0" stopColor="#ffa53a" stopOpacity="0.7" />
             <stop offset="0.4" stopColor="#f0581a" stopOpacity="0.55" />
