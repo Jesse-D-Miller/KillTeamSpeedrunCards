@@ -71,6 +71,12 @@ const dragOnMap = async (page, from, to) => {
   await page.mouse.up()
 }
 
+// Tap an operative on an iPad's map and pick one of its actions from the ring.
+const ringAction = async (page, tokenId, action) => {
+  await page.locator(`.map-stage [data-token-id="${tokenId}"] .board-token-base`).click()
+  await page.locator('.unit-radial').getByRole('menuitem', { name: action, exact: true }).click()
+}
+
 test('projector + two iPads play through setup into battle', async ({ browser }) => {
   const tableContext = await browser.newContext({ viewport: PROJECTOR })
   const table = await tableContext.newPage()
@@ -226,7 +232,9 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   expect(radius).toBeCloseTo(28.5 / 25.4 / 2, 3)
 
   // Before the battle, operatives drag freely (no 1" steps) and nothing stays on the board.
-  await a.getByRole('button', { name: 'Move', exact: true }).click()
+  // Move comes from the operative's action ring (with Units turned off).
+  await unitsButton.click()
+  await ringAction(a, await table.locator('.board-token').nth(1).getAttribute('data-token-id'), 'Move')
   // Tuck the tool drawer away so it doesn't cover the drop-zone column.
   await a.getByRole('button', { name: 'Hide tools' }).click()
   const stageBox = await a.locator('.map-stage svg').boundingBox()
@@ -554,7 +562,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(a.locator('.weapon-flyout')).toHaveCount(0)
 
   // In battle, drag an operative in an L: it moves in whole-inch steps, the path stays, and undo puts it back.
-  await a.getByRole('button', { name: 'Move', exact: true }).click()
+  await ringAction(a, 't1', 'Move')
   const tableToken = table.locator('.board-token-base').first()
   const startCx = await tableToken.getAttribute('cx')
   const tokenBox = await a.locator('.map-stage .board-token-base').first().boundingBox()
@@ -675,7 +683,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await a.mouse.click(stageBox.x + stageBox.width / 2, stageBox.y + stageBox.height / 2)
   await expect(table.locator('.board-token')).toHaveCount(11)
   await expect(a.locator('.options-drawer')).toHaveCount(0)
-  await a.getByRole('button', { name: 'Move', exact: true }).click()
+  // With Token still on, it drags straight away.
   const blank = table.locator('.board-token-base').last()
   const blankCx = Number(await blank.getAttribute('cx'))
   const blankBox = await a.locator('.map-stage .board-token-base').last().boundingBox()
@@ -698,8 +706,10 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await a.locator('.map-stage [data-order-for="t1"]').click()
   await expect(theynTag).toHaveAttribute('data-order', 'engage')
 
-  // Equipment markers go on the killzone with no options shown.
+  // Equipment markers go on the killzone with no options shown. (Token is still on, so
+  // its button reopens the last list used.)
   await tokenButton.click()
+  await tokenMenu.getByRole('button', { name: '‹ General' }).click()
   await tokenMenu.getByRole('button', { name: /Equipment/ }).click()
   await tokenMenu.getByRole('button', { name: /Ammo Cache/ }).click()
   await a.mouse.click(stageBox.x + stageBox.width * 0.55, stageBox.y + stageBox.height * 0.2)
@@ -717,7 +727,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   const stun = table.locator('[data-catalog-id="apl-minus"]')
   await expect(stun).toHaveAttribute('data-attached-to', 't1')
   const stunCx = Number(await stun.locator('circle').getAttribute('cx'))
-  await a.getByRole('button', { name: 'Move', exact: true }).click()
+  // (Token is still on, which drags operatives too.)
   const theynBox = await a.locator('.map-stage [data-token-id="t1"] .board-token-base').boundingBox()
   const tx = theynBox.x + theynBox.width / 2
   const ty = theynBox.y + theynBox.height / 2

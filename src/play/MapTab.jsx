@@ -29,8 +29,8 @@ import { useAttack } from './useAttack.js'
 // and drag anywhere to measure (from an operative's base if the drag starts on one;
 // the operative stays put).
 
+// Move is opened from an operative's action ring, not the rail.
 const TOOLS = [
-  ['move', 'Move'],
   ['measure', 'Measure'],
   ['los', 'Sightline'],
   ['attack', 'Shoot/Fight'],
