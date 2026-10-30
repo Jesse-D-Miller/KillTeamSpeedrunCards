@@ -32,12 +32,11 @@ import { useAttack } from './useAttack.js'
 // the operative stays put).
 
 // Move, Measure, Sightline, Shoot and Fight are opened from an operative's action ring,
-// not the rail (and with no tool on, a drag measures anyway).
+// not the rail (and with no tool on, a drag measures anyway and a tap pings).
 const TOOLS = [
   ['units', 'Units'],
   ['token', 'Token'],
   ['select', 'Select'],
-  ['ping', 'Ping'],
 ]
 
 // Tools in which tapping a token or marker selects it and dragging moves it.
@@ -476,10 +475,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       if (!alive) leaveTool()
       else if (!shooter || tapped.seat === shooter.seat) ringFor(tapped.id)
       else publish({ ...current, targetId: tapped.id })
-      return
-    }
-    if (tool === 'ping') {
-      ping(point)
       return
     }
   }

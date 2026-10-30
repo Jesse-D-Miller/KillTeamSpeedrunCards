@@ -567,6 +567,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // In battle the Units tool is gone: operatives are only set up before the battle.
   await openTab(a, 'Map')
   await expect(a.getByRole('button', { name: 'Units', exact: true })).toHaveCount(0)
+  // Everything else on the operatives comes from their action ring; the rail keeps the rest.
+  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', 'Select', 'Fit', 'Full screen', 'Tabs'])
   // With no tool on, tapping an operative opens a ring of its actions; a touch
   // elsewhere closes it.
   const ring = a.locator('.unit-radial')
