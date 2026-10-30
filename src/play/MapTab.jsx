@@ -16,7 +16,7 @@ import { MARKER_SIZES_MM, categoriesFor, radiusFor } from '../data/tokenCatalog.
 import { maxWoundsFor, tokenLabelFor } from '../rules/roster.js'
 import Drawer from './Drawer.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
-import { SelectPanel, TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
+import { TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
 import VantageMark from './VantageMark.jsx'
 import UnitCardModal from './UnitCardModal.jsx'
 import WeaponChooser from './WeaponChooser.jsx'
@@ -37,11 +37,9 @@ import { useAttack } from './useAttack.js'
 const TOOLS = [
   ['units', 'Units'],
   ['token', 'Token'],
-  ['select', 'Select'],
 ]
 
-// Tools in which tapping a token or marker selects it and dragging moves it.
-// (Select only selects; it never moves anything.)
+// Tools in which dragging a token or marker moves it.
 const DRAG_TOOLS = ['move', 'units', 'token']
 // A little room around the mat (dead operatives aren't drawn on the iPad map).
 const PAD = 0.5
@@ -84,7 +82,6 @@ const RADIAL_ACTIONS = [
   { id: 'edit', label: 'Edit', icon: 'edit', own: true },
   { id: 'ping', label: 'Ping', icon: 'ping' },
   { id: 'card', label: 'Unit card', icon: 'card' },
-  { id: 'select', label: 'Select', icon: 'select', own: true },
 ]
 
 // Everything else on the board (markers, tokens, blank bases) has a smaller ring.
@@ -199,13 +196,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
 
   const layout = getLayout(game.table.mapId, game.table.arrangementId)
   const tokens = game.tokens
-  const selected = tokens.find((token) => token.id === selectedId) ?? null
-  const selectedMarker = game.markers.find((marker) => marker.id === selectedId) ?? null
-  const selectedItem = selected
-    ? { type: 'token', value: selected }
-    : selectedMarker
-      ? { type: 'marker', value: selectedMarker }
-      : null
   const categories = categoriesFor(game, seat)
   const placedUnitKeys = new Set(tokens.filter((token) => token.seat === seat).map((token) => token.unitKey))
   const unplaced = roster.filter((unit) => !placedUnitKeys.has(unit.key))
@@ -354,10 +344,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       placeEntry(pendingEntry, point, target.token)
       return
     }
-    if (tool === 'select' && (target?.token || target?.marker)) {
-      setSelectedId((target.token ?? target.marker).id)
-      return
-    }
     if (target?.token && DRAG_TOOLS.includes(tool)) {
       setSelectedId(target.token.id)
       // Blank tokens drag freely with no measurement. Before the battle starts,
@@ -444,7 +430,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       }
     }
     // Otherwise a drag on the empty map pans it (and drops any selection).
-    if (['move', 'select', 'token', 'units'].includes(tool)) {
+    if (['move', 'token', 'units'].includes(tool)) {
       setSelectedId(null)
       gestureRef.current = { type: 'pan', last: { x: event.clientX, y: event.clientY }, start: { x: event.clientX, y: event.clientY }, moved: false }
       return
@@ -737,8 +723,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     clearTool()
     endPlacing()
     setWeaponMenuOpen(false)
-    setSelectedId(id === 'move' || id === 'select' ? token.id : null)
-    if (id === 'move' || id === 'select') {
+    setSelectedId(id === 'move' ? token.id : null)
+    if (id === 'move') {
       setTool(id)
     } else if (id === 'measure') {
       setTool('measure')
@@ -851,7 +837,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       y: host.y,
     })
   }
-  const detachSelected = () => detachMarker(selectedMarker)
 
   const stepBase = (token, direction) => {
     const current = BASE_SIZES_MM.indexOf(token.baseMm ?? DEFAULT_BASE_MM)
@@ -913,7 +898,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // The stats drawer: my attack once it has a target and weapon, or one aimed at my operative.
   const attack = useAttack(tool === 'attack' ? overlay : null)
 
-  // Units, Token and Select each pop a panel out beside their button.
+  // Units and Token each pop a panel out beside their button.
   const flyouts = {
     units: unitsOpen ? (
       <UnitsFlyout
@@ -926,15 +911,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     token: tokenMenu ? (
       <TokenFlyout categories={categories} menu={tokenMenu} onOpenCategory={openCategory} onChoose={chooseEntry} />
     ) : null,
-    select:
-      tool === 'select' && selectedItem ? (
-        <SelectPanel
-          item={selectedItem}
-          act={act}
-          onRemoved={() => setSelectedId(null)}
-          onDetach={detachSelected}
-        />
-      ) : null,
   }
   const pressTool = { units: pressUnits, token: pressToken }
   // Shoot or Fight: the attacker's ranged or melee weapons, full screen. Cancel ends it.
@@ -1009,6 +985,29 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       return [
         { key: 'name', label: 'Name', icon: 'name', run: openMenu('name') },
         { key: 'base', label: radialIsOperative ? 'Base size' : 'Size', icon: 'base', run: openMenu('base') },
+        // What Select used to offer for an operative that has moved.
+        ...(radialIsOperative && radialToken.lastMove
+          ? [
+              {
+                key: 'undo-step',
+                label: 'Undo 1"',
+                icon: 'back',
+                run: () => {
+                  act({ type: 'token/undoStep', id: radialToken.id })
+                  setRadial(null)
+                },
+              },
+              {
+                key: 'undo-move',
+                label: 'Undo move',
+                icon: 'back',
+                run: () => {
+                  act({ type: 'token/undoMove', id: radialToken.id })
+                  setRadial(null)
+                },
+              },
+            ]
+          : []),
         ...(radialToken.attachedTo
           ? [
               {

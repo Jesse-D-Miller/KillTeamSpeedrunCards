@@ -334,7 +334,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // With Measure on, tapping an operative closes it (the ruler goes) and opens the
   // operative's action ring.
   await a.locator(`.map-stage [data-token-id="${deployId}"] .board-token-base`).click()
-  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(11)
+  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(10)
   await expect(table.locator('.overlay-measure')).toHaveCount(0)
 
   // Switching tools clears the measurement; no separate Clear button.
@@ -400,7 +400,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(weaponList).toHaveCount(0)
   // Tapping the shooter closes Sightline and opens its action ring.
   await tapToken(sniper)
-  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(11)
+  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(10)
   await expect(table.locator('.targeting')).toHaveCount(0)
   // Shoot/Fight: tap the shooter and its weapon list pops out, set to Shoot (no enemy
   // is within its control range). The switch shows its melee weapons instead.
@@ -445,7 +445,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // Tapping the shooter ends Shoot/Fight and opens its action ring; the side bars go
   // back to normal.
   await tapToken(sniper)
-  await expect(a.locator(`.unit-radial[data-ring-for="${sniper}"]`).getByRole('menuitem')).toHaveCount(11)
+  await expect(a.locator(`.unit-radial[data-ring-for="${sniper}"]`).getByRole('menuitem')).toHaveCount(10)
   await expect(table.locator('.targeting')).toHaveCount(0)
   await expect(table.locator('[data-combat]')).toHaveCount(0)
   // On Vantage (picked by floor from the action ring, and marked with a chevron per
@@ -568,7 +568,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await openTab(a, 'Map')
   await expect(a.getByRole('button', { name: 'Units', exact: true })).toHaveCount(0)
   // Everything else on the operatives comes from their action ring; the rail keeps the rest.
-  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', 'Select', 'Fit', 'Full screen', 'Tabs'])
+  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', 'Fit', 'Full screen', 'Tabs'])
   // With no tool on, tapping an operative opens a ring of its actions; a touch
   // elsewhere closes it.
   const ring = a.locator('.unit-radial')
@@ -580,7 +580,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     )
   const [mineId] = await tokenIdsOf('#ff5a4e')
   await tokenOf(mineId).click()
-  await expect(ring.getByRole('menuitem')).toHaveText(['Move', 'Measure', 'Sightline', 'Shoot', 'Fight', 'Range', 'Vantage', 'Edit', 'Ping', 'Unit card', 'Select'])
+  await expect(ring.getByRole('menuitem')).toHaveText(['Move', 'Measure', 'Sightline', 'Shoot', 'Fight', 'Range', 'Vantage', 'Edit', 'Ping', 'Unit card'])
   // (Once its buttons have finished popping out.)
   await a.waitForTimeout(250)
   await shot(a, '06r-action-ring-ipad')
@@ -721,7 +721,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // With Move on, tapping an operative goes back to its action ring (Move is off), and
   // tapping the empty map just ends moving.
   await tokenOf('t2').click()
-  await expect(ring.getByRole('menuitem')).toHaveCount(11)
+  await expect(ring.getByRole('menuitem')).toHaveCount(10)
   await ring.getByRole('menuitem', { name: 'Move', exact: true }).click()
   await expect(ring).toHaveCount(0)
   await a.mouse.click(...emptySpot)
@@ -844,44 +844,40 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator('.overlay-ping')).toHaveCount(1)
   await expect(markerRing).toHaveCount(0)
 
-  // Select edits anything on the board; the changes stay.
-  await a.getByRole('button', { name: 'Select', exact: true }).click()
-  // No hint panel until something is selected, and Select never moves what it touches.
-  const selectPanel = a.locator('.select-panel')
-  await expect(selectPanel).toHaveCount(0)
-  const selectCx = await table.locator('[data-token-id="t1"] .board-token-base').getAttribute('cx')
-  const selBox = await a.locator('.map-stage [data-token-id="t1"] .board-token-base').boundingBox()
-  await a.mouse.move(selBox.x + selBox.width / 2, selBox.y + selBox.height / 2)
-  await a.mouse.down()
-  for (let i = 1; i <= 10; i += 1) await a.mouse.move(selBox.x + selBox.width / 2 + (2 * pxPerInch * i) / 10, selBox.y + selBox.height / 2)
-  await a.mouse.up()
-  await expect(selectPanel).toBeVisible()
-  await expect(table.locator('[data-token-id="t1"] .board-token-base')).toHaveAttribute('cx', selectCx)
-  await selectPanel.getByRole('textbox').fill('Boss')
-  await selectPanel.getByRole('textbox').press('Enter')
+  // Edit (from the ring) changes anything on the board; the changes stay. Theyn has
+  // moved this turning point, so his Edit ring can also undo that, as Select used to.
+  await ringAction(a, 't1', 'Edit')
+  const theynRing = a.locator('.unit-radial[data-ring-for="t1"]')
+  await expect(theynRing.getByRole('menuitem')).toHaveText(['Name', 'Base size', 'Undo 1"', 'Undo move', 'Remove', 'Back'])
+  await theynRing.getByRole('menuitem', { name: 'Name' }).click()
+  await theynRing.getByRole('textbox', { name: 'Name' }).fill('Boss')
+  await theynRing.getByRole('textbox', { name: 'Name' }).press('Enter')
   await expect(table.locator('.board-token-name').filter({ hasText: 'Boss' })).toHaveCount(1)
   const theynBase = table.locator('[data-token-id="t1"] .board-token-base')
   const theynR = Number(await theynBase.getAttribute('r'))
-  await selectPanel.getByRole('button', { name: 'Larger base' }).click()
+  await ringAction(a, 't1', 'Edit')
+  await theynRing.getByRole('menuitem', { name: 'Base size' }).click()
+  await theynRing.getByRole('menuitem', { name: '32mm base' }).click()
   await expect.poll(async () => Number(await theynBase.getAttribute('r'))).toBeGreaterThan(theynR)
-  await shot(a, '07e-select-panel')
-  await selectPanel.getByRole('button', { name: 'Smaller base' }).click()
+  await ringAction(a, 't1', 'Edit')
+  await theynRing.getByRole('menuitem', { name: 'Base size' }).click()
+  await theynRing.getByRole('menuitem', { name: '28.5mm base' }).click()
   await expect.poll(async () => Number(await theynBase.getAttribute('r'))).toBeCloseTo(theynR, 3)
-  // Deselecting keeps the ring.
-  await a.mouse.click(stageBox.x + stageBox.width * 0.75, stageBox.y + stageBox.height * 0.9)
-  await expect(selectPanel).toHaveCount(0)
   await expect(table.locator('[data-ring-for="t1"][data-ring="3"]')).toHaveCount(1)
-  // Markers and tokens can be resized too (markers start at the official 20mm).
-  await a.locator('.map-stage [data-catalog-id="ammo-cache"] circle').click()
-  await expect(selectPanel).toContainText('20mm')
-  await selectPanel.getByRole('button', { name: 'Larger base' }).click()
+  // Markers resize too (they start at the official 20mm).
+  await a.locator('.map-stage [data-catalog-id="ammo-cache"] circle').first().click()
+  const cacheRing = a.locator('.unit-radial')
+  await cacheRing.getByRole('menuitem', { name: 'Edit' }).click()
+  await cacheRing.getByRole('menuitem', { name: 'Size' }).click()
+  await expect(cacheRing.getByRole('menuitem', { name: '20mm' })).toHaveAttribute('aria-pressed', 'true')
+  await cacheRing.getByRole('menuitem', { name: '25mm' }).click()
   await expect(table.locator('[data-catalog-id="ammo-cache"] circle')).toHaveAttribute('r', String(25 / 25.4 / 2))
-  await expect(selectPanel).toContainText('25mm')
-  // Remove the blank base again.
+  // Remove the blank base again (Remove asks to confirm).
   await a.locator('.map-stage .board-token:not(:has(.board-order-tag)) .board-token-base').last().click()
-  await selectPanel.getByRole('button', { name: 'Remove' }).click()
+  await cacheRing.getByRole('menuitem', { name: 'Edit' }).click()
+  await cacheRing.getByRole('menuitem', { name: 'Remove' }).click()
+  await cacheRing.getByRole('menuitem', { name: 'Remove' }).click()
   await expect(table.locator('.board-token')).toHaveCount(10)
-  await a.getByRole('button', { name: 'Select', exact: true }).click()
 
   // ---- shot card ----
   // Bob's Vespid Warrior has just moved (activating it) with Airborne Predators up,
