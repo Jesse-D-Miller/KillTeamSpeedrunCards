@@ -968,6 +968,10 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(aliceDrawer.locator('[data-shot-half="defence"] [data-cell="dice"] [data-reason][data-tone="worse"]')).toHaveText(
     '▼ Piercing 1 · Neutron Charge',
   )
+  // Weapon rule pills in the drawer explain their rule when tapped.
+  await bobDrawer.getByRole('button', { name: /^What is Devastating/ }).first().click()
+  await expect(b.getByRole('dialog').getByRole('heading', { name: /Devastating/ })).toBeVisible()
+  await b.getByRole('dialog').getByRole('button', { name: 'Close' }).click()
   // Alice records the hit from her drawer: the neutron blaster's 3, then heals 1.
   await expect(aliceDrawer.getByRole('button', { name: /Take \d+ damage/ })).toHaveCount(3)
   await aliceDrawer.getByRole('button', { name: 'Take 3 damage (normal hit)' }).click()

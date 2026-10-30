@@ -2301,3 +2301,16 @@
     animation: none;
   }
 }
+
+/* A rule pill that explains its rule when tapped: looks like the pill, underlined. */
+.rule-pill-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

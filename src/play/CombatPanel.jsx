@@ -15,6 +15,7 @@ import {
   weaponProfileText,
 } from '../rules/shooting/display.js'
 import { weaponLabel } from '../rules/weaponRules.js'
+import { RulePill } from './RuleText.jsx'
 
 // A shot or fight on an iPad (the stats drawer). Laid out to be read top-down:
 // the matchup and whether it can happen, then my side, then theirs. Each side shows its
@@ -256,15 +257,19 @@ function Side({ combat, side, seat, onToggle, onPickWeapon, onWounds }) {
         <ul className="combat-rules">
           {profile.rerolls.map((entry) => (
             <li key={`r-${entry.text}`} className={entry.added ? 'is-added' : 'is-base'} data-reroll>
-              ↻ {entry.text}
-              {entry.by ? <em> · {entry.by}</em> : null}
+              <RulePill text={entry.text}>
+                ↻ {entry.text}
+                {entry.by ? <em> · {entry.by}</em> : null}
+              </RulePill>
             </li>
           ))}
           {showRules
             ? profile.rules.map((rule) => (
                 <li key={rule.key} className={`is-${rule.state}`} data-rule-state={rule.state}>
-                  {rule.text}
-                  {rule.by ? <em> · {rule.by}</em> : null}
+                  <RulePill text={rule.text}>
+                    {rule.text}
+                    {rule.by ? <em> · {rule.by}</em> : null}
+                  </RulePill>
                 </li>
               ))
             : null}

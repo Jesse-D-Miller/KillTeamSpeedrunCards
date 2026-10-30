@@ -36,6 +36,19 @@ export function RuleText({ text }) {
     ))
 }
 
+// A rule pill (e.g. "Devastating 2" in the stats drawer) that explains its rule when
+// tapped. Text that names no known rule stays as it is.
+export function RulePill({ text, children }) {
+  const openRule = useContext(RuleContext)
+  const ruleName = tokenizeWeaponRuleText(String(text ?? '')).find((token) => token.type === 'rule' && !isRangeRule(token.value))?.ruleName
+  if (!ruleName) return children
+  return (
+    <button type="button" className="rule-pill-button" onClick={() => openRule(ruleName)} aria-label={`What is ${text}?`}>
+      {children}
+    </button>
+  )
+}
+
 export function RuleProvider({ children }) {
   const [ruleName, setRuleName] = useState(null)
   const details = useMemo(() => (ruleName ? getRuleDescription(ruleName) : null), [ruleName])
