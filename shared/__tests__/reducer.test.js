@@ -706,3 +706,33 @@ describe('ending a turning point', () => {
     expect(state.phase).toBe('results')
   })
 })
+
+describe('nudging a finished move', () => {
+  const moved = () =>
+    run(createGame(), [
+      [{ type: 'token/add', x: 5, y: 5, unitKey: 'a1', maxWounds: 8 }, 'A'],
+      [{ type: 'token/move', id: 't1', path: [{ x: 5, y: 5 }, { x: 6, y: 5 }, { x: 7, y: 5 }, { x: 8, y: 5 }] }, 'A'],
+    ])
+
+  it('keeps the start and the length, and ends where it was nudged to', () => {
+    const state = applyAction(moved(), { type: 'token/adjust', id: 't1', x: 8, y: 5.6 }, 'A')
+    const token = state.tokens[0]
+    expect(token).toMatchObject({ x: 8, y: 5.6 })
+    expect(token.lastMove.inches).toBe(3)
+    expect(token.lastMove.path).toHaveLength(4)
+    expect(token.lastMove.path[0]).toEqual({ x: 5, y: 5 })
+    expect(token.lastMove.path[3]).toEqual({ x: 8, y: 5.6 })
+  })
+
+  it('goes no more than 1" from where the move ended', () => {
+    const token = applyAction(moved(), { type: 'token/adjust', id: 't1', x: 8, y: 9 }, 'A').tokens[0]
+    expect(token.x).toBeCloseTo(8, 6)
+    expect(token.y).toBeCloseTo(6, 6)
+    expect(token.lastMove.inches).toBe(3)
+  })
+
+  it('needs a move to nudge', () => {
+    const fresh = run(createGame(), [[{ type: 'token/add', x: 5, y: 5, unitKey: 'a1' }, 'A']])
+    expect(() => applyAction(fresh, { type: 'token/adjust', id: 't1', x: 5, y: 6 }, 'A')).toThrow(/Nothing to adjust/)
+  })
+})

@@ -168,6 +168,26 @@ export const stepPath = (path, point, step = 1) => {
   return next
 }
 
+// A point no further than `reach` from `centre` (towards `point` if it was further).
+export const clampWithin = (centre, point, reach) => {
+  const gap = distance(centre, point)
+  if (gap <= reach) return { x: point.x, y: point.y }
+  return { x: centre.x + ((point.x - centre.x) * reach) / gap, y: centre.y + ((point.y - centre.y) * reach) / gap }
+}
+
+// A finished move nudged so it ends at `point`: the start stays put and it keeps the
+// same number of steps, each shifted a little more towards the new end (the path
+// scrunches or stretches to fit).
+export const adjustPath = (path, point) => {
+  const end = path[path.length - 1]
+  const steps = path.length - 1
+  if (!steps) return path
+  return path.map((step, index) => ({
+    x: step.x + ((point.x - end.x) * index) / steps,
+    y: step.y + ((point.y - end.y) * index) / steps,
+  }))
+}
+
 // A free drag's measured route: the trail recorded so far, then the finger.
 export const trailPoints = ({ trail, x, y }) => [...trail, { x, y }]
 

@@ -3,6 +3,7 @@ import {
   MAX_CATEGORY_VP,
   MAX_EQUIPMENT_OPTIONS,
   MAX_TP,
+  MOVE_ADJUST_REACH,
   COMMAND_REROLL,
   PHASES,
   READY_CP,
@@ -19,6 +20,7 @@ import {
   otherSeat,
   ployUses,
 } from './game.js'
+import { adjustPath, clampWithin } from './geometry.js'
 import { ARRANGEMENT_OPTIONS, CRIT_OP_IDS, pickRandom } from './rolls.js'
 
 // applyAction(state, action, actor, random) -> next state
@@ -818,6 +820,22 @@ const handlers = {
         ? patchUnit(moved, token.seat, token.unitKey, { movedTp: state.battle.tp }, maxWounds)
         : moved
     return autoActivate(marked, token, maxWounds)
+  },
+
+  // Nudging a finished move: the operative ends up to MOVE_ADJUST_REACH from where it
+  // stopped, the start stays put and the move keeps its length (its path scrunches to
+  // fit). Activations don't change.
+  'token/adjust': (state, action) => {
+    const token = state.tokens.find((candidate) => candidate.id === String(action.id ?? ''))
+    if (!token?.lastMove) fail('Nothing to adjust.')
+    const end = clampWithin({ x: token.x, y: token.y }, sanitizePoint(action), MOVE_ADJUST_REACH)
+    const path = adjustPath(token.lastMove.path, end)
+    return {
+      ...state,
+      tokens: state.tokens.map((candidate) =>
+        candidate.id === token.id ? { ...candidate, ...end, lastMove: { ...token.lastMove, path } } : candidate,
+      ),
+    }
   },
 
   // Undoing the whole move also undoes the activation (or counteraction) it started.

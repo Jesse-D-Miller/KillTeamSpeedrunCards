@@ -12,6 +12,9 @@ export const PHASES = ['lobby', 'setup', 'muster', 'deploy', 'battle', 'results'
 
 export const MAX_TP = 4
 
+// How far a finished move can be nudged (inches from where it ended), keeping its length.
+export const MOVE_ADJUST_REACH = 1
+
 // Operative bases are round, in mm (oval bases use their long axis).
 export const DEFAULT_BASE_MM = 32
 export const BASE_SIZES_MM = [25, 28.5, 32, 40, 50, 60]

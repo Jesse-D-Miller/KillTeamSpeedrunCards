@@ -681,15 +681,18 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await shot(a, '06c-map-after-move')
   const firstLeg = Number.parseFloat(await moveLabel.textContent())
 
-  // Dragging the same operative again continues the movement from its original start.
+  // Dragging the same operative again only nudges where it ended: up to 1" away, with
+  // the start locked and the move's length unchanged (its path scrunches to fit).
   const movedBox = await a.locator('.map-stage .board-token-base').first().boundingBox()
   const mx = movedBox.x + movedBox.width / 2
   const my = movedBox.y + movedBox.height / 2
+  const endCy = Number(await tableToken.getAttribute('cy'))
   await a.mouse.move(mx, my)
   await a.mouse.down()
   for (let i = 1; i <= 10; i += 1) await a.mouse.move(mx, my + (2.3 * pxPerInch * i) / 10)
   await a.mouse.up()
-  await expect(moveLabel).toHaveText(`${firstLeg + 2}.0"`)
+  await expect.poll(async () => Number(await tableToken.getAttribute('cy')) - endCy).toBeCloseTo(1, 1)
+  await expect(moveLabel).toHaveText(`${firstLeg}.0"`)
   await expect(table.locator('.overlay-move-start')).toHaveCount(1)
 
   // Tapping where the move started (with Move on) puts the operative back, ready again.
@@ -707,14 +710,17 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     for (let i = 1; i <= 10; i += 1) await a.mouse.move(x0, y0 + (inches * pxPerInch * i) / 10)
     await a.mouse.up()
   }
-  // Back-tracking a move all the way to its start does the same. (Wait for the
+  // Back-tracking all the way to the start within a drag does the same. (Wait for the
   // iPad to show the reset first, so the test doesn't grab the old position.)
   await expect(a.locator('.map-stage .move-count[data-count-for="t1"]')).toHaveCount(0)
-  await dragDown(0, 2.2)
-  await expect(table.locator('[data-token-id="t1"]')).toHaveClass(/is-active/)
-  // Wait for the iPad to show the settled move before grabbing the token again.
-  await expect(a.locator('.map-stage .move-count[data-count-for="t1"]')).toHaveText('2.0"')
-  await dragDown(0, -2.2)
+  const backBox = await a.locator('.map-stage .board-token-base').first().boundingBox()
+  const bx0 = backBox.x + backBox.width / 2
+  const by0 = backBox.y + backBox.height / 2
+  await a.mouse.move(bx0, by0)
+  await a.mouse.down()
+  for (let i = 1; i <= 10; i += 1) await a.mouse.move(bx0, by0 + (2.2 * pxPerInch * i) / 10)
+  for (let i = 9; i >= 0; i -= 1) await a.mouse.move(bx0, by0 + (2.2 * pxPerInch * i) / 10)
+  await a.mouse.up()
   await expect(tableToken).toHaveAttribute('cx', startCx)
   await expect(table.locator('[data-token-id="t1"]')).not.toHaveClass(/is-active/)
   await expect(table.locator('.overlay-move')).toHaveCount(0)

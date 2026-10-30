@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { distance, stepPath } from '../../shared/geometry.js'
+import { adjustPath, clampWithin, distance, stepPath } from '../../shared/geometry.js'
 import {
   BASE_SIZES_MM,
   DEFAULT_BASE_MM,
+  MOVE_ADJUST_REACH,
   baseRadiusIn,
   tokenRadiusIn,
   turnState,
@@ -365,9 +366,22 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         }
         return
       }
-      // Operative tokens follow the finger smoothly; their path locks in at each full inch. follows the finger smoothly; its path locks in at each full inch.
-      // Dragging an operative that already moved this TP continues that movement.
-      const path = target.token.lastMove?.path ?? [{ x: target.token.x, y: target.token.y }]
+      // Dragging an operative that already moved this turning point nudges where that
+      // move ended (up to 1"), keeping its start and its length.
+      if (target.token.lastMove) {
+        gestureRef.current = {
+          type: 'adjust-token',
+          id: target.token.id,
+          path: target.token.lastMove.path,
+          end: { x: target.token.x, y: target.token.y },
+          moved: false,
+          screen: { x: event.clientX, y: event.clientY },
+          ring: tool === 'move',
+        }
+        return
+      }
+      // Operative tokens follow the finger smoothly; their path locks in at each full inch.
+      const path = [{ x: target.token.x, y: target.token.y }]
       gestureRef.current = {
         type: 'drag-token',
         id: target.token.id,
@@ -525,6 +539,12 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       const preview = { id: gesture.id, path: gesture.path, x: point.x, y: point.y }
       setDragPreview(preview)
       sendEphemeral({ tool: 'drag', ...preview })
+    } else if (gesture.type === 'adjust-token') {
+      gesture.moved = true
+      gesture.point = clampWithin(gesture.end, point, MOVE_ADJUST_REACH)
+      const preview = { id: gesture.id, path: adjustPath(gesture.path, gesture.point), ...gesture.point }
+      setDragPreview(preview)
+      sendEphemeral({ tool: 'drag', ...preview })
     } else if (gesture.type === 'drag-free') {
       gesture.moved = true
       gesture.point = point
@@ -612,6 +632,19 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       }
       sendEphemeral(overlay ?? null)
     }
+    if (gesture.type === 'adjust-token') {
+      if (gesture.moved) {
+        act({ type: 'token/adjust', id: gesture.id, ...gesture.point })
+        // Hold the nudged spot until the server echoes it.
+        setDragPreview({ id: gesture.id, path: adjustPath(gesture.path, gesture.point), ...gesture.point })
+        window.setTimeout(() => setDragPreview(null), 400)
+      } else {
+        setDragPreview(null)
+        if (gesture.ring) ringFor(gesture.id)
+        else activateByTap(gesture.id)
+      }
+      sendEphemeral(overlay ?? null)
+    }
     if (gesture.type === 'drag-free' && !gesture.moved && gesture.ring) ringFor(gesture.id)
     // A tap on the empty map with Move on: done moving, back to no tool.
     if (gesture.type === 'pan' && !gesture.moved && tool === 'move') leaveTool()
@@ -634,7 +667,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
     if (pointersRef.current.size === 2) {
       // Second finger: abandon the tool gesture and zoom instead.
-      if (gestureRef.current?.type === 'drag-token' || gestureRef.current?.type === 'drag-free') {
+      if (['drag-token', 'adjust-token', 'drag-free'].includes(gestureRef.current?.type)) {
         setDragPreview(null)
         sendEphemeral(overlay ?? null)
       }
