@@ -29,10 +29,9 @@ import { useAttack } from './useAttack.js'
 // and drag anywhere to measure (from an operative's base if the drag starts on one;
 // the operative stays put).
 
-// Move and Measure are opened from an operative's action ring, not the rail (and with
-// no tool on, a drag measures anyway).
+// Move, Measure and Sightline are opened from an operative's action ring, not the rail
+// (and with no tool on, a drag measures anyway).
 const TOOLS = [
-  ['los', 'Sightline'],
   ['attack', 'Shoot/Fight'],
   ['units', 'Units'],
   ['token', 'Token'],
@@ -301,15 +300,18 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const point = toBoard(event.clientX, event.clientY)
 
     // No tool: wait to see whether this is a tap or a drag (see moveTool / endTool).
-    // A touch while the action ring is open just closes it.
+    // A touch while the action ring is open closes it, unless it's on another operative
+    // (a tap there opens that one's ring).
     if (tool === null) {
+      const token = target?.token?.unitKey ? target.token : null
       if (radial) {
         setRadial(null)
-        gestureRef.current = { type: 'dismiss' }
-        return
+        if (!token || token.id === radial.tokenId) {
+          gestureRef.current = { type: 'dismiss' }
+          return
+        }
       }
       clearTool()
-      const token = target?.token?.unitKey ? target.token : null
       gestureRef.current = { type: 'press', from: point, screen: { x: event.clientX, y: event.clientY }, token }
       return
     }

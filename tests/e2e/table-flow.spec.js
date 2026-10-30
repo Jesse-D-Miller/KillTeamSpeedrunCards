@@ -341,10 +341,10 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     await table.locator('.board-token').evaluateAll((nodes) => nodes.map((node) => node.dataset.tokenId))
   ).slice(-5)
   const tapToken = (id) => a.locator(`.map-stage [data-token-id="${id}"] .board-token-base`).click()
-  await a.getByRole('button', { name: 'Sightline', exact: true }).click()
+  // Sightline from the sniper's action ring (a tap on it switches the open ring to it)
+  // badges every enemy at a glance.
+  await ringAction(a, sniper, 'Sightline')
   await expect(table.locator('.overlay-measure')).toHaveCount(0)
-  // Picking the shooter badges every enemy at a glance.
-  await tapToken(sniper)
   await expect(table.locator(`[data-badge-for="${inOpen}"]`)).toHaveAttribute('data-status', 'valid')
   await expect(table.locator(`[data-badge-for="${behind}"]`)).toHaveAttribute('data-status', 'invalid')
   await expect(table.locator(`[data-badge-for="${edge}"]`)).toHaveAttribute('data-status', 'obscured')
@@ -434,11 +434,9 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator(`[data-vantage-for="${sniper}"]`)).toHaveText('▲2"')
   await a.getByRole('button', { name: 'Select', exact: true }).click()
   await tableActions(table, [{ type: 'unit/update', seat: 'B', unitKey: 'TEST-OPEN', patch: { order: 'engage' } }])
-  await a.getByRole('button', { name: 'Sightline', exact: true }).click()
-  await tapToken(sniper)
+  await ringAction(a, sniper, 'Sightline')
   await tapToken(inOpen)
   await expect(table.locator(`[data-chips-for="${sniper}"]`)).toContainText('VANTAGE · ACCURATE 1')
-  await a.getByRole('button', { name: 'Sightline', exact: true }).click()
   await tableActions(
     table,
     [
