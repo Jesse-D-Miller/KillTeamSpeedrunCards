@@ -535,6 +535,12 @@ All of these were replaced in Approved Ops 2025.
 - **Tac ops:** the 12 as text cards (`src/data/tacOps.js`), limited to the kill team's archetypes.
 - **Scouting:** the step is removed.
 - **Mustering:** Ready waits until a player has picked operatives, at least one equipment option and a tac op. (House rule at the user's request: the core rules allow taking no equipment.)
+- **Equipment that adds a weapon** (checked 2026-10-30 against every team's equipment):
+  - "Friendly X operatives have the following weapon. Note that some operatives already have this weapon but with better stats; use the better version": Yaegir and Hearthkyn Salvager Plasma Knives, Kommando Choppas, Scout Squad Combat Blades. An operative that has the weapon on its datacard keeps that version only; everyone else gains the equipment version alongside their own weapons (e.g. Fists).
+  - Name-matched exactly: a Yaegir Bladekyn's Dual Plasma Knives is a different weapon, so it also gains a Plasma Knife.
+  - Keyword limits apply (Kommando Choppas exclude the Bomb Squig and Grot).
+  - Yaegir Plasma Knives also gives the better (datacard) knife Balanced for the battle; the hand-checked Yaegir rules apply it in shots and fights, with its reason shown.
+  - Rules that change a weapon's rules for an action (Special Issue Shells, Piercing Shot, Drill Rokkits, Targeting Oculars…) are stats-drawer switches, not new weapons.
 - **Setting up operatives:** only before the battle (deployment). From the first turning point the iPad map has no Units tool.
 - **Vantage on the iPad:** picked by floor from an operative's action ring: Ground, 1st floor (treated as 2" up) or 2nd floor (4" up). Those heights drive the Vantage rules in the targeting check; the operative shows one chevron per floor.
 - **Primary op:** a secret pick in the TP1 strategy sheet (`battle/primaryOp`, TP1 only). Its bonus (half that op's VP, rounded up) is added to every VP total automatically when the game ends: projector, both iPads and the results screen. Until then it's left out of the totals, and only its owner's VP sheet shows it.
