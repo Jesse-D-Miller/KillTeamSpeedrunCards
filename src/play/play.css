@@ -1899,6 +1899,39 @@
   background: var(--bad);
 }
 
+/* Damage and healing for my own operative in the attack. */
+.combat-wound-controls {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+
+.combat-wound-controls button {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--faint);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.combat-wound-controls button.is-hit {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.combat-wound-controls button span {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.combat-wound-controls button:disabled {
+  opacity: 0.35;
+}
+
 .combat-weapon {
   display: flex;
   flex-wrap: wrap;

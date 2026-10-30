@@ -6,7 +6,7 @@ import ToolIcon from './ToolIcon.jsx'
 // The stats drawer on the right edge of an iPad, while one of my operatives is in a
 // shot or fight. Each new attack starts with it closed; its handle says which, with a
 // dot until it's been opened for that attack.
-function AttackDrawer({ attack, seat, toggle, pickWeapon }) {
+function AttackDrawer({ attack, seat, toggle, pickWeapon, setWounds }) {
   const [openKey, setOpenKey] = useState(null)
   const [seenKeys, setSeenKeys] = useState(() => new Set())
   if (!attack) return null
@@ -33,7 +33,7 @@ function AttackDrawer({ attack, seat, toggle, pickWeapon }) {
       label={open ? `Hide the ${label}` : `Show the ${label}`}
       className="attack-drawer"
     >
-      <CombatPanel attack={attack} seat={seat} onToggle={toggle} onPickWeapon={pickWeapon} />
+      <CombatPanel attack={attack} seat={seat} onToggle={toggle} onPickWeapon={pickWeapon} onWounds={setWounds} />
     </Drawer>
   )
 }

@@ -954,6 +954,14 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(aliceDrawer.locator('[data-shot-half="defence"] [data-cell="dice"] [data-reason][data-tone="worse"]')).toHaveText(
     '▼ Piercing 1 · Neutron Charge',
   )
+  // Alice records the hit from her drawer: the neutron blaster's 3, then heals 1.
+  await expect(aliceDrawer.getByRole('button', { name: /Take \d+ damage/ })).toHaveCount(3)
+  await aliceDrawer.getByRole('button', { name: 'Take 3 damage (normal hit)' }).click()
+  await expect(shotDefence.locator('.pb-combat-wounds')).toHaveText('5/8 W')
+  await aliceDrawer.getByRole('button', { name: 'Heal 1' }).click()
+  await expect(shotDefence.locator('.pb-combat-wounds')).toHaveText('6/8 W')
+  // Bob (shooting) has nothing coming back at him: just −1 / +1 for his own operative.
+  await expect(bobDrawer.getByRole('button', { name: /Take \d+ damage \(/ })).toHaveCount(0)
   await shot(table, '07f-shot-sidebars-table')
   await shot(b, '07g-shot-drawer-attacker')
   // Alice uses Sturdy from her iPad: it spends her CP, and the attacker's crits become

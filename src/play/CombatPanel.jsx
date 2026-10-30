@@ -150,7 +150,46 @@ function Modifiers({ modifiers, seat, onToggle }) {
   )
 }
 
-function Side({ combat, side, seat, onToggle, onPickWeapon }) {
+// Damage and healing for my own operative: −1 / +1, and quick buttons for a normal
+// and a critical hit from the opponent's current profile (after any damage changes).
+//   incoming: { normal, crit } damage the opponent deals it in this attack, or null.
+function WoundControls({ operative, incoming, onWounds }) {
+  const take = (damage) => onWounds(operative, operative.wounds - damage)
+  return (
+    <div className="combat-wound-controls" role="group" aria-label={`${operative.name} wounds`}>
+      <button type="button" onClick={() => take(1)} disabled={operative.wounds <= 0} aria-label="Take 1 damage">
+        −1
+      </button>
+      {incoming
+        ? [
+            ['Hit', incoming.normal],
+            ['Crit', incoming.crit],
+          ].map(([kind, damage]) => (
+            <button
+              key={kind}
+              type="button"
+              className="is-hit"
+              onClick={() => take(damage)}
+              disabled={operative.wounds <= 0}
+              aria-label={`Take ${damage} damage (${kind === 'Hit' ? 'normal' : 'critical'} hit)`}
+            >
+              −{damage} <span>{kind}</span>
+            </button>
+          ))
+        : null}
+      <button
+        type="button"
+        onClick={() => take(-1)}
+        disabled={operative.wounds >= operative.maxWounds}
+        aria-label="Heal 1"
+      >
+        +1
+      </button>
+    </div>
+  )
+}
+
+function Side({ combat, side, seat, onToggle, onPickWeapon, onWounds }) {
   const operative = operativeOf(combat, side)
   const weapon = weaponOf(combat, side)
   const profile = profileOf(combat, side)
@@ -158,6 +197,10 @@ function Side({ combat, side, seat, onToggle, onPickWeapon }) {
   const fight = combat.mode === 'fight'
   const showRules = side === 'attack' || fight
   const woundsLeft = operative.maxWounds ? Math.max(0, operative.wounds) / operative.maxWounds : null
+  // What the other side's weapon deals this operative: the shot's attacker, or in a fight
+  // whoever it's fighting.
+  const theirs = side === 'attack' ? (fight ? combat.retaliation : null) : combat.attack
+  const incoming = theirs ? { normal: theirs.dmg.normal.value, crit: theirs.dmg.crit.value } : null
   return (
     <section
       className={`combat-side${mine ? ' is-mine' : ''}`}
@@ -180,6 +223,7 @@ function Side({ combat, side, seat, onToggle, onPickWeapon }) {
           </span>
         ) : null}
       </header>
+      {mine && operative.maxWounds && onWounds ? <WoundControls operative={operative} incoming={incoming} onWounds={onWounds} /> : null}
       {weapon ? (
         <p className="combat-weapon">
           <strong>{weaponLabel(weapon)}</strong>
@@ -231,7 +275,7 @@ function Side({ combat, side, seat, onToggle, onPickWeapon }) {
   )
 }
 
-function CombatPanel({ attack: combat, seat, onToggle, onPickWeapon }) {
+function CombatPanel({ attack: combat, seat, onToggle, onPickWeapon, onWounds }) {
   // My own side first.
   const sides = combat.target.seat === seat ? ['defence', 'attack'] : ['attack', 'defence']
   const status = statusOf(combat)
@@ -251,7 +295,7 @@ function CombatPanel({ attack: combat, seat, onToggle, onPickWeapon }) {
         </p>
       </header>
       {sides.map((side) => (
-        <Side key={side} combat={combat} side={side} seat={seat} onToggle={onToggle} onPickWeapon={onPickWeapon} />
+        <Side key={side} combat={combat} side={side} seat={seat} onToggle={onToggle} onPickWeapon={onPickWeapon} onWounds={onWounds} />
       ))}
       {combat.mode === 'fight' ? <p className="combat-footnote">{FIGHT_RESOLVE}</p> : null}
     </div>
