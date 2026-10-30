@@ -66,6 +66,9 @@ export const DEFAULT_SETTINGS = {
 
 export const createGame = (settings = DEFAULT_SETTINGS) => ({
   phase: 'lobby',
+  // The speedrun clock (server time, ms): started the first time both iPads are
+  // connected, stopped at the results.
+  clock: { startedAt: null, endedAt: null },
   ready: { A: false, B: false },
   players: { A: createPlayer('A'), B: createPlayer('B') },
   table: {

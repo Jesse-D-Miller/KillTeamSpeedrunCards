@@ -315,6 +315,19 @@ const handlers = {
   // ---- general ----
   'game/reset': (state) => createGame(state.settings),
 
+  // The clock is the server's alone (actor 'server'); devices can't set it.
+  'clock/start': (state, action, actor) => {
+    if (actor !== 'server') fail('Only the table server runs the clock.')
+    if (state.clock?.startedAt) return state
+    return { ...state, clock: { startedAt: toNumber(action.at), endedAt: null } }
+  },
+
+  'clock/stop': (state, action, actor) => {
+    if (actor !== 'server') fail('Only the table server runs the clock.')
+    if (!state.clock?.startedAt || state.clock.endedAt) return state
+    return { ...state, clock: { ...state.clock, endedAt: toNumber(action.at) } }
+  },
+
   'phase/ready': (state, action, actor, random) => {
     const seat = resolveSeat(action, actor)
     const ready = { ...state.ready, [seat]: action.ready !== false }

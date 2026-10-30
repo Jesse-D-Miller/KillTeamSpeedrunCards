@@ -69,6 +69,29 @@
   transition: opacity 0.2s;
 }
 
+.table-clock {
+  /* Just left of the menu button, as quiet as it: readable when looked for, never
+     competing with the board. */
+  position: absolute;
+  top: 0.75rem;
+  right: 3.75rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  padding: 0 0.6rem;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.55);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.table-clock.is-final {
+  color: #8fe38a;
+  opacity: 0.85;
+}
+
 .table-menu-button:hover {
   opacity: 1;
 }

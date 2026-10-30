@@ -77,6 +77,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await table.goto('/table')
   await expect(table.locator('.join-overlay')).toBeVisible()
   await expect(table.locator('.join-qr')).toHaveCount(2)
+  // The game clock waits for both iPads.
+  await expect(table.locator('.table-clock')).toHaveCount(0)
   await shot(table, '01-join')
 
   const contextA = await browser.newContext({ viewport: IPAD, hasTouch: true })
@@ -91,6 +93,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await b.getByLabel('Your name').fill('Bob')
   await b.getByLabel('Your name').press('Enter')
   await expect(table.locator('.join-seat-ok')).toHaveCount(2)
+  await expect(table.locator('.table-clock')).toHaveAttribute('data-clock', 'running')
+  await expect(table.locator('.table-clock')).toHaveText(/^\d+:\d\d$/)
 
   // The iPad header can hide the browser bars: it either goes full screen (Safari) or,
   // where the browser doesn't allow it, explains Add to Home Screen.
@@ -960,6 +964,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // Alice's primary is Crit op, where she scored 2, so 2 + 1.
   await expect(a.locator('.play-counters .counter.is-button .counter-value')).toHaveText('3')
   await expect(aliceBoard.locator('.pb-stat.is-vp .pb-big-value')).toHaveText('3')
+  // The clock stops on the final time.
+  await expect(table.locator('.table-clock')).toHaveAttribute('data-clock', 'final')
   await shot(a, '13-results-ipad')
   await shot(table, '14-results-table')
 

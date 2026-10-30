@@ -96,6 +96,19 @@ export const createGameServer = ({ server, persistPath = null, log = console.log
     })
   }
 
+  // The speedrun clock starts the first time both iPads are connected (again after a
+  // new game) and stops at the results.
+  const updateClock = () => {
+    const meta = presence()
+    const { startedAt, endedAt } = state.clock ?? {}
+    let action = null
+    if (!startedAt && meta.A && meta.B) action = { type: 'clock/start', at: Date.now() }
+    else if (startedAt && !endedAt && state.phase === 'results') action = { type: 'clock/stop', at: Date.now() }
+    if (!action) return
+    state = applyAction(state, action, 'server')
+    save()
+  }
+
   const releaseSeat = (seat) => {
     seatTokens[seat] = null
     clients()
@@ -147,6 +160,7 @@ export const createGameServer = ({ server, persistPath = null, log = console.log
     socket.joinedAt = Date.now()
     log(`Seat ${seat} connected`)
     send(socket, { type: 'welcome', role: 'seat', seat, token: seatTokens[seat] })
+    updateClock()
     broadcastState()
   }
 
@@ -169,6 +183,7 @@ export const createGameServer = ({ server, persistPath = null, log = console.log
     try {
       state = applyAction(state, message.action ?? {}, socket.seat || 'table')
       remember(message.id, { ok: true })
+      updateClock()
       save()
       broadcastState(socket, message.id)
       if (message.id != null) send(socket, { type: 'ack', id: message.id })

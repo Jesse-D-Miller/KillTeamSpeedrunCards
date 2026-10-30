@@ -16,6 +16,19 @@ const readySetup = () =>
   ])
 
 describe('applyAction', () => {
+  it('lets only the server start and stop the clock, once each', () => {
+    const fresh = createGame()
+    expect(() => applyAction(fresh, { type: 'clock/start', at: 1000 }, 'table')).toThrow(ActionError)
+    expect(() => applyAction(fresh, { type: 'clock/start', at: 1000 }, 'A')).toThrow(ActionError)
+    const started = applyAction(fresh, { type: 'clock/start', at: 1000 }, 'server')
+    expect(started.clock).toEqual({ startedAt: 1000, endedAt: null })
+    expect(applyAction(started, { type: 'clock/start', at: 5000 }, 'server')).toBe(started)
+    const stopped = applyAction(started, { type: 'clock/stop', at: 9000 }, 'server')
+    expect(stopped.clock).toEqual({ startedAt: 1000, endedAt: 9000 })
+    expect(applyAction(stopped, { type: 'clock/stop', at: 12000 }, 'server')).toBe(stopped)
+    expect(applyAction(stopped, { type: 'game/reset' }, 'table').clock).toEqual({ startedAt: null, endedAt: null })
+  })
+
   it('rejects unknown actions', () => {
     expect(() => applyAction(createGame(), { type: 'nope' }, 'A')).toThrow(ActionError)
   })

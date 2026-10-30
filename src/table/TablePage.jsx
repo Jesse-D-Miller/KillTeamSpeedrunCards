@@ -15,6 +15,7 @@ import { CASUALTY_MARGIN_IN, PANEL_GAP_IN, casualtyAreasFor, panelLayout } from 
 import { seatUrl, useJoinBase } from './useJoinUrl.js'
 import { useLongAbsence } from './useLongAbsence.js'
 import Calibrator from './Calibrator.jsx'
+import GameClock from './GameClock.jsx'
 import './table.css'
 
 // The projector view. Everything lives on one "table plane" measured in inches
@@ -279,6 +280,7 @@ function TablePage({ calibrating = false }) {
 
       {status !== 'online' ? <div className="table-offline">Reconnecting…</div> : null}
 
+      {!calibrating ? <GameClock clock={game.clock} /> : null}
       {!calibrating ? (
         <button type="button" className="table-menu-button" onClick={() => setMenuOpen((open) => !open)}>
           ☰

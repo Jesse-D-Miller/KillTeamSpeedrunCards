@@ -123,6 +123,26 @@ describe('game server', () => {
     await again.next('ack', (message) => message.id === 'tab1-1')
   })
 
+  it('starts the clock once both iPads have joined, and again for a new game', async () => {
+    const seatA = await join_({ role: 'seat', seat: 'A' })
+    await seatA.next('welcome')
+    expect(game.getState().clock.startedAt).toBeNull()
+    const seatB = await join_({ role: 'seat', seat: 'B' })
+    const { token } = await seatB.next('welcome')
+    const startedAt = game.getState().clock.startedAt
+    expect(startedAt).toBeGreaterThan(0)
+
+    // A reconnect doesn't restart it; a new game with both still here starts a fresh one.
+    seatB.terminate()
+    const again = await join_({ role: 'seat', seat: 'B', token })
+    await again.next('welcome')
+    expect(game.getState().clock.startedAt).toBe(startedAt)
+    seatA.sendJson({ type: 'action', id: 'reset-1', action: { type: 'game/reset' } })
+    await seatA.next('ack', (message) => message.id === 'reset-1')
+    expect(game.getState().clock.startedAt).toBeGreaterThanOrEqual(startedAt)
+    expect(game.getState().clock.endedAt).toBeNull()
+  })
+
   it('reports invalid actions only to the sender', async () => {
     const seatA = await join_({ role: 'seat', seat: 'A' })
     await seatA.next('welcome')
