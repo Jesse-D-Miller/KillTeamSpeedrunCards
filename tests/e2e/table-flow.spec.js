@@ -833,6 +833,16 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await ring.getByRole('menuitem', { name: '3" range' }).click()
   await expect(ring).toHaveCount(0)
   await expect(table.locator('[data-ring-for="t1"][data-ring="3"]')).toHaveCount(1)
+  // Markers and tokens have a ring too: Move, Range, Edit (name, size, removal) and Ping.
+  await a.locator('.map-stage [data-catalog-id="ammo-cache"] circle').first().click()
+  const markerRing = a.locator('.unit-radial')
+  await expect(markerRing.getByRole('menuitem')).toHaveText(['Move', 'Range', 'Edit', 'Ping'])
+  await markerRing.getByRole('menuitem', { name: 'Edit' }).click()
+  await expect(markerRing.getByRole('menuitem')).toHaveText(['Name', 'Size', 'Remove', 'Back'])
+  await markerRing.getByRole('menuitem', { name: 'Back' }).click()
+  await markerRing.getByRole('menuitem', { name: 'Ping' }).click()
+  await expect(table.locator('.overlay-ping')).toHaveCount(1)
+  await expect(markerRing).toHaveCount(0)
 
   // Select edits anything on the board; the changes stay.
   await a.getByRole('button', { name: 'Select', exact: true }).click()

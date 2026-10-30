@@ -12,7 +12,7 @@ import BoardSvg from '../board/BoardSvg.jsx'
 import { dragOverlays } from '../board/dragOverlays.js'
 import { baseSizeMm } from '../data/baseSizes.js'
 import { BOARD, getLayout, toSvgY } from '../board/boardData.js'
-import { categoriesFor, radiusFor } from '../data/tokenCatalog.js'
+import { MARKER_SIZES_MM, categoriesFor, radiusFor } from '../data/tokenCatalog.js'
 import { maxWoundsFor, tokenLabelFor } from '../rules/roster.js'
 import Drawer from './Drawer.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
@@ -86,6 +86,15 @@ const RADIAL_ACTIONS = [
   { id: 'card', label: 'Unit card', icon: 'card' },
   { id: 'select', label: 'Select', icon: 'select', own: true },
 ]
+
+// Everything else on the board (markers, tokens, blank bases) has a smaller ring.
+const ITEM_ACTIONS = [
+  { id: 'move', label: 'Move', icon: 'move' },
+  { id: 'range', label: 'Range', icon: 'range' },
+  { id: 'edit', label: 'Edit', icon: 'edit' },
+  { id: 'ping', label: 'Ping', icon: 'ping' },
+]
+const MM_PER_IN = 25.4
 
 const distanceToSegment = (point, a, b) => {
   const lengthSq = (b.x - a.x) ** 2 + (b.y - a.y) ** 2
@@ -171,7 +180,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const [lastCategory, setLastCategory] = useState('categories')
   const [pendingEntry, setPendingEntry] = useState(null)
   const [railOpen, setRailOpen] = useState(true)
-  // The action ring: { tokenId, x, y } (its centre in map-stage pixels), or null.
+  // The action ring: { tokenId (an operative, token or marker), menu, x, y (its centre
+  // in map-stage pixels) }, or null.
   const [radial, setRadial] = useState(null)
   // The operative whose unit card is open (by token id), from the action ring.
   const [cardFor, setCardFor] = useState(null)
@@ -269,8 +279,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     }, 2500)
   }
 
-  // Open the action ring around an operative, kept fully on screen and clear of the
-  // tool drawer on the left.
+  // Open the action ring around an operative (or a marker or token), kept fully on
+  // screen and clear of the tool drawer on the left.
   const openRadial = (token) => {
     const svgRect = svgRef.current.getBoundingClientRect()
     const stageRect = stageRef.current.getBoundingClientRect()
@@ -322,19 +332,20 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const point = toBoard(event.clientX, event.clientY)
 
     // No tool: wait to see whether this is a tap or a drag (see moveTool / endTool).
-    // A touch while the action ring is open closes it, unless it's on another operative
-    // (a tap there opens that one's ring).
+    // A touch while the action ring is open closes it, unless it's on something else
+    // with a ring (a tap there opens that one's ring).
     if (tool === null) {
       const token = target?.token?.unitKey ? target.token : null
+      const item = target?.token ?? target?.marker ?? null
       if (radial) {
         setRadial(null)
-        if (!token || token.id === radial.tokenId) {
+        if (!item || item.id === radial.tokenId) {
           gestureRef.current = { type: 'dismiss' }
           return
         }
       }
       clearTool()
-      gestureRef.current = { type: 'press', from: point, screen: { x: event.clientX, y: event.clientY }, token }
+      gestureRef.current = { type: 'press', from: point, screen: { x: event.clientX, y: event.clientY }, token, item }
       return
     }
 
@@ -363,7 +374,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           origin,
           moved: false,
           screen: { x: event.clientX, y: event.clientY },
-          ring: tool === 'move' && Boolean(target.token.unitKey),
+          ring: tool === 'move',
         }
         return
       }
@@ -392,6 +403,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         attachable: target.marker.kind === 'token',
         origin: { x: target.marker.x, y: target.marker.y },
         moved: false,
+        screen: { x: event.clientX, y: event.clientY },
+        ring: tool === 'move',
       }
       return
     }
@@ -587,9 +600,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       else leaveTool()
       return
     }
-    // No tool, and the finger didn't move: an operative's actions, or a ping.
+    // No tool, and the finger didn't move: something's actions, or a ping.
     if (gesture.type === 'press') {
-      if (gesture.token) openRadial(gesture.token)
+      if (gesture.item) openRadial(gesture.item)
       else ping(gesture.from)
       return
     }
@@ -688,11 +701,15 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     setTool(null)
   }
 
-  // Leave the current tool and open the action ring on this operative instead.
-  const ringFor = (tokenId) => {
-    const token = tokens.find((candidate) => candidate.id === tokenId)
+  // An operative, token or marker by id.
+  const itemById = (id) => tokens.find((token) => token.id === id) ?? game.markers.find((marker) => marker.id === id) ?? null
+
+  // Leave the current tool and open the action ring on this operative (or marker or
+  // token) instead.
+  const ringFor = (id) => {
+    const item = itemById(id)
     leaveTool()
-    if (token) openRadial(token)
+    if (item) openRadial(item)
   }
 
   // A button in an operative's action ring: switch to that tool, already aimed at it.
@@ -824,16 +841,17 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   }
 
   // Detaching a riding token sets it down just beside its operative.
-  const detachSelected = () => {
-    const host = tokens.find((token) => token.id === selectedMarker?.attachedTo)
+  const detachMarker = (marker) => {
+    const host = tokens.find((token) => token.id === marker?.attachedTo)
     if (!host) return
     act({
       type: 'marker/update',
-      id: selectedMarker.id,
-      x: clamp(host.x + tokenRadiusIn(host) + selectedMarker.radius + 0.1, 0, BOARD.width),
+      id: marker.id,
+      x: clamp(host.x + tokenRadiusIn(host) + marker.radius + 0.1, 0, BOARD.width),
       y: host.y,
     })
   }
+  const detachSelected = () => detachMarker(selectedMarker)
 
   const stepBase = (token, direction) => {
     const current = BASE_SIZES_MM.indexOf(token.baseMm ?? DEFAULT_BASE_MM)
@@ -934,7 +952,12 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         onClose={leaveTool}
       />
     ) : null
-  const radialToken = radial ? tokens.find((token) => token.id === radial.tokenId) ?? null : null
+  const radialToken = radial ? itemById(radial.tokenId) : null
+  // What the ring is on: an operative, or a marker / token / blank base (which change
+  // with marker/... or token/... actions).
+  const radialIsMarker = Boolean(radialToken) && !tokens.includes(radialToken)
+  const radialIsOperative = Boolean(radialToken?.unitKey) && !radialIsMarker
+  const updateRadial = (patch) => act({ type: `${radialIsMarker ? 'marker' : 'token'}/update`, id: radialToken.id, ...patch })
   const cardToken = cardFor ? tokens.find((token) => token.id === cardFor && token.unitKey) ?? null : null
   // What the ring shows: the operative's actions, or one of its second rings of choices.
   //   [{ key, label, icon?, mark? (a graphic instead of the icon), text? (shown big
@@ -950,7 +973,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           text: inches ? `${inches}"` : 'Off',
           selected: (radialToken.ring ?? 0) === inches,
           run: () => {
-            act({ type: 'token/update', id: radialToken.id, ring: inches })
+            updateRadial({ ring: inches })
             setRadial(null)
           },
         })),
@@ -985,12 +1008,42 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     if (radial.menu === 'edit') {
       return [
         { key: 'name', label: 'Name', icon: 'name', run: openMenu('name') },
-        { key: 'base', label: 'Base size', icon: 'base', run: openMenu('base') },
+        { key: 'base', label: radialIsOperative ? 'Base size' : 'Size', icon: 'base', run: openMenu('base') },
+        ...(radialToken.attachedTo
+          ? [
+              {
+                key: 'detach',
+                label: 'Detach',
+                icon: 'back',
+                run: () => {
+                  detachMarker(radialToken)
+                  setRadial(null)
+                },
+              },
+            ]
+          : []),
         { key: 'remove', label: 'Remove', icon: 'remove', run: openMenu('remove') },
         back,
       ]
     }
     const backToEdit = { ...back, run: openMenu('edit') }
+    // Markers and tokens are discs sized in mm across.
+    if (radial.menu === 'base' && radialIsMarker) {
+      const current = radialToken.radius * 2 * MM_PER_IN
+      return [
+        ...MARKER_SIZES_MM.map((mm) => ({
+          key: `size-${mm}`,
+          label: `${mm}mm`,
+          text: String(mm),
+          selected: Math.abs(current - mm) < 0.05,
+          run: () => {
+            updateRadial({ radius: mm / MM_PER_IN / 2 })
+            setRadial(null)
+          },
+        })),
+        backToEdit,
+      ]
+    }
     if (radial.menu === 'base') {
       const current = radialToken.baseMm ?? DEFAULT_BASE_MM
       return [
@@ -1000,7 +1053,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           text: String(mm),
           selected: current === mm,
           run: () => {
-            act({ type: 'token/update', id: radialToken.id, baseMm: mm })
+            updateRadial({ baseMm: mm })
             setRadial(null)
           },
         })),
@@ -1015,14 +1068,15 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           icon: 'remove',
           danger: true,
           run: () => {
-            act({ type: 'token/remove', id: radialToken.id })
+            act({ type: `${radialIsMarker ? 'marker' : 'token'}/remove`, id: radialToken.id })
             setRadial(null)
           },
         },
         { ...backToEdit, key: 'remove-no', label: 'Keep' },
       ]
     }
-    return RADIAL_ACTIONS.filter((action) => !action.own || radialToken.seat === seat).map((action) => ({
+    const actions = radialIsOperative ? RADIAL_ACTIONS.filter((action) => !action.own || radialToken.seat === seat) : ITEM_ACTIONS
+    return actions.map((action) => ({
       key: action.id,
       label: action.label,
       icon: action.icon,
@@ -1063,7 +1117,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             data-menu={radial.menu}
             style={{ left: radial.x, top: radial.y }}
             role="menu"
-            aria-label={`${radialToken.label || 'Operative'} actions`}
+            aria-label={`${radialToken.label || (radialIsOperative ? 'Operative' : 'Token')} actions`}
           >
             {radial.menu === 'name' ? (
               <form
@@ -1071,7 +1125,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
                 onSubmit={(event) => {
                   event.preventDefault()
                   const label = new FormData(event.currentTarget).get('label').trim()
-                  if (label !== radialToken.label) act({ type: 'token/update', id: radialToken.id, label })
+                  // A renamed marker shows its new name rather than its short code.
+                  if (label !== radialToken.label) updateRadial(radialIsMarker ? { label, short: '' } : { label })
                   setRadial(null)
                 }}
               >

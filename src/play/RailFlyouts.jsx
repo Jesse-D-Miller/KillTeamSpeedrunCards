@@ -1,4 +1,5 @@
 import { BASE_SIZES_MM, DEFAULT_BASE_MM } from '../../shared/game.js'
+import { MARKER_SIZES_MM } from '../data/tokenCatalog.js'
 
 // Glass panels that pop out of the map's tool rail, beside their button.
 
@@ -70,8 +71,6 @@ export function TokenFlyout({ categories, menu, onOpenCategory, onChoose }) {
   )
 }
 
-// Marker and token disc sizes (diameter, mm). Operative bases use BASE_SIZES_MM.
-const MARKER_SIZES_MM = [10, 15, 20, 25, 28.5, 32, 40, 50, 60]
 const MM_PER_IN = 25.4
 
 // Steps through `sizes` from `current`, even when current isn't one of them.

@@ -13,6 +13,9 @@ import { getTacOp } from './tacOps.js'
 export const MARKER_RADIUS_IN = 20 / 25.4 / 2
 export const TOKEN_RADIUS_IN = 0.22
 export const OBJECTIVE_RADIUS_IN = 40 / 25.4 / 2
+// Sizes a marker or token disc can be set to (diameter, mm). Operative bases use
+// BASE_SIZES_MM (shared/game.js).
+export const MARKER_SIZES_MM = [10, 15, 20, 25, 28.5, 32, 40, 50, 60]
 
 const marker = (id, name, short, extra = {}) => ({ id, name, short, kind: 'marker', ...extra })
 const token = (id, name, short, extra = {}) => ({ id, name, short, kind: 'token', ...extra })
