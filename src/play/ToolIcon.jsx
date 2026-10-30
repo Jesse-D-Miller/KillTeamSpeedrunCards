@@ -14,6 +14,7 @@ const PATHS = {
   name: 'M5 6h14M12 6v13M9 19h6',
   base: 'M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM2.5 12h2.5M19 12h2.5',
   remove: 'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13',
+  card: 'M6 3h12v18H6zM9 7h6M9 11h6M9 15h4',
   back: 'M14.5 5.5 8 12l6.5 6.5',
   ping: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v3M12 19v3M2 12h3M19 12h3',
   fit: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',

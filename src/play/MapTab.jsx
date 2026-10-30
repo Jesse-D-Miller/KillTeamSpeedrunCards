@@ -18,6 +18,7 @@ import Drawer from './Drawer.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
 import { SelectPanel, TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
 import VantageMark from './VantageMark.jsx'
+import UnitCardModal from './UnitCardModal.jsx'
 import WeaponChooser from './WeaponChooser.jsx'
 import { meleeWeaponsFor, rangedWeaponsFor } from '../rules/weaponRules.js'
 import AttackDrawer from './AttackDrawer.jsx'
@@ -81,6 +82,7 @@ const RADIAL_ACTIONS = [
   { id: 'vantage', label: 'Vantage', icon: 'vantage', own: true },
   { id: 'edit', label: 'Edit', icon: 'edit' },
   { id: 'ping', label: 'Ping', icon: 'ping' },
+  { id: 'card', label: 'Unit card', icon: 'card' },
   { id: 'select', label: 'Select', icon: 'select' },
 ]
 
@@ -170,6 +172,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const [railOpen, setRailOpen] = useState(true)
   // The action ring: { tokenId, x, y } (its centre in map-stage pixels), or null.
   const [radial, setRadial] = useState(null)
+  // The operative whose unit card is open (by token id), from the action ring.
+  const [cardFor, setCardFor] = useState(null)
   const stageRef = useRef(null)
   const pointersRef = useRef(new Map())
   const gestureRef = useRef(null)
@@ -699,6 +703,11 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       setRadial((current) => current && { ...current, menu: id })
       return
     }
+    if (id === 'card') {
+      setRadial(null)
+      setCardFor(token.id)
+      return
+    }
     // Ping marks the operative on the projector; the tool stays as it is.
     if (id === 'ping') {
       setRadial(null)
@@ -925,6 +934,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       />
     ) : null
   const radialToken = radial ? tokens.find((token) => token.id === radial.tokenId) ?? null : null
+  const cardToken = cardFor ? tokens.find((token) => token.id === cardFor && token.unitKey) ?? null : null
   // What the ring shows: the operative's actions, or one of its second rings of choices.
   //   [{ key, label, icon?, mark? (a graphic instead of the icon), text? (shown big
   //   instead of an icon and label), caption? (shown instead of the label), selected?, run }]
@@ -1092,6 +1102,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         ) : null}
       </div>
       {weaponMenu}
+      {cardToken ? <UnitCardModal token={cardToken} onClose={() => setCardFor(null)} /> : null}
       <AttackDrawer {...attack} />
 
       <Drawer

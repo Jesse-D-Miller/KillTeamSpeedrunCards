@@ -117,6 +117,9 @@ export const createUnitState = (maxWounds) => ({
 
 export const activePloyIds = (player, tp) => player?.ploysByTp?.[tp] ?? []
 
+// Tapping a unit card's activation pill steps through these.
+export const NEXT_ACTIVATION = { ready: 'active', active: 'expended', expended: 'ready' }
+
 // Firefight ploys: each usable once per turning point, except Command Re-roll (core
 // rules). Uses are counted in usesByTp, by ploy id, wherever they were played (the
 // Team tab, or the Shoot/Fight stats drawer).

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { activePloyIds, createUnitState, initiativeBefore, otherSeat } from '../../../shared/game.js'
+import { NEXT_ACTIVATION, activePloyIds, createUnitState, initiativeBefore, otherSeat } from '../../../shared/game.js'
 import UnitCard from '../../components/UnitCard.jsx'
 import { seatColor } from '../../board/colors.js'
 import { formatCostLabel, isLegionaryUnit } from '../../rules/equipment.js'
@@ -10,7 +10,6 @@ import CardPicker from '../CardPicker.jsx'
 import { RuleText } from '../RuleText.jsx'
 import { usePlayer } from '../usePlayer.js'
 
-const NEXT_ACTIVATION = { ready: 'active', active: 'expended', expended: 'ready' }
 
 const rank = (unitState) => (unitState.dead ? 2 : unitState.activation === 'expended' ? 1 : 0)
 
