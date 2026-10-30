@@ -12,14 +12,10 @@ const LOGO = '/killteamSpeedrunLogo.png'
 const LOGO_W = 1536
 const LOGO_H = 1024
 
-// Fire waves: each takes its own time to roll out and starts at its own point in the
-// cycle, so the pulses come unevenly and never settle into a rhythm.
-const WAVES = [
-  { duration: 11.1, delay: 0 },
-  { duration: 13.4, delay: -3.5 },
-  { duration: 10.2, delay: -6.2 },
-  { duration: 14.4, delay: -10 },
-]
+// Fire waves: one leaves the logo every second, each taking WAVE_SECONDS to spread
+// out and fade, so WAVE_SECONDS of them are on screen at once.
+const WAVE_SECONDS = 8
+const WAVES = Array.from({ length: WAVE_SECONDS }, (_, index) => ({ duration: WAVE_SECONDS, delay: -index }))
 
 // Sparks: scattered around the logo out to the edges of the page, most of them close
 // in. Fixed (a seeded scatter), so the page looks the same on every load.
@@ -77,9 +73,9 @@ function HomeLogo() {
             <stop offset="1" stopColor="#8a1205" stopOpacity="0" />
           </radialGradient>
           <filter id="home-wave-lick" x="-20%" y="-20%" width="140%" height="140%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="9" result="noise">
-              <animate attributeName="baseFrequency" dur="7s" values="0.035;0.05;0.035" repeatCount="indefinite" />
-            </feTurbulence>
+            {/* Fixed noise (not animated): each wave is drawn once and only scaled, so
+                eight at a time stay smooth on an iPad. */}
+            <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="9" result="noise" />
             <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" />
             <feGaussianBlur stdDeviation="1.5" />
           </filter>

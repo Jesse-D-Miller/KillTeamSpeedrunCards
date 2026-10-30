@@ -1257,8 +1257,8 @@
   display: block;
 }
 
-/* Waves of fire rolling out from behind the logo: they swell in quickly, then spread
-   wide and slowly fade, each on its own timing (see HomeLogo.jsx). */
+/* Waves of fire rolling out from behind the logo, one a second: each swells in quickly,
+   then spreads wide and slowly fades (see HomeLogo.jsx). */
 .home-wave {
   position: absolute;
   left: 50%;
@@ -1270,6 +1270,7 @@
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.45);
   animation: home-wave var(--wave) cubic-bezier(0.2, 0.5, 0.35, 1) var(--wave-delay) infinite;
+  will-change: transform, opacity;
   pointer-events: none;
 }
 
