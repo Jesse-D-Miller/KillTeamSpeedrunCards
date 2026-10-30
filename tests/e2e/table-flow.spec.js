@@ -188,11 +188,23 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // Up to four equipment options; nothing is pre-selected.
   await a.locator('.segmented button', { hasText: 'Equipment' }).click()
   await expect(a.getByText('0 of 4 equipment options chosen.', { exact: false })).toBeVisible()
+  // Ready waits until operatives, equipment and a tac op are all picked, and says what's
+  // still missing.
+  const aliceHeader = a.locator('.play-header')
+  await expect(aliceHeader.getByRole('button', { name: 'Pick your equipment' })).toBeDisabled()
+  await a.locator('.equipment-toggle', { hasText: 'Ladders' }).click()
+  await expect(aliceHeader.getByRole('button', { name: 'Pick a tac op' })).toBeDisabled()
   // Approved Ops 2025 tac ops are text cards, limited to the kill team's archetypes.
-  await a.getByRole('button', { name: 'Tac op' }).click()
+  await a.getByRole('button', { name: 'Tac op', exact: true }).click()
   await expect(a.locator('.tacop-pick').first()).toBeVisible()
   await a.locator('.tacop-pick').first().click()
   await expect(a.locator('.tacop-pick').first()).toHaveAttribute('aria-pressed', 'true')
+  await expect(aliceHeader.getByRole('button', { name: 'Ready', exact: true })).toBeEnabled()
+  // Bob picks his equipment and tac op too.
+  await b.locator('.segmented button', { hasText: 'Equipment' }).click()
+  await b.locator('.equipment-toggle', { hasText: 'Ladders' }).click()
+  await b.getByRole('button', { name: 'Tac op', exact: true }).click()
+  await b.locator('.tacop-pick').first().click()
   await shot(a, '04b-tacop-ipad')
   await shot(b, '04-muster-ipad')
   // The table only shows progress, never the tac op itself.

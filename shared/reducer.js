@@ -15,6 +15,7 @@ import {
   equipmentOptionCount,
   initiativeBefore,
   isSeat,
+  musterBlocker,
   otherSeat,
   ployUses,
 } from './game.js'
@@ -107,11 +108,10 @@ const canLeavePhase = (state) => {
       }
       if (!table.dropZones.A || !table.dropZones.B) return 'Pick drop zones first.'
       return null
-    case 'muster':
-      if (!SEATS.every((seat) => players[seat].units.length)) {
-        return 'Both players need operatives.'
-      }
-      return null
+    case 'muster': {
+      const blocked = SEATS.map((seat) => musterBlocker(players[seat])).find(Boolean)
+      return blocked ? `${blocked} first.` : null
+    }
     default:
       return null
   }
@@ -332,6 +332,11 @@ const handlers = {
 
   'phase/ready': (state, action, actor, random) => {
     const seat = resolveSeat(action, actor)
+    // Mustering: no readying up until operatives, equipment and a tac op are picked.
+    if (state.phase === 'muster' && action.ready !== false) {
+      const blocked = musterBlocker(state.players[seat])
+      if (blocked) fail(`${blocked} first.`)
+    }
     const ready = { ...state.ready, [seat]: action.ready !== false }
     const next = { ...state, ready }
     if (SEATS.every((candidate) => ready[candidate])) return advancePhase(next, random)

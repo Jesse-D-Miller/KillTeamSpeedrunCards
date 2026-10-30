@@ -117,6 +117,15 @@ export const createUnitState = (maxWounds) => ({
 
 export const activePloyIds = (player, tp) => player?.ploysByTp?.[tp] ?? []
 
+// What a player still has to pick in the muster phase before they can ready up:
+// operatives, at least one equipment option and a tac op. null once they're done.
+export const musterBlocker = (player) => {
+  if (!player?.units?.length) return 'Pick your operatives'
+  if (!player.equipment?.length) return 'Pick your equipment'
+  if (!player.tacOp) return 'Pick a tac op'
+  return null
+}
+
 // Tapping a unit card's activation pill steps through these.
 export const NEXT_ACTIVATION = { ready: 'active', active: 'expended', expended: 'ready' }
 

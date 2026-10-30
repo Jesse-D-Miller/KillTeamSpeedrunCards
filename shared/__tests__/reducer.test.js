@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { COMMAND_REROLL, createGame, turnState } from '../game.js'
+import { COMMAND_REROLL, createGame, musterBlocker, turnState } from '../game.js'
 import { ActionError, applyAction } from '../reducer.js'
 
 const run = (state, steps) =>
@@ -642,5 +642,30 @@ describe('firefight ploys from the Team tab', () => {
 
   it('only in the battle', () => {
     expect(() => play(createGame(), 'A', 'VOT-HKY-T-SD')).toThrow(ActionError)
+  })
+})
+
+describe('mustering', () => {
+  const muster = () => run(readySetup(), [[{ type: 'phase/set', phase: 'muster' }, 'table']])
+
+  it('says what a player still has to pick', () => {
+    expect(musterBlocker({ units: [], equipment: [], tacOp: null })).toBe('Pick your operatives')
+    expect(musterBlocker({ units: ['a1'], equipment: [], tacOp: null })).toBe('Pick your equipment')
+    expect(musterBlocker({ units: ['a1'], equipment: ['UNIVERSAL-UE-LAD'], tacOp: null })).toBe('Pick a tac op')
+    expect(musterBlocker({ units: ['a1'], equipment: ['UNIVERSAL-UE-LAD'], tacOp: { id: 'x' } })).toBeNull()
+  })
+
+  it('refuses Ready until operatives, equipment and a tac op are picked, but always allows unready', () => {
+    let state = muster()
+    expect(() => applyAction(state, { type: 'phase/ready' }, 'A')).toThrow(/Pick your operatives/)
+    state = run(state, [
+      [{ type: 'muster/units', units: ['a1'] }, 'A'],
+      [{ type: 'muster/toggleEquipment', eqId: 'UNIVERSAL-UE-LAD' }, 'A'],
+    ])
+    expect(() => applyAction(state, { type: 'phase/ready' }, 'A')).toThrow(/Pick a tac op/)
+    state = applyAction(state, { type: 'muster/tacOp', tacOp: { id: 'flank', label: 'Flank' } }, 'A')
+    state = applyAction(state, { type: 'phase/ready' }, 'A')
+    expect(state.ready.A).toBe(true)
+    expect(applyAction(state, { type: 'phase/ready', ready: false }, 'A').ready.A).toBe(false)
   })
 })

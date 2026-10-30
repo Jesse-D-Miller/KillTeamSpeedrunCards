@@ -4,6 +4,7 @@ import {
   MAX_TP,
   SCORE_CATEGORIES,
   SEATS,
+  musterBlocker,
   primaryBonus,
   primaryCategory,
   readyUnitKeys,
@@ -157,13 +158,17 @@ function PhaseAction() {
     )
   }
   const ready = game.ready[seat]
+  // Mustering: Ready waits until operatives, equipment and a tac op are picked, and says
+  // what's still missing.
+  const blocked = game.phase === 'muster' && !ready ? musterBlocker(game.players[seat]) : null
   return (
     <button
       type="button"
       className={`btn ${ready ? 'is-ready' : 'is-primary'}`}
       onClick={() => act({ type: 'phase/ready', ready: !ready })}
+      disabled={Boolean(blocked)}
     >
-      {ready ? (game.ready[opponentSeat] ? 'Ready ✓' : `Waiting for ${opponent.name}`) : 'Ready'}
+      {blocked ?? (ready ? (game.ready[opponentSeat] ? 'Ready ✓' : `Waiting for ${opponent.name}`) : 'Ready')}
     </button>
   )
 }
