@@ -29,10 +29,9 @@ import { useAttack } from './useAttack.js'
 // and drag anywhere to measure (from an operative's base if the drag starts on one;
 // the operative stays put).
 
-// Move, Measure and Sightline are opened from an operative's action ring, not the rail
-// (and with no tool on, a drag measures anyway).
+// Move, Measure, Sightline, Shoot and Fight are opened from an operative's action ring,
+// not the rail (and with no tool on, a drag measures anyway).
 const TOOLS = [
-  ['attack', 'Shoot/Fight'],
   ['units', 'Units'],
   ['token', 'Token'],
   ['select', 'Select'],
@@ -461,7 +460,12 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         else publish({ ...current, targetId: tapped.id })
         return
       }
-      if (!alive || tapped.id === current?.shooterId) {
+      // Shoot/Fight: a tap off any operative ends it.
+      if (!alive) {
+        leaveTool()
+        return
+      }
+      if (tapped.id === current?.shooterId) {
         clearTool()
         setWeaponMenuOpen(false)
         return
@@ -682,13 +686,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     endPlacing()
     setWeaponMenuOpen(false)
     setTool(next === tool ? null : next)
-  }
-
-  // The Shoot/Fight button reopens the weapon list for the current attacker; with the
-  // list open (or no attacker), it turns the tool off.
-  const pressAttack = () => {
-    if (tool === 'attack' && attacker && !weaponMenuOpen) setWeaponMenuOpen(true)
-    else selectTool('attack')
   }
 
   // Back to no tool (from one opened by the action ring).
@@ -921,9 +918,12 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           }
         />
       ) : null,
-    // Shoot/Fight: the switch, then the attacker's ranged or melee weapons.
-    attack:
-      attacker && weaponMenuOpen ? (
+  }
+  const pressTool = { units: pressUnits, token: pressToken }
+  // Shoot/Fight: the switch, then the attacker's ranged or melee weapons.
+  const weaponMenu =
+    attacker && weaponMenuOpen ? (
+      <div className="weapon-panel">
         <WeaponFlyout
           mode={overlay.mode}
           onMode={(mode) => publish({ ...overlay, mode, weaponId: null })}
@@ -934,9 +934,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             setWeaponMenuOpen(false)
           }}
         />
-      ) : null,
-  }
-  const pressTool = { units: pressUnits, token: pressToken, attack: pressAttack }
+      </div>
+    ) : null
   const radialToken = radial ? tokens.find((token) => token.id === radial.tokenId) ?? null : null
   const radialActions = radialToken ? RADIAL_ACTIONS.filter((action) => !action.own || radialToken.seat === seat) : []
 
@@ -965,7 +964,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           ) : null}
         </BoardSvg>
         {radialToken ? (
-          <div className="unit-radial" style={{ left: radial.x, top: radial.y }} role="menu" aria-label={`${radialToken.label || 'Operative'} actions`}>
+          <div className="unit-radial" data-ring-for={radialToken.id} style={{ left: radial.x, top: radial.y }} role="menu" aria-label={`${radialToken.label || 'Operative'} actions`}>
             {radialActions.map((action, index) => (
               <button
                 key={action.id}
@@ -986,6 +985,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           </div>
         ) : null}
       </div>
+      {weaponMenu}
       <AttackDrawer {...attack} />
 
       <Drawer

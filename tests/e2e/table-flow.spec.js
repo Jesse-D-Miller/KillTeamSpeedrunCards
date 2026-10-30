@@ -71,10 +71,25 @@ const dragOnMap = async (page, from, to) => {
   await page.mouse.up()
 }
 
-// Tap an operative on an iPad's map and pick one of its actions from the ring.
+// Tap an operative on an iPad's map and pick one of its actions from the ring (using
+// its ring if that's already open).
 const ringAction = async (page, tokenId, action) => {
-  await page.locator(`.map-stage [data-token-id="${tokenId}"] .board-token-base`).click()
-  await page.locator('.unit-radial').getByRole('menuitem', { name: action, exact: true }).click()
+  const ring = page.locator(`.unit-radial[data-ring-for="${tokenId}"]`)
+  if (!(await ring.count())) await page.locator(`.map-stage [data-token-id="${tokenId}"] .board-token-base`).click()
+  await ring.getByRole('menuitem', { name: action, exact: true }).click()
+}
+
+// A spot on an iPad's mat with no token or marker under it (for taps on the empty map).
+const emptySpotOf = async (page) => {
+  const box = await page.locator('.map-stage .board-svg').boundingBox()
+  return page.evaluate(({ x, y, width, height }) => {
+    for (const [fx, fy] of [[0.5, 0.5], [0.5, 0.3], [0.5, 0.7], [0.62, 0.5], [0.4, 0.4], [0.6, 0.6], [0.75, 0.9]]) {
+      const point = [x + width * fx, y + height * fy]
+      const hit = document.elementFromPoint(...point)
+      if (hit?.closest('.board-svg') && !hit.closest('.board-token, .board-marker, .unit-radial')) return point
+    }
+    return null
+  }, box)
 }
 
 test('projector + two iPads play through setup into battle', async ({ browser }) => {
@@ -389,9 +404,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator('.targeting')).toHaveCount(0)
   // Shoot/Fight: tap the shooter and its weapon list pops out, set to Shoot (no enemy
   // is within its control range). The switch shows its melee weapons instead.
-  const attackButton = a.getByRole('button', { name: 'Shoot/Fight', exact: true })
-  await attackButton.click()
-  await tapToken(sniper)
+  await ringAction(a, sniper, 'Shoot')
   await expect(weaponList.getByRole('button', { name: 'Shoot', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(weaponList.locator('.flyout-weapon')).toHaveCount(3)
   await weaponList.getByRole('button', { name: 'Fight', exact: true }).click()
@@ -423,14 +436,10 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator(`[data-badge-for="${inOpen}"]`)).toHaveAttribute('data-status', 'obscured')
   const smokeId = await table.locator('[data-catalog-id="smoke-grenade"]').getAttribute('data-marker-id')
   await tableActions(table, [{ type: 'marker/remove', id: smokeId }])
-  // Tapping Shoot/Fight reopens the weapon list; tapping it again turns the tool off,
-  // and the side bars go back to normal.
-  await attackButton.click()
-  await expect(weaponList).toBeVisible()
-  await attackButton.click()
+  // Tapping the empty map ends Shoot/Fight, and the side bars go back to normal.
+  await a.mouse.click(...(await emptySpotOf(a)))
   await expect(table.locator('.targeting')).toHaveCount(0)
   await expect(table.locator('[data-combat]')).toHaveCount(0)
-  await expect(attackButton).toHaveAttribute('aria-pressed', 'false')
   // On Vantage (set with Select): shooting down at an Engage target gives Accurate.
   await a.getByRole('button', { name: 'Select', exact: true }).click()
   await tapToken(sniper)
@@ -537,16 +546,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // (Once its buttons have finished popping out.)
   await a.waitForTimeout(250)
   await shot(a, '06r-action-ring-ipad')
-  const mapBox = await a.locator('.map-stage .board-svg').boundingBox()
-  // A spot on the mat with no token or marker under it.
-  const emptySpot = await a.evaluate(({ x, y, width, height }) => {
-    for (const [fx, fy] of [[0.5, 0.5], [0.5, 0.3], [0.5, 0.7], [0.62, 0.5], [0.4, 0.4], [0.6, 0.6]]) {
-      const point = [x + width * fx, y + height * fy]
-      const hit = document.elementFromPoint(...point)
-      if (hit?.closest('.board-svg') && !hit.closest('.board-token, .board-marker, .unit-radial')) return point
-    }
-    return null
-  }, mapBox)
+  const emptySpot = await emptySpotOf(a)
   expect(emptySpot).not.toBeNull()
   await a.mouse.click(...emptySpot)
   await expect(ring).toHaveCount(0)
@@ -571,7 +571,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await ring.getByRole('menuitem', { name: 'Shoot' }).click()
   await expect(a.locator('.weapon-flyout')).toBeVisible()
   await expect(table.locator('.overlay-measure')).toHaveCount(0)
-  await a.getByRole('button', { name: 'Shoot/Fight', exact: true }).click()
+  // A tap on the empty map ends it.
+  await a.mouse.click(...emptySpot)
   await expect(a.locator('.weapon-flyout')).toHaveCount(0)
 
   // In battle, drag an operative in an L: it moves in whole-inch steps, the path stays, and undo puts it back.
@@ -837,9 +838,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(b.locator('.unit-radial').getByRole('menuitem')).toHaveText(['Measure', 'Sightline', 'Select'])
   await b.locator(`.map-stage [data-token-id="${mark}"] .board-token-base`).click()
   await expect(b.locator('.unit-radial')).toHaveCount(0)
-  const bobAttack = b.getByRole('button', { name: 'Shoot/Fight', exact: true })
-  await bobAttack.click()
-  await b.locator(`.map-stage [data-token-id="${stinger}"] .board-token-base`).click()
+  await ringAction(b, stinger, 'Shoot')
   await b.getByRole('navigation', { name: 'Choose a weapon' }).getByRole('button', { name: /Neutron Blaster/ }).click()
   await b.locator(`.map-stage [data-token-id="${mark}"] .board-token-base`).click()
   // The projector keeps the play area clear: Bob's side bar swaps to his attack and
@@ -899,9 +898,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await sturdy.click()
   await expect(aliceBoard.locator('.pb-combat-cp')).toHaveText(`${aliceCp} CP`)
   await expect(shotAttack.locator('[data-cell="crit"]')).toHaveAttribute('data-tone', 'same')
-  // Done: Shoot/Fight reopens the weapon list, then turns off; the side bars go back.
-  await bobAttack.click()
-  await bobAttack.click()
+  // Done: a tap on the empty map ends it; the side bars go back.
+  await b.mouse.click(...(await emptySpotOf(b)))
   await expect(table.locator('[data-combat]')).toHaveCount(0)
   await expect(aliceBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText(String(aliceCp))
   await expect(aliceDrawer).toHaveCount(0)
@@ -925,9 +923,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   const [biter, brawler, helper] = (
     await table.locator('.board-token').evaluateAll((nodes) => nodes.map((node) => node.dataset.tokenId))
   ).slice(-3)
-  // An enemy is within its control range, so the list opens on Fight with its melee weapons.
-  await bobAttack.click()
-  await b.locator(`.map-stage [data-token-id="${biter}"] .board-token-base`).click()
+  // Fight from the ring: the list shows its melee weapons.
+  await ringAction(b, biter, 'Fight')
   const bobWeapons = b.getByRole('navigation', { name: 'Choose a weapon' })
   await expect(bobWeapons.getByRole('button', { name: 'Fight', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await bobWeapons.getByRole('button', { name: /Claws/ }).click()
@@ -951,8 +948,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   expect(await boardOverflows(table)).toEqual([])
   await shot(table, '07i-fight-sidebars-table')
   await shot(a, '07j-fight-drawer-defender')
-  await bobAttack.click()
-  await bobAttack.click()
+  await b.mouse.click(...(await emptySpotOf(b)))
   await expect(table.locator('[data-combat]')).toHaveCount(0)
   await tableActions(table, [biter, brawler, helper].map((id) => ({ type: 'token/remove', id })))
   await expect(table.locator('.board-token')).toHaveCount(beforeShot)
@@ -1115,8 +1111,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   ])
   const [gun, prey] = (await table.locator('.board-token').evaluateAll((nodes) => nodes.map((node) => node.dataset.tokenId))).slice(-2)
   await openTab(b, 'Map')
-  await b.getByRole('button', { name: 'Shoot/Fight', exact: true }).click()
-  await b.locator(`.map-stage [data-token-id="${gun}"] .board-token-base`).click()
+  await ringAction(b, gun, 'Shoot')
   await b.getByRole('navigation', { name: 'Choose a weapon' }).getByRole('button', { name: /Neutron Blaster/ }).click()
   await b.locator(`.map-stage [data-token-id="${prey}"] .board-token-base`).click()
   await expect(table.locator('.pb-board.is-portrait.is-combat')).toHaveCount(2)

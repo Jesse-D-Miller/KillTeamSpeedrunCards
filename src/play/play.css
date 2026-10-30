@@ -894,6 +894,18 @@
   background: #07080a;
 }
 
+/* Shoot/Fight's weapon list, beside the tool drawer. */
+.weapon-panel {
+  position: absolute;
+  top: 12px;
+  left: 104px;
+  z-index: 7;
+}
+
+.weapon-panel .anchored-flyout {
+  position: static;
+}
+
 /* An operative's action ring: buttons evenly round it (placed with left/top from
    MapTab, so a pressed button's transform can't move it), popping out as it opens. */
 .unit-radial {
