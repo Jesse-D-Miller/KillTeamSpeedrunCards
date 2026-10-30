@@ -94,6 +94,8 @@ export const createGame = (settings = DEFAULT_SETTINGS) => ({
     initiativeByTp: {},
     // Sightline shot cards: { 'shooterId|targetId': { toggles: { A, B }, spent: { A, B } } }.
     shots: {},
+    // Players who've confirmed the end of this turning point; it moves on when both have.
+    tpReady: { A: false, B: false },
     startedAt: null,
     endedAt: null,
   },

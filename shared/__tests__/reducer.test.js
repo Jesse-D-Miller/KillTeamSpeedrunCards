@@ -669,3 +669,40 @@ describe('mustering', () => {
     expect(applyAction(state, { type: 'phase/ready', ready: false }, 'A').ready.A).toBe(false)
   })
 })
+
+describe('ending a turning point', () => {
+  const battle = () => run(createGame(), [[{ type: 'phase/set', phase: 'battle' }, 'table']])
+  const confirm = (state, seat, fromTp, ready = true) => applyAction(state, { type: 'battle/readyNextTp', fromTp, ready }, seat)
+
+  it('moves on once, when the second player confirms', () => {
+    let state = confirm(battle(), 'A', 1)
+    expect(state.battle.tp).toBe(1)
+    expect(state.battle.tpReady).toEqual({ A: true, B: false })
+    state = confirm(state, 'B', 1)
+    expect(state.battle.tp).toBe(2)
+    expect(state.battle.tpReady).toEqual({ A: false, B: false })
+  })
+
+  it('never skips a turning point when both confirm (a confirmation for one that has ended is ignored)', () => {
+    let state = confirm(confirm(battle(), 'A', 1), 'B', 1)
+    // A late or repeated confirmation for TP1 doesn't count towards TP2.
+    state = confirm(state, 'A', 1)
+    state = confirm(state, 'B', 1)
+    expect(state.battle.tp).toBe(2)
+    expect(state.battle.tpReady).toEqual({ A: false, B: false })
+  })
+
+  it('lets a player take a confirmation back before the other confirms', () => {
+    let state = confirm(battle(), 'A', 1)
+    state = confirm(state, 'A', 1, false)
+    state = confirm(state, 'B', 1)
+    expect(state.battle.tp).toBe(1)
+    expect(state.battle.tpReady).toEqual({ A: false, B: true })
+  })
+
+  it('ends the game after turning point 4', () => {
+    let state = battle()
+    for (const tp of [1, 2, 3, 4]) state = confirm(confirm(state, 'A', tp), 'B', tp)
+    expect(state.phase).toBe('results')
+  })
+})

@@ -1118,12 +1118,18 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(b.locator('.map-stage [data-token-id="t1"]')).toHaveCount(0)
   await openTab(b, 'Operatives')
 
-  // Next TP asks for confirmation and explains what happens.
+  // Next TP asks for confirmation and explains what happens; the turning point moves on
+  // once both players have confirmed (and only once).
   await a.getByRole('button', { name: 'Next TP' }).click()
   await expect(a.getByRole('heading', { name: 'End turning point 1?' })).toBeVisible()
   await shot(a, '11-end-turn-ipad')
-  await a.getByRole('button', { name: 'Start TP 2' }).click()
+  await a.getByRole('button', { name: 'Ready for TP 2' }).click()
+  await expect(a.getByRole('button', { name: /Waiting for Bob/ })).toBeVisible()
+  await expect(b.locator('.play-phase')).toContainText('Turning point 1')
+  await b.getByRole('button', { name: 'Next TP · Alice is ready' }).click()
+  await b.getByRole('button', { name: 'Ready for TP 2' }).click()
   await expect(b.locator('.play-phase')).toContainText('Turning point 2')
+  await expect(a.locator('.play-phase')).toContainText('Turning point 2')
 
   // TP2: both gain 1 CP (3 -> 4); the player WITHOUT initiative gains 2 instead.
   await expect(b.getByRole('button', { name: 'Start firefight' })).toBeDisabled()
@@ -1157,8 +1163,14 @@ test('projector + two iPads play through setup into battle', async ({ browser })
       await b.getByRole('button', { name: 'I take initiative' }).click()
     }
     await b.getByRole('button', { name: 'Start firefight' }).click()
-    await b.getByRole('button', { name: tp === 4 ? 'End game' : 'Next TP' }).click()
-    await b.getByRole('button', { name: tp === 4 ? 'End game' : `Start TP ${tp + 1}` }).last().click()
+    // Alice's strategy sheet covers her header until she starts the firefight too.
+    await expect(a.locator('.play-phase')).toContainText(`Turning point ${tp}`)
+    const aliceFirefight = a.getByRole('button', { name: 'Start firefight' })
+    if (await aliceFirefight.isVisible()) await aliceFirefight.click()
+    for (const page of [a, b]) {
+      await page.locator('.play-header').getByRole('button', { name: tp === 4 ? /^End game/ : /^Next TP/ }).click()
+      await page.getByRole('button', { name: tp === 4 ? 'Ready to end' : `Ready for TP ${tp + 1}` }).click()
+    }
   }
   await expect(a.getByRole('heading', { name: 'Alice wins' })).toBeVisible()
   // Each iPad's VP counter now includes its primary op, matching the projector:

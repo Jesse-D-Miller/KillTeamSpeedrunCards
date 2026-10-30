@@ -645,13 +645,16 @@ const handlers = {
   },
 
   // `fromTp` makes this idempotent: if both players tap "Next TP" at once, only one counts.
+  // Players end a turning point together (battle/readyNextTp); this moves straight on
+  // (the projector's override, and tests). fromTp: the turning point this is meant for;
+  // anything else is stale and ignored.
   'battle/nextTp': (state, action) => {
     requirePhase(state, 'battle')
     if (action.fromTp != null && action.fromTp !== state.battle.tp) return state
     if (state.battle.tp >= MAX_TP) return enterPhase(state, 'results', Math.random)
     let next = {
       ...state,
-      battle: { ...state.battle, tp: state.battle.tp + 1, lastAuto: null, shots: {} },
+      battle: { ...state.battle, tp: state.battle.tp + 1, lastAuto: null, shots: {}, tpReady: { A: false, B: false } },
       tokens: state.tokens.map((token) => (token.lastMove ? { ...token, lastMove: null } : token)),
     }
     SEATS.forEach((seat) => {
@@ -667,6 +670,18 @@ const handlers = {
       }))
     })
     return next
+  },
+
+  // A player confirms (or takes back) ending turning point fromTp. It moves on once, when
+  // the second player confirms; a confirmation for a turning point that's already over
+  // is ignored, so two players confirming never skips one.
+  'battle/readyNextTp': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    if (toNumber(action.fromTp) !== state.battle.tp) return state
+    const tpReady = { ...(state.battle.tpReady ?? { A: false, B: false }), [seat]: action.ready !== false }
+    const next = { ...state, battle: { ...state.battle, tpReady } }
+    return SEATS.every((candidate) => tpReady[candidate]) ? handlers['battle/nextTp'](next, { fromTp: state.battle.tp }) : next
   },
 
   // Sightline shot card: a player turns one of their own modifiers on or off for the

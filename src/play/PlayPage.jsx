@@ -93,7 +93,8 @@ function VpSheet({ onClose }) {
 }
 
 // unactivated: how many living operatives on each side are still ready.
-function EndTurnSheet({ tp, unactivated = 0, onCancel, onConfirm }) {
+// waiting: the opponent's name if they've already confirmed, else null.
+function EndTurnSheet({ tp, unactivated = 0, waiting = null, onCancel, onConfirm }) {
   const last = tp >= MAX_TP
   return (
     <div className="sheet-backdrop" onClick={onCancel}>
@@ -107,6 +108,11 @@ function EndTurnSheet({ tp, unactivated = 0, onCancel, onConfirm }) {
               {unactivated} operative{unactivated === 1 ? ' hasn’t' : 's haven’t'} activated yet this turning point.
             </p>
           ) : null}
+          <p className="muted">
+            {waiting
+              ? `${waiting} is ready: confirming moves on straight away.`
+              : 'The turning point moves on once both players have confirmed.'}
+          </p>
           {last ? (
             <p>This ends turning point {tp} and goes to final scoring.</p>
           ) : (
@@ -121,7 +127,7 @@ function EndTurnSheet({ tp, unactivated = 0, onCancel, onConfirm }) {
               Cancel
             </button>
             <button type="button" className="btn is-primary" onClick={onConfirm}>
-              {last ? 'End game' : `Start TP ${tp + 1}`}
+              {last ? 'Ready to end' : `Ready for TP ${tp + 1}`}
             </button>
           </div>
         </div>
@@ -132,25 +138,43 @@ function EndTurnSheet({ tp, unactivated = 0, onCancel, onConfirm }) {
 
 function PhaseAction() {
   const { state: game, seat, opponent, opponentSeat, act } = usePlayer()
-  const [confirming, setConfirming] = useState(false)
+  // The turning point the confirm sheet was opened for: it closes if that one ends
+  // meanwhile, so it can never confirm the next one by mistake.
+  const [confirmingTp, setConfirmingTp] = useState(null)
   const tp = game.battle.tp
 
   if (game.phase === 'results') return null
   if (game.phase === 'battle') {
+    const tpReady = game.battle.tpReady ?? {}
+    const label = tp >= MAX_TP ? 'End game' : 'Next TP'
+    // Both players confirm the end of the turning point; until the other does, mine can
+    // be taken back.
+    if (tpReady[seat]) {
+      return (
+        <button
+          type="button"
+          className="btn is-ready"
+          onClick={() => act({ type: 'battle/readyNextTp', fromTp: tp, ready: false })}
+          aria-label={`Waiting for ${opponent.name} (tap to take back)`}
+        >
+          Waiting for {opponent.name}
+        </button>
+      )
+    }
     return (
       <>
-        <button type="button" className="btn is-primary" onClick={() => setConfirming(true)}>
-          {tp >= MAX_TP ? 'End game' : 'Next TP'}
+        <button type="button" className="btn is-primary" onClick={() => setConfirmingTp(tp)}>
+          {tpReady[opponentSeat] ? `${label} · ${opponent.name} is ready` : label}
         </button>
-        {confirming ? (
+        {confirmingTp === tp ? (
           <EndTurnSheet
             tp={tp}
             unactivated={SEATS.reduce((sum, candidate) => sum + readyUnitKeys(game.players[candidate]).length, 0)}
-            onCancel={() => setConfirming(false)}
+            waiting={tpReady[opponentSeat] ? opponent.name : null}
+            onCancel={() => setConfirmingTp(null)}
             onConfirm={() => {
-              setConfirming(false)
-              // fromTp: if both players confirm, the turning point only advances once.
-              act({ type: 'battle/nextTp', fromTp: tp })
+              setConfirmingTp(null)
+              act({ type: 'battle/readyNextTp', fromTp: tp })
             }}
           />
         ) : null}
