@@ -444,22 +444,30 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       const current = overlay?.tool === kind ? overlay : null
       const shown = current?.mode === 'fight' ? null : shooterPointOf(current)
       const reach = GRAB_PX / viewMetrics(svgRef.current.getBoundingClientRect(), viewRef.current).scale
-      if (shown && distance(shown, point) <= reach) {
-        gestureRef.current = { type: 'target-point' }
-        return
-      }
       const tapped = target?.token
       const alive = tapped?.unitKey && !game.players[tapped.seat]?.unitState?.[tapped.unitKey]?.dead
+      const shooter = tokens.find((token) => token.id === current?.shooterId)
+      // The white point sits on the shooter's base: dragging it moves where the lines
+      // start; just tapping it is a tap on the shooter.
+      if (shown && distance(shown, point) <= reach) {
+        gestureRef.current = { type: 'target-point', screen: { x: event.clientX, y: event.clientY }, moved: false, shooterId: shooter?.id }
+        return
+      }
+      // Sightline: a tap on the shooter or one of its side opens that operative's action
+      // ring (closing Sightline); a tap off any operative ends Sightline.
+      if (kind === 'target') {
+        if (!alive) leaveTool()
+        else if (!shooter || tapped.seat === shooter.seat) ringFor(tapped.id)
+        else publish({ ...current, targetId: tapped.id })
+        return
+      }
       if (!alive || tapped.id === current?.shooterId) {
         clearTool()
         setWeaponMenuOpen(false)
         return
       }
-      const shooter = tokens.find((token) => token.id === current?.shooterId)
       if (shooter && tapped.seat !== shooter.seat) {
         publish({ ...current, targetId: tapped.id })
-      } else if (kind === 'target') {
-        publish({ tool: 'target', shooterId: tapped.id, targetId: null, point: null })
       } else {
         // A new attacker: pick its weapon first. It's a fight if an enemy is already
         // within its control range (the switch in the list changes it).
@@ -546,6 +554,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       const dy = clamp(point.y - gesture.grab.y, -Math.min(a.y, b.y), BOARD.height - Math.max(a.y, b.y))
       publish({ tool: 'measure', points: gesture.points.map((end) => ({ x: end.x + dx, y: end.y + dy })) })
     } else if (gesture.type === 'target-point') {
+      gesture.moved = true
       const shooter = tokens.find((token) => token.id === overlay?.shooterId)
       if (!shooter) return
       const inside = clampToBase(shooter, point)
@@ -572,6 +581,11 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const gesture = gestureRef.current
     gestureRef.current = null
     if (!gesture) return
+    // The white point tapped, not dragged: in Sightline, that's a tap on the shooter.
+    if (gesture.type === 'target-point' && !gesture.moved && tool === 'los' && gesture.shooterId) {
+      ringFor(gesture.shooterId)
+      return
+    }
     // Measure, and the finger didn't move: an operative's actions, or done measuring.
     if (gesture.type === 'measure-press') {
       if (gesture.token) ringFor(gesture.token.id)

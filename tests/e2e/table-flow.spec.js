@@ -383,6 +383,10 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // Sightline is just the line-of-sight check: no weapons.
   const weaponList = a.getByRole('navigation', { name: 'Choose a weapon' })
   await expect(weaponList).toHaveCount(0)
+  // Tapping the shooter closes Sightline and opens its action ring.
+  await tapToken(sniper)
+  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(6)
+  await expect(table.locator('.targeting')).toHaveCount(0)
   // Shoot/Fight: tap the shooter and its weapon list pops out, set to Shoot (no enemy
   // is within its control range). The switch shows its melee weapons instead.
   const attackButton = a.getByRole('button', { name: 'Shoot/Fight', exact: true })
