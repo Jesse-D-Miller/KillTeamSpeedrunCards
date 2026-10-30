@@ -20,6 +20,7 @@ import FullscreenButton from './FullscreenButton.jsx'
 import { TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
 import VantageMark from './VantageMark.jsx'
 import { NextTpRailButton } from './NextTp.jsx'
+import { TeamEquipment, TeamFactionRules, TeamFirefightPloys, TeamOps, TeamStratPloys } from './TeamSections.jsx'
 import UnitCardModal from './UnitCardModal.jsx'
 import WeaponChooser from './WeaponChooser.jsx'
 import { meleeWeaponsFor, rangedWeaponsFor } from '../rules/weaponRules.js'
@@ -84,6 +85,15 @@ const RADIAL_ACTIONS = [
   { id: 'edit', label: 'Edit', icon: 'edit', own: true },
   { id: 'ping', label: 'Ping', icon: 'ping' },
   { id: 'card', label: 'Unit card', icon: 'card' },
+]
+
+// Your team, a section at a time, from the tool drawer (it stays open beside them).
+const TEAM_SECTIONS = [
+  { id: 'ops', label: 'Ops', Section: TeamOps },
+  { id: 'equipment', label: 'Equipment', Section: TeamEquipment },
+  { id: 'firefight', label: 'Firefight', title: 'Firefight ploys', Section: TeamFirefightPloys },
+  { id: 'strat', label: 'Strat ploys', Section: TeamStratPloys },
+  { id: 'faction', label: 'Faction', title: 'Faction rules', Section: TeamFactionRules },
 ]
 
 // Everything else on the board (markers, tokens, blank bases) has a smaller ring.
@@ -163,6 +173,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // measure, two fingers to pan and zoom.
   const [tool, setTool] = useState(null)
   const [tabsOpen, setTabsOpen] = useState(false)
+  // The team section open beside the tool drawer (an id from TEAM_SECTIONS), or null.
+  const [teamSection, setTeamSection] = useState(null)
   const [overlay, setOverlay] = useState(null)
   const [dragPreview, setDragPreview] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
@@ -973,6 +985,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     ) : null,
   }
   const pressTool = { units: pressUnits, token: pressToken }
+  const openSection = TEAM_SECTIONS.find((section) => section.id === teamSection) ?? null
   // Shoot or Fight: the attacker's ranged or melee weapons, full screen. Cancel ends it.
   const weaponMenu =
     attacker && weaponMenuOpen ? (
@@ -1253,6 +1266,20 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             )
           })}
           <span className="rail-divider" />
+          {TEAM_SECTIONS.map(({ id, label, title }) => (
+            <button
+              key={id}
+              type="button"
+              className={`rail-tool${teamSection === id ? ' is-selected' : ''}`}
+              onClick={() => setTeamSection((current) => (current === id ? null : id))}
+              aria-label={title ?? label}
+              aria-pressed={teamSection === id}
+            >
+              <ToolIcon tool={id} />
+              <span>{label}</span>
+            </button>
+          ))}
+          <span className="rail-divider" />
           {game.phase === 'battle' ? <NextTpRailButton /> : null}
           <button type="button" className="rail-tool" onClick={() => setView(FULL_VIEW)} aria-label="Fit">
             <ToolIcon tool="fit" />
@@ -1272,6 +1299,14 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             </button>
           ) : null}
         </div>
+        {openSection ? (
+          <section className="team-panel" aria-label={openSection.title ?? openSection.label}>
+            <button type="button" className="btn is-small team-panel-close" onClick={() => setTeamSection(null)} aria-label="Close">
+              ✕
+            </button>
+            <openSection.Section />
+          </section>
+        ) : null}
         {tabsOpen ? (
           <nav className="rail-flyout tab-flyout glass" aria-label="Switch tab">
             {tabs.map((id) => (

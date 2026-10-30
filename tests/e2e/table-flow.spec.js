@@ -565,14 +565,27 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // A firefight ploy played from the Team tab spends its CP and shows on the projector,
   // outlined, beside any strategy ploys; undoing it refunds the CP.
   const cpBeforePloy = Number(await aliceBoard.locator('.pb-stat.is-cp .pb-big-value').textContent())
-  await a.getByRole('button', { name: 'Team & rules' }).click()
-  await a.getByRole('button', { name: 'Use Command Re-roll' }).click()
+  // Your team's sections (ops, equipment, ploys, faction rules) open from the map's tool
+  // drawer, which stays beside them; there's no Team & rules tab any more.
+  await expect(a.locator('.play-tabs button', { hasText: 'Team & rules' })).toHaveCount(0)
+  await openTab(a, 'Map')
+  await a.getByRole('button', { name: 'Firefight ploys' }).click()
+  const teamPanel = a.getByRole('region', { name: 'Firefight ploys' })
+  await expect(teamPanel).toBeVisible()
+  await expect(a.locator('.tool-rail')).toBeVisible()
+  await shot(a, '09t-team-panel')
+  await teamPanel.getByRole('button', { name: 'Use Command Re-roll' }).click()
   await expect(aliceBoard.locator('.pb-ploys [data-ploy="firefight"]')).toHaveText('Command Re-roll')
   await expect(aliceBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText(String(cpBeforePloy - 1))
   await a.getByRole('button', { name: 'Undo Command Re-roll' }).click()
   await expect(aliceBoard.locator('.pb-ploys [data-ploy="firefight"]')).toHaveCount(0)
   await expect(aliceBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText(String(cpBeforePloy))
-  await a.getByRole('button', { name: 'Operatives' }).click()
+  // Its drawer button switches sections; ✕ closes the panel.
+  await a.getByRole('button', { name: 'Faction rules' }).click()
+  await expect(a.getByRole('region', { name: 'Faction rules' })).toBeVisible()
+  await a.locator('.team-panel').getByRole('button', { name: 'Close' }).click()
+  await expect(a.locator('.team-panel')).toHaveCount(0)
+  await openTab(a, 'Operatives')
   await shot(a, '09-battle-ipad')
   await shot(table, '10-battle-table')
 
@@ -580,7 +593,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await openTab(a, 'Map')
   await expect(a.getByRole('button', { name: 'Units', exact: true })).toHaveCount(0)
   // Everything else on the operatives comes from their action ring; the rail keeps the rest.
-  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', /to go$/, 'Fit', 'Full screen', 'Tabs'])
+  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', 'Ops', 'Equipment', 'Firefight', 'Strat ploys', 'Faction', /to go$/, 'Fit', 'Full screen', 'Tabs'])
   // Next TP in the drawer waits until every operative has activated.
   await expect(a.getByRole('button', { name: /^Next TP \(\d+ operatives still to activate\)$/ })).toBeDisabled()
   // With no tool on, tapping an operative opens a ring of its actions; a touch

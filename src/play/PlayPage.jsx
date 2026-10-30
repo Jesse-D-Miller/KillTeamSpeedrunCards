@@ -16,7 +16,6 @@ import { useGame } from '../net/gameContext.js'
 import MapTab from './MapTab.jsx'
 import OpponentTab from './OpponentTab.jsx'
 import { RuleProvider } from './RuleText.jsx'
-import TeamTab from './TeamTab.jsx'
 import BattleStep from './steps/BattleStep.jsx'
 import DeployStep from './steps/DeployStep.jsx'
 import LobbyStep from './steps/LobbyStep.jsx'
@@ -36,13 +35,14 @@ const SP_KILLTEAMS = new Set(['VOT-HKY', 'TAU-VESP'])
 const PHASES = {
   lobby: { label: 'Lobby', main: 'Join', tabs: ['main'] },
   setup: { label: 'Set up the battle', main: 'Setup', tabs: ['main', 'map'] },
-  muster: { label: 'Muster', main: 'Muster', tabs: ['main', 'team', 'map'] },
-  deploy: { label: 'Deploy', main: 'Deploy', tabs: ['main', 'map', 'team', 'opponent'] },
-  battle: { label: 'Battle', main: 'Operatives', tabs: ['main', 'map', 'team', 'opponent'] },
+  muster: { label: 'Muster', main: 'Muster', tabs: ['main', 'map'] },
+  deploy: { label: 'Deploy', main: 'Deploy', tabs: ['main', 'map', 'opponent'] },
+  battle: { label: 'Battle', main: 'Operatives', tabs: ['main', 'map', 'opponent'] },
   results: { label: 'Results', main: 'Results', tabs: ['main', 'map', 'opponent'] },
 }
 
-const TAB_LABELS = { map: 'Map', team: 'Team & rules', opponent: 'Opponent' }
+// Your team's ops, equipment, ploys and rules are in the map's tool drawer.
+const TAB_LABELS = { map: 'Map', opponent: 'Opponent' }
 
 function Counter({ label, value, onChange }) {
   return (
@@ -296,7 +296,6 @@ function SeatScreen() {
         <main className={`play-main${immersive ? ' is-map' : ''}`}>
           {activeTab === 'main' ? <MainStep onOpenMap={() => setTab('map')} /> : null}
           {activeTab === 'map' ? <MapTab tabs={phase.tabs} tabLabel={tabLabel} onSelectTab={setTab} /> : null}
-          {activeTab === 'team' ? <TeamTab /> : null}
           {activeTab === 'opponent' ? <OpponentTab /> : null}
         </main>
         {!immersive && phase.tabs.length > 1 ? (

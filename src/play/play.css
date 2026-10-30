@@ -1188,6 +1188,48 @@
   border-radius: 14px;
 }
 
+/* A team section (ops, equipment, ploys, rules) open beside the tool drawer, which
+   stays visible to switch between them. */
+.team-panel {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 8px);
+  z-index: 2;
+  width: min(36rem, calc(100vw - 7.5rem));
+  max-height: calc(100dvh - 1.5rem);
+  overflow-y: auto;
+  padding: 0.5rem 1.1rem 1rem;
+  border-radius: 16px;
+  transform: translateY(-50%);
+  /* Mostly solid: it's for reading, so the map shouldn't show through the text. */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(14, 16, 20, 0.96);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.team-panel-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 1;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* The panel is the card: the section inside it isn't boxed again. */
+.team-panel .step-block {
+  margin: 0;
+  padding: 0.6rem 0 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+}
+
+.team-panel .step-block h3 {
+  margin-top: 0.4rem;
+  padding-right: 3.5rem;
+}
+
 .tab-flyout {
   bottom: 0;
 }
