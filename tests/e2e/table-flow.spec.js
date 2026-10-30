@@ -657,6 +657,18 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(aliceBoard.locator('.pb-turn-badge')).toHaveText('Activating')
   await shot(table, '06e-activation-table')
 
+  // With Move on, tapping an operative goes back to its action ring (Move is off), and
+  // tapping the empty map just ends moving.
+  await tokenOf('t2').click()
+  await expect(ring.getByRole('menuitem')).toHaveCount(6)
+  await ring.getByRole('menuitem', { name: 'Move', exact: true }).click()
+  await expect(ring).toHaveCount(0)
+  await a.mouse.click(...emptySpot)
+  await expect(table.locator('.overlay-ping')).toHaveCount(0)
+  // (Now there's no tool, so the next tap pings.)
+  await a.mouse.click(...emptySpot)
+  await expect(table.locator('.overlay-ping')).toHaveCount(1)
+
   // Token pops out categories, then that category's tokens; picking one closes the list.
   const tokenButton = a.getByRole('button', { name: 'Token', exact: true })
   const tokenMenu = a.locator('.tool-rail .anchored-flyout')

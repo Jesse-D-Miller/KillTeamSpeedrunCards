@@ -331,13 +331,31 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         const trail = target.token.unitKey ? [{ x: target.token.x, y: target.token.y }] : null
         // A blank token is measured in a straight line from where it started.
         const origin = trail ? null : { x: target.token.x, y: target.token.y }
-        gestureRef.current = { type: 'drag-free', id: target.token.id, action: 'token/update', trail, origin, moved: false }
+        gestureRef.current = {
+          type: 'drag-free',
+          id: target.token.id,
+          action: 'token/update',
+          trail,
+          origin,
+          moved: false,
+          screen: { x: event.clientX, y: event.clientY },
+          ring: tool === 'move' && Boolean(target.token.unitKey),
+        }
         return
       }
       // Operative tokens follow the finger smoothly; their path locks in at each full inch. follows the finger smoothly; its path locks in at each full inch.
       // Dragging an operative that already moved this TP continues that movement.
       const path = target.token.lastMove?.path ?? [{ x: target.token.x, y: target.token.y }]
-      gestureRef.current = { type: 'drag-token', id: target.token.id, path, start: path, moved: false }
+      gestureRef.current = {
+        type: 'drag-token',
+        id: target.token.id,
+        path,
+        start: path,
+        moved: false,
+        screen: { x: event.clientX, y: event.clientY },
+        // With Move on, a tap (no drag) goes back to the operative's action ring.
+        ring: tool === 'move',
+      }
       return
     }
     if (target?.marker && DRAG_TOOLS.includes(tool)) {
@@ -391,7 +409,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     // Otherwise a drag on the empty map pans it (and drops any selection).
     if (['move', 'select', 'token', 'units'].includes(tool)) {
       setSelectedId(null)
-      gestureRef.current = { type: 'pan', last: { x: event.clientX, y: event.clientY } }
+      gestureRef.current = { type: 'pan', last: { x: event.clientX, y: event.clientY }, start: { x: event.clientX, y: event.clientY }, moved: false }
       return
     }
     // Measure is a free ruler: grab an end to stretch it, the middle to slide it,
@@ -480,7 +498,11 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       publish({ tool: 'measure', points: [anchor ? defaultShooterPoint(anchor, point) : gesture.from, point] })
       return
     }
+    // A finger that hasn't gone past the tap slop yet is still a tap.
+    const origin = gesture.screen ?? gesture.start
+    if (origin && !gesture.moved && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) < TAP_SLOP_PX) return
     if (gesture.type === 'pan') {
+      gesture.moved = true
       const rect = svgRef.current.getBoundingClientRect()
       const { scale } = viewMetrics(rect, viewRef.current)
       const dx = (event.clientX - gesture.last.x) / scale
@@ -563,11 +585,18 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         window.setTimeout(() => setDragPreview(null), 400)
       } else {
         setDragPreview(null)
-        // Tapping your own ready operative activates it without moving (e.g. to shoot).
-        if (!gesture.moved) activateByTap(gesture.id)
+        if (!gesture.moved) {
+          // A tap: with Move on, back to the operative's actions; otherwise (Token or
+          // Units on) tapping your own ready operative activates it without moving.
+          if (gesture.ring) ringFor(gesture.id)
+          else activateByTap(gesture.id)
+        }
       }
       sendEphemeral(overlay ?? null)
     }
+    if (gesture.type === 'drag-free' && !gesture.moved && gesture.ring) ringFor(gesture.id)
+    // A tap on the empty map with Move on: done moving, back to no tool.
+    if (gesture.type === 'pan' && !gesture.moved && tool === 'move') leaveTool()
     if (gesture.type === 'drag-free' && gesture.moved) {
       const host = gesture.attachable ? operativeAt(gesture.point) : null
       act(
@@ -639,8 +668,27 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     else selectTool('attack')
   }
 
+  // Back to no tool (from one opened by the action ring).
+  const leaveTool = () => {
+    clearTool()
+    setSelectedId(null)
+    endPlacing()
+    setWeaponMenuOpen(false)
+    setTool(null)
+  }
+
+  // Leave the current tool and open the action ring on this operative instead.
+  const ringFor = (tokenId) => {
+    const token = tokens.find((candidate) => candidate.id === tokenId)
+    leaveTool()
+    if (token) openRadial(token)
+  }
+
   // A button in an operative's action ring: switch to that tool, already aimed at it.
+  // Moving, shooting or fighting with your own ready operative in the Firefight phase
+  // activates it.
   const runAction = (id, token) => {
+    if (['move', 'shoot', 'fight'].includes(id)) activateByTap(token.id)
     setRadial(null)
     clearTool()
     endPlacing()
