@@ -91,7 +91,7 @@ function HomeLogo() {
               <feFuncA type="discrete" tableValues="0 0 1 1 1 1 1 1" />
             </feComponentTransfer>
             <feTurbulence type="fractalNoise" baseFrequency="0.012 0.004" numOctaves="3" seed="5" result="noise">
-              <animate attributeName="baseFrequency" dur="5s" values="0.012 0.004;0.017 0.006;0.012 0.004" repeatCount="indefinite" />
+              <animate attributeName="baseFrequency" dur="11s" values="0.012 0.004;0.015 0.005;0.012 0.004" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" repeatCount="indefinite" />
             </feTurbulence>
             <feMorphology in="shape" operator="dilate" radius="46" result="outerShape" />
             <feDisplacementMap in="outerShape" in2="noise" scale="150" xChannelSelector="R" yChannelSelector="G" result="outerWavy" />

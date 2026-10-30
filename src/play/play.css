@@ -1313,7 +1313,7 @@
   width: 100%;
   height: 100%;
   overflow: visible;
-  animation: home-flicker 2.3s steps(1, end) infinite;
+  animation: home-flicker 7.3s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -1363,39 +1363,29 @@
   }
 }
 
-/* Uneven on purpose: fire never flickers in a rhythm. */
+/* A slow, uneven breathing of the halo: small, smooth changes in brightness and size,
+   never in a rhythm. */
 @keyframes home-flicker {
-  0% {
-    opacity: 0.92;
+  0%,
+  100% {
+    opacity: 0.9;
     transform: scale(1);
   }
-  11% {
-    opacity: 0.78;
-    transform: scale(0.985, 1.02);
-  }
-  19% {
+  23% {
     opacity: 1;
-    transform: scale(1.01, 0.99);
+    transform: scale(1.012);
   }
-  34% {
-    opacity: 0.85;
-    transform: scale(0.99, 1.03);
+  41% {
+    opacity: 0.86;
+    transform: scale(0.996);
   }
-  47% {
+  64% {
     opacity: 0.97;
+    transform: scale(1.008);
+  }
+  82% {
+    opacity: 0.88;
     transform: scale(1);
-  }
-  58% {
-    opacity: 0.74;
-    transform: scale(1.015, 1.01);
-  }
-  71% {
-    opacity: 1;
-    transform: scale(0.99, 1.025);
-  }
-  86% {
-    opacity: 0.83;
-    transform: scale(1.005, 0.995);
   }
 }
 
