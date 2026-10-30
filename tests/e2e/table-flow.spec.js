@@ -498,8 +498,62 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await shot(a, '09-battle-ipad')
   await shot(table, '10-battle-table')
 
-  // In battle, drag an operative in an L: it moves in whole-inch steps, the path stays, and undo puts it back.
+  // In battle the Units tool is gone: operatives are only set up before the battle.
   await openTab(a, 'Map')
+  await expect(a.getByRole('button', { name: 'Units', exact: true })).toHaveCount(0)
+  // With no tool on, tapping an operative opens a ring of its actions; a touch
+  // elsewhere closes it.
+  const ring = a.locator('.unit-radial')
+  const tokenOf = (id) => a.locator(`.map-stage [data-token-id="${id}"] .board-token-base`)
+  const tokenIdsOf = (color) =>
+    a.locator('.map-stage [data-token-id]').evaluateAll(
+      (groups, wanted) => groups.filter((g) => g.style.getPropertyValue('--token-color') === wanted).map((g) => g.dataset.tokenId),
+      color,
+    )
+  const [mineId] = await tokenIdsOf('#ff5a4e')
+  await tokenOf(mineId).click()
+  await expect(ring.getByRole('menuitem')).toHaveText(['Move', 'Measure', 'Sightline', 'Shoot', 'Fight', 'Select'])
+  // (Once its buttons have finished popping out.)
+  await a.waitForTimeout(250)
+  await shot(a, '06r-action-ring-ipad')
+  const mapBox = await a.locator('.map-stage .board-svg').boundingBox()
+  // A spot on the mat with no token or marker under it.
+  const emptySpot = await a.evaluate(({ x, y, width, height }) => {
+    for (const [fx, fy] of [[0.5, 0.5], [0.5, 0.3], [0.5, 0.7], [0.62, 0.5], [0.4, 0.4], [0.6, 0.6]]) {
+      const point = [x + width * fx, y + height * fy]
+      const hit = document.elementFromPoint(...point)
+      if (hit?.closest('.board-svg') && !hit.closest('.board-token, .board-marker, .unit-radial')) return point
+    }
+    return null
+  }, mapBox)
+  expect(emptySpot).not.toBeNull()
+  await a.mouse.click(...emptySpot)
+  await expect(ring).toHaveCount(0)
+  // Tapping the empty map pings it on the projector.
+  await a.mouse.click(...emptySpot)
+  await expect(table.locator('.overlay-ping')).toHaveCount(1)
+  // Dragging from an operative measures from its base edge, and the operative stays put.
+  const mineCx = await table.locator(`[data-token-id="${mineId}"] .board-token-base`).getAttribute('cx')
+  const mineBox = await tokenOf(mineId).boundingBox()
+  const mineAt = { x: mineBox.x + mineBox.width / 2, y: mineBox.y + mineBox.height / 2 }
+  await a.mouse.move(mineAt.x, mineAt.y)
+  await a.mouse.down()
+  for (let i = 1; i <= 10; i += 1) await a.mouse.move(mineAt.x + (3 * pxPerInch * i) / 10, mineAt.y)
+  await a.mouse.up()
+  const fromBase = 3 - Number(await table.locator(`[data-token-id="${mineId}"] .board-token-base`).getAttribute('r'))
+  await expect
+    .poll(async () => Number.parseFloat(await table.locator('.overlay-measure .overlay-label').textContent()))
+    .toBeCloseTo(fromBase, 0)
+  expect(await table.locator(`[data-token-id="${mineId}"] .board-token-base`).getAttribute('cx')).toBe(mineCx)
+  // Shoot from the ring: the Shoot/Fight tool comes on with the weapon list open.
+  await tokenOf(mineId).click()
+  await ring.getByRole('menuitem', { name: 'Shoot' }).click()
+  await expect(a.locator('.weapon-flyout')).toBeVisible()
+  await expect(table.locator('.overlay-measure')).toHaveCount(0)
+  await a.getByRole('button', { name: 'Shoot/Fight', exact: true }).click()
+  await expect(a.locator('.weapon-flyout')).toHaveCount(0)
+
+  // In battle, drag an operative in an L: it moves in whole-inch steps, the path stays, and undo puts it back.
   await a.getByRole('button', { name: 'Move', exact: true }).click()
   const tableToken = table.locator('.board-token-base').first()
   const startCx = await tableToken.getAttribute('cx')
@@ -743,6 +797,11 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await tableActions(table, [{ type: 'token/move', id: stinger, path: [{ x: 8, y: 7.5 }, { x: 8, y: 8.5 }] }])
   await expect(table.locator(`[data-token-id="${stinger}"]`)).toHaveClass(/is-active/)
   await openTab(b, 'Map')
+  // An opponent's operative offers only Measure, Sightline and Select in its ring.
+  await b.locator(`.map-stage [data-token-id="${mark}"] .board-token-base`).click()
+  await expect(b.locator('.unit-radial').getByRole('menuitem')).toHaveText(['Measure', 'Sightline', 'Select'])
+  await b.locator(`.map-stage [data-token-id="${mark}"] .board-token-base`).click()
+  await expect(b.locator('.unit-radial')).toHaveCount(0)
   const bobAttack = b.getByRole('button', { name: 'Shoot/Fight', exact: true })
   await bobAttack.click()
   await b.locator(`.map-stage [data-token-id="${stinger}"] .board-token-base`).click()

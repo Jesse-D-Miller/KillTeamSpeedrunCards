@@ -25,6 +25,9 @@ import { useAttack } from './useAttack.js'
 
 // The iPad is the controller: everything drawn here is streamed to the projector.
 // One finger uses the active tool; two fingers pan/zoom the iPad view only.
+// With no tool on: tap an operative for a ring of its actions, tap the map to ping,
+// and drag anywhere to measure (from an operative's base if the drag starts on one;
+// the operative stays put).
 
 const TOOLS = [
   ['move', 'Move'],
@@ -52,6 +55,19 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
 // How close (in screen pixels) a finger must be to grab the ruler's end or line.
 const GRAB_PX = 24
+// A finger that moves less than this (screen pixels) is a tap, not a drag.
+const TAP_SLOP_PX = 8
+// The action ring around a tapped operative: its radius, and its buttons (own: only
+// for your own operatives).
+const RADIAL_PX = 78
+const RADIAL_ACTIONS = [
+  { id: 'move', label: 'Move', icon: 'move', own: true },
+  { id: 'measure', label: 'Measure', icon: 'measure' },
+  { id: 'los', label: 'Sightline', icon: 'los' },
+  { id: 'shoot', label: 'Shoot', icon: 'attack', own: true },
+  { id: 'fight', label: 'Fight', icon: 'fight', own: true },
+  { id: 'select', label: 'Select', icon: 'select' },
+]
 
 const distanceToSegment = (point, a, b) => {
   const lengthSq = (b.x - a.x) ** 2 + (b.y - a.y) ** 2
@@ -117,7 +133,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const { state: game, seat, killteam, roster, ephemerals, act, sendEphemeral } = usePlayer()
   const svgRef = useRef(null)
   const [view, setView] = useState(FULL_VIEW)
-  // null = no tool: drag pans, pinch zooms, nothing on the board is touched.
+  // null = no tool: tap an operative for its actions, tap the map to ping, drag to
+  // measure, two fingers to pan and zoom.
   const [tool, setTool] = useState(null)
   const [tabsOpen, setTabsOpen] = useState(false)
   const [overlay, setOverlay] = useState(null)
@@ -136,6 +153,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const [lastCategory, setLastCategory] = useState('categories')
   const [pendingEntry, setPendingEntry] = useState(null)
   const [railOpen, setRailOpen] = useState(true)
+  // The action ring: { tokenId, x, y } (its centre in map-stage pixels), or null.
+  const [radial, setRadial] = useState(null)
+  const stageRef = useRef(null)
   const pointersRef = useRef(new Map())
   const gestureRef = useRef(null)
   const viewRef = useRef(view)
@@ -168,6 +188,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // Firefight phase: moving (or tapping) an operative activates it.
   const firefight = game.phase === 'battle' && game.battle.firefightTp === game.battle.tp
   const turn = turnState(game)
+  // Operatives are only set up before the battle (core rules), so no Units tool after.
+  const tools = TOOLS.filter(([id]) => id !== 'units' || game.phase !== 'battle')
+  if (tool === 'units' && game.phase === 'battle') setTool(null)
 
   const publish = (payload) => {
     setOverlay(payload)
@@ -218,8 +241,33 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     setPendingEntry(null)
   }
 
+  const ping = (point) => {
+    publish({ tool: 'ping', ...point })
+    window.setTimeout(() => {
+      setOverlay((current) => (current?.tool === 'ping' ? null : current))
+      sendEphemeral(null)
+    }, 2500)
+  }
+
+  // Open the action ring around an operative, kept fully on screen and clear of the
+  // tool drawer on the left.
+  const openRadial = (token) => {
+    const svgRect = svgRef.current.getBoundingClientRect()
+    const stageRect = stageRef.current.getBoundingClientRect()
+    const railRect = stageRef.current.parentElement.querySelector('.tool-drawer')?.getBoundingClientRect()
+    const railRight = railRect ? Math.max(0, railRect.right - stageRect.left) : 0
+    const { scale, offX, offY } = viewMetrics(svgRect, viewRef.current)
+    const room = RADIAL_PX + 36
+    setRadial({
+      tokenId: token.id,
+      x: clamp(offX + (token.x - viewRef.current.x) * scale - stageRect.left, railRight + room, stageRect.width - room),
+      y: clamp(offY + (toSvgY(token.y) - viewRef.current.y) * scale - stageRect.top, room, stageRect.height - room),
+    })
+  }
+
   // ---- two-finger pan/zoom ----
   const startPinch = () => {
+    setRadial(null)
     const [a, b] = Array.from(pointersRef.current.values())
     const rect = svgRef.current.getBoundingClientRect()
     const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
@@ -251,6 +299,20 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // ---- single-finger tools ----
   const beginTool = (event, target) => {
     const point = toBoard(event.clientX, event.clientY)
+
+    // No tool: wait to see whether this is a tap or a drag (see moveTool / endTool).
+    // A touch while the action ring is open just closes it.
+    if (tool === null) {
+      if (radial) {
+        setRadial(null)
+        gestureRef.current = { type: 'dismiss' }
+        return
+      }
+      clearTool()
+      const token = target?.token?.unitKey ? target.token : null
+      gestureRef.current = { type: 'press', from: point, screen: { x: event.clientX, y: event.clientY }, token }
+      return
+    }
 
     // An armed token dropped on an operative rides on it.
     if (target?.token && tool === 'token' && pendingEntry?.kind === 'token' && target.token.unitKey) {
@@ -327,7 +389,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       }
     }
     // Otherwise a drag on the empty map pans it (and drops any selection).
-    if (['move', 'select', 'token', 'units'].includes(tool) || tool === null) {
+    if (['move', 'select', 'token', 'units'].includes(tool)) {
       setSelectedId(null)
       gestureRef.current = { type: 'pan', last: { x: event.clientX, y: event.clientY } }
       return
@@ -341,6 +403,15 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       if (end !== undefined) {
         gestureRef.current = { type: 'measure-end', index: end }
         return
+      }
+      // A ruler just started from an operative's action ring: the first touch pulls it out.
+      if (line && line[0].x === line[1].x && line[0].y === line[1].y && overlay.anchorId) {
+        const anchor = tokens.find((token) => token.id === overlay.anchorId)
+        if (anchor) {
+          gestureRef.current = { type: 'measure-end', index: 1, anchor }
+          publish({ tool: 'measure', points: [defaultShooterPoint(anchor, point), point] })
+          return
+        }
       }
       if (line && distanceToSegment(point, line[0], line[1]) <= reach) {
         gestureRef.current = { type: 'measure-slide', grab: point, points: line }
@@ -391,11 +462,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       return
     }
     if (tool === 'ping') {
-      publish({ tool: 'ping', ...point })
-      window.setTimeout(() => {
-        setOverlay((current) => (current?.tool === 'ping' ? null : current))
-        sendEphemeral(null)
-      }, 2500)
+      ping(point)
       return
     }
   }
@@ -404,6 +471,15 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const gesture = gestureRef.current
     if (!gesture) return
     const point = toBoard(event.clientX, event.clientY)
+    if (gesture.type === 'press') {
+      if (Math.hypot(event.clientX - gesture.screen.x, event.clientY - gesture.screen.y) < TAP_SLOP_PX) return
+      // A drag: measure. From an operative it starts at the edge of its base (distances
+      // are measured from bases), and the operative doesn't move.
+      const anchor = gesture.token
+      gestureRef.current = { type: 'measure-end', index: 1, anchor }
+      publish({ tool: 'measure', points: [anchor ? defaultShooterPoint(anchor, point) : gesture.from, point] })
+      return
+    }
     if (gesture.type === 'pan') {
       const rect = svgRef.current.getBoundingClientRect()
       const { scale } = viewMetrics(rect, viewRef.current)
@@ -432,6 +508,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       setOverlay((current) => {
         if (current?.tool !== 'measure') return current
         const points = current.points.map((end, index) => (index === gesture.index ? point : end))
+        // Measuring from an operative: keep the start on its base edge, facing the end.
+        if (gesture.anchor && gesture.index === 1) points[0] = defaultShooterPoint(gesture.anchor, point)
         const next = { tool: 'measure', points }
         sendEphemeral(next)
         return next
@@ -469,6 +547,12 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const gesture = gestureRef.current
     gestureRef.current = null
     if (!gesture) return
+    // No tool, and the finger didn't move: an operative's actions, or a ping.
+    if (gesture.type === 'press') {
+      if (gesture.token) openRadial(gesture.token)
+      else ping(gesture.from)
+      return
+    }
     if (gesture.type === 'drag-token') {
       const changed =
         gesture.path.length !== gesture.start.length || gesture.path.at(-1) !== gesture.start.at(-1)
@@ -540,6 +624,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // Tapping a tool turns it on; tapping it again turns it off. Either way any
   // measurement or sightline is cleared and the selection dropped.
   const selectTool = (next) => {
+    setRadial(null)
     clearTool()
     setSelectedId(null)
     endPlacing()
@@ -552,6 +637,28 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const pressAttack = () => {
     if (tool === 'attack' && attacker && !weaponMenuOpen) setWeaponMenuOpen(true)
     else selectTool('attack')
+  }
+
+  // A button in an operative's action ring: switch to that tool, already aimed at it.
+  const runAction = (id, token) => {
+    setRadial(null)
+    clearTool()
+    endPlacing()
+    setWeaponMenuOpen(false)
+    setSelectedId(id === 'move' || id === 'select' ? token.id : null)
+    if (id === 'move' || id === 'select') {
+      setTool(id)
+    } else if (id === 'measure') {
+      setTool('measure')
+      publish({ tool: 'measure', points: [{ x: token.x, y: token.y }, { x: token.x, y: token.y }], anchorId: token.id })
+    } else if (id === 'los') {
+      setTool('los')
+      publish({ tool: 'target', shooterId: token.id, targetId: null, point: null })
+    } else {
+      setTool('attack')
+      publish({ tool: 'attack', mode: id, shooterId: token.id, targetId: null, point: null, weaponId: null })
+      setWeaponMenuOpen(true)
+    }
   }
 
   // Fix the base size of the unit just placed; from now on it can only be moved.
@@ -759,10 +866,12 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       ) : null,
   }
   const pressTool = { units: pressUnits, token: pressToken, attack: pressAttack }
+  const radialToken = radial ? tokens.find((token) => token.id === radial.tokenId) ?? null : null
+  const radialActions = radialToken ? RADIAL_ACTIONS.filter((action) => !action.own || radialToken.seat === seat) : []
 
   return (
     <section className="map-tab">
-      <div className="map-stage">
+      <div className="map-stage" ref={stageRef}>
         <BoardSvg
           game={game}
           hideDead
@@ -784,6 +893,27 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             <BaseSizer token={editing} onStep={(direction) => stepBase(editing, direction)} />
           ) : null}
         </BoardSvg>
+        {radialToken ? (
+          <div className="unit-radial" style={{ left: radial.x, top: radial.y }} role="menu" aria-label={`${radialToken.label || 'Operative'} actions`}>
+            {radialActions.map((action, index) => (
+              <button
+                key={action.id}
+                type="button"
+                role="menuitem"
+                className="unit-radial-button glass"
+                style={{
+                  left: RADIAL_PX * Math.cos(((-90 + (index * 360) / radialActions.length) * Math.PI) / 180),
+                  top: RADIAL_PX * Math.sin(((-90 + (index * 360) / radialActions.length) * Math.PI) / 180),
+                }}
+                onClick={() => runAction(action.id, radialToken)}
+                aria-label={action.label}
+              >
+                <ToolIcon tool={action.icon} />
+                <span>{action.label}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
       <AttackDrawer {...attack} />
 
@@ -796,7 +926,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         className="tool-drawer"
       >
         <div className="tool-rail">
-          {TOOLS.map(([id, label]) => {
+          {tools.map(([id, label]) => {
             const button = (
               <button
                 key={id}
