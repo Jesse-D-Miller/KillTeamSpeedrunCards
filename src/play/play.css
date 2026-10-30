@@ -1209,7 +1209,6 @@
 }
 
 .home-logo {
-  --beat: 1.4s;
   position: relative;
   width: min(420px, 80vw);
   aspect-ratio: 3 / 2;
@@ -1220,70 +1219,137 @@
   z-index: 1;
   width: 100%;
   display: block;
-  /* The logo's black backdrop drops out, so the glow shows around the emblem. */
+  /* The logo's black backdrop drops out, so the fire shows around the emblem. */
   mix-blend-mode: screen;
 }
 
-/* Centred on the shield, a little above the image's middle. */
-.home-pulse,
-.home-ring {
+/* An angry heartbeat: a hard double thump of red, then a pause. */
+.home-throb {
   position: absolute;
   left: 50%;
-  top: 47%;
+  top: 50%;
+  width: 115%;
   aspect-ratio: 1;
   border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(220, 32, 10, 0.55), rgba(150, 12, 4, 0.22) 60%, transparent);
+  animation: home-throb 1.6s ease-out infinite;
   pointer-events: none;
 }
 
-.home-pulse {
-  width: 95%;
-  background: radial-gradient(closest-side, rgba(255, 130, 35, 0.5), rgba(255, 90, 20, 0.18) 60%, transparent);
-  animation: home-pulse var(--beat) ease-out infinite;
+/* The flames: a flickering glow whose edges lick (see HomeLogo.jsx). */
+.home-fire {
+  position: absolute;
+  left: -18%;
+  top: -22%;
+  width: 136%;
+  height: auto;
+  overflow: visible;
+  animation: home-flicker 2.3s steps(1, end) infinite;
+  pointer-events: none;
 }
 
-.home-ring {
-  width: 55%;
-  border: 2px solid rgba(255, 150, 50, 0.85);
+.home-ember {
+  position: absolute;
+  bottom: 30%;
+  z-index: 2;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: #ffc35a;
   box-shadow:
-    0 0 18px rgba(255, 120, 30, 0.55),
-    inset 0 0 18px rgba(255, 120, 30, 0.35);
+    0 0 6px 2px rgba(255, 120, 20, 0.9),
+    0 0 14px 4px rgba(230, 50, 10, 0.5);
   opacity: 0;
-  /* Three rings, one per beat, each taking three beats to fade out. */
-  animation: home-ring calc(var(--beat) * 3) cubic-bezier(0.15, 0.55, 0.35, 1) infinite;
-  animation-delay: calc(var(--beat) * var(--ring));
+  animation: home-ember var(--rise) ease-in var(--delay) infinite;
+  pointer-events: none;
 }
 
-@keyframes home-pulse {
+@keyframes home-throb {
   0% {
-    transform: translate(-50%, -50%) scale(1.08);
+    transform: translate(-50%, -50%) scale(0.94);
+    opacity: 0.45;
+  }
+  9% {
+    transform: translate(-50%, -50%) scale(1.07);
     opacity: 1;
   }
+  18% {
+    transform: translate(-50%, -50%) scale(0.98);
+    opacity: 0.6;
+  }
+  27% {
+    transform: translate(-50%, -50%) scale(1.05);
+    opacity: 0.9;
+  }
+  55%,
   100% {
-    transform: translate(-50%, -50%) scale(0.92);
-    opacity: 0.55;
+    transform: translate(-50%, -50%) scale(0.94);
+    opacity: 0.45;
   }
 }
 
-@keyframes home-ring {
+/* Uneven on purpose: fire never flickers in a rhythm. */
+@keyframes home-flicker {
   0% {
-    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0.92;
+    transform: scale(1);
+  }
+  11% {
+    opacity: 0.78;
+    transform: scale(0.985, 1.02);
+  }
+  19% {
+    opacity: 1;
+    transform: scale(1.01, 0.99);
+  }
+  34% {
+    opacity: 0.85;
+    transform: scale(0.99, 1.03);
+  }
+  47% {
+    opacity: 0.97;
+    transform: scale(1);
+  }
+  58% {
+    opacity: 0.74;
+    transform: scale(1.015, 1.01);
+  }
+  71% {
+    opacity: 1;
+    transform: scale(0.99, 1.025);
+  }
+  86% {
+    opacity: 0.83;
+    transform: scale(1.005, 0.995);
+  }
+}
+
+@keyframes home-ember {
+  0% {
+    transform: translate(0, 0) scale(1);
     opacity: 0;
   }
-  10% {
-    opacity: 0.9;
+  12% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.8;
   }
   100% {
-    transform: translate(-50%, -50%) scale(2.6);
+    transform: translate(var(--drift), -190px) scale(0.3);
     opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-ring {
+  .home-ember {
     display: none;
   }
-  .home-pulse {
+  .home-throb,
+  .home-fire {
     animation: none;
+  }
+  .home-throb {
     transform: translate(-50%, -50%);
   }
 }
