@@ -58,13 +58,15 @@ function Counter({ label, value, onChange }) {
 }
 
 function VpSheet({ onClose }) {
-  const { me, act } = usePlayer()
+  const { state: game, me, act } = usePlayer()
   const bonusCategory = primaryCategory(me)
+  // The primary op is revealed, and its VP added, when the game ends.
+  const final = game.phase === 'results'
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
         <div className="sheet-head">
-          <h3>Victory points · {totalVp(me)}</h3>
+          <h3>Victory points · {totalVp(me, { withPrimary: final })}</h3>
           <button type="button" className="btn is-primary" onClick={onClose}>
             Done
           </button>
@@ -80,7 +82,7 @@ function VpSheet({ onClose }) {
           ))}
           <p className="muted">
             {bonusCategory
-              ? `Primary op: +${primaryBonus(me)} VP from ${SCORE_CATEGORIES.find(([key]) => key === bonusCategory)[1]} (secret until the end).`
+              ? `Primary op: +${primaryBonus(me)} VP from ${SCORE_CATEGORIES.find(([key]) => key === bonusCategory)[1]}${final ? ', included' : ' (secret until the end)'}.`
               : 'No primary op chosen.'}
           </p>
         </div>
@@ -188,7 +190,7 @@ function Header() {
           <Counter label="CP" value={me.cp} onChange={score('cp')} />
           <button type="button" className="counter is-button" onClick={() => setVpOpen(true)} aria-label="Score VP">
             <span className="counter-label">VP</span>
-            <span className="counter-value">{totalVp(me)}</span>
+            <span className="counter-value">{totalVp(me, { withPrimary: game.phase === 'results' })}</span>
           </button>
           {SP_KILLTEAMS.has(me.killteamId) ? <Counter label="SP" value={me.sp} onChange={score('sp')} /> : null}
         </div>

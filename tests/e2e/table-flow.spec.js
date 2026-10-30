@@ -956,6 +956,10 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     await b.getByRole('button', { name: tp === 4 ? 'End game' : `Start TP ${tp + 1}` }).last().click()
   }
   await expect(a.getByRole('heading', { name: 'Alice wins' })).toBeVisible()
+  // Each iPad's VP counter now includes its primary op, matching the projector:
+  // Alice's primary is Crit op, where she scored 2, so 2 + 1.
+  await expect(a.locator('.play-counters .counter.is-button .counter-value')).toHaveText('3')
+  await expect(aliceBoard.locator('.pb-stat.is-vp .pb-big-value')).toHaveText('3')
   await shot(a, '13-results-ipad')
   await shot(table, '14-results-table')
 
