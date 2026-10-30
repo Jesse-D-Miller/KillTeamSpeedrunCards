@@ -170,12 +170,14 @@
 
 .pb-identity {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: calc(3.2cqmin * var(--fit, 1));
 }
 
 .pb-dot {
   flex-shrink: 0;
+  /* Level with the middle of the name (11.1cqmin tall). */
+  margin-top: calc(3.6cqmin * var(--fit, 1));
   width: calc(3.9cqmin * var(--fit, 1));
   height: calc(3.9cqmin * var(--fit, 1));
   border-radius: 50%;
@@ -209,6 +211,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.pb-identity-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(1.6cqmin * var(--fit, 1));
+  margin-top: calc(1.6cqmin * var(--fit, 1));
 }
 
 .pb-init-cards {
