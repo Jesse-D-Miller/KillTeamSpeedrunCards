@@ -1,7 +1,16 @@
-// The opening screen's logo, burning: a fiery aura whose edges lick and writhe (SVG
-// noise displacing a glow), long waves of fire rolling out from behind it and fading
-// as they spread, a slow uneven heartbeat under it, and embers rising off the emblem.
-// Still, with no waves or embers, under Reduce Motion.
+// The opening screen's logo, burning:
+// - a fire halo right behind it that follows the logo's own outline (shield and
+//   wings), grown out and warped into a wavy, flickering edge;
+// - long waves of fire rolling out from behind it, fading as they spread;
+// - a slow, uneven heartbeat glow;
+// - sparks drifting up all over the page, fainter and smaller the further they are
+//   from the logo.
+// Still, with no waves or sparks, under Reduce Motion.
+
+const LOGO = '/killteamSpeedrunLogo.png'
+// The logo image's own size, so the halo lines up with it exactly.
+const LOGO_W = 1536
+const LOGO_H = 1024
 
 // Fire waves: each takes its own time to roll out and starts at its own point in the
 // cycle, so the pulses come unevenly and never settle into a rhythm.
@@ -12,32 +21,34 @@ const WAVES = [
   { duration: 9.6, delay: -6.7 },
 ]
 
-// Embers: where each starts (% across), how big, how long it takes to rise, and how
-// far it drifts sideways. Fixed, so the fire looks the same on every load.
-const EMBERS = Array.from({ length: 18 }, (_, index) => {
-  const spread = (index * 37) % 100
-  return {
-    left: 18 + spread * 0.64,
-    size: 3 + (index % 4),
-    duration: 2.6 + ((index * 7) % 10) * 0.22,
-    delay: -((index * 0.61) % 4),
-    drift: ((index * 23) % 60) - 30,
+// Sparks: scattered around the logo out to the edges of the page, most of them close
+// in. Fixed (a seeded scatter), so the page looks the same on every load.
+const SPARK_COUNT = 64
+const SPARK_REACH = 75 // vmax from the logo's centre
+const SPARKS = (() => {
+  let seed = 11
+  const random = () => {
+    seed = (seed * 9301 + 49297) % 233280
+    return seed / 233280
   }
-})
-
-// Flame tongues rising behind the shield: [x, how high the tip reaches, half-width].
-const TONGUES = [
-  [96, 70, 26],
-  [138, 34, 30],
-  [176, 14, 32],
-  [214, 4, 34],
-  [252, 22, 30],
-  [292, 48, 28],
-  [322, 86, 22],
-]
-
-const tongue = ([x, tip, half]) =>
-  `M${x - half} 170 C${x - half} 120 ${x - 8} ${tip + 50} ${x} ${tip} C${x + 8} ${tip + 50} ${x + half} 120 ${x + half} 170 Z`
+  return Array.from({ length: SPARK_COUNT }, () => {
+    const angle = random() * Math.PI * 2
+    // Squaring pulls most of them in towards the logo.
+    const nearness = random() ** 2
+    const reach = 0.06 + nearness * 0.94
+    const fade = 1 - reach
+    return {
+      x: Math.cos(angle) * reach * SPARK_REACH,
+      y: Math.sin(angle) * reach * SPARK_REACH * 0.8,
+      size: 1.5 + fade * 4 + random() * 1.5,
+      peak: 0.15 + fade * 0.85,
+      duration: 3 + random() * 3.5,
+      delay: -random() * 6,
+      drift: random() * 60 - 30,
+      rise: 110 + random() * 140,
+    }
+  })
+})()
 
 function HomeLogo() {
   return (
@@ -54,7 +65,7 @@ function HomeLogo() {
         </svg>
       ))}
       <span className="home-throb" aria-hidden="true" />
-      <svg className="home-fire" viewBox="0 0 400 300" aria-hidden="true">
+      <svg className="home-halo" viewBox={`0 0 ${LOGO_W} ${LOGO_H}`} aria-hidden="true">
         <defs>
           {/* A wave: a soft band of fire, bright on its inner edge and smoky outside. */}
           <radialGradient id="home-wave-band" cx="50%" cy="50%" r="50%">
@@ -72,48 +83,53 @@ function HomeLogo() {
             <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" />
             <feGaussianBlur stdDeviation="1.5" />
           </filter>
-          <radialGradient id="home-fire-core" cx="50%" cy="50%" r="50%">
-            <stop offset="0" stopColor="#ffa53a" stopOpacity="0.7" />
-            <stop offset="0.4" stopColor="#f0581a" stopOpacity="0.55" />
-            <stop offset="0.75" stopColor="#b8200a" stopOpacity="0.3" />
-            <stop offset="1" stopColor="#6e0c04" stopOpacity="0" />
-          </radialGradient>
-          <linearGradient id="home-fire-tongue" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0" stopColor="#ff9a2e" stopOpacity="0.85" />
-            <stop offset="0.45" stopColor="#e8401a" stopOpacity="0.7" />
-            <stop offset="1" stopColor="#9c1405" stopOpacity="0" />
-          </linearGradient>
-          <filter id="home-fire-lick" x="-40%" y="-40%" width="180%" height="180%">
-            {/* Noise stretched upright licks the edges like flame; drifting its scale keeps it moving. */}
-            <feTurbulence type="fractalNoise" baseFrequency="0.04 0.012" numOctaves="3" seed="4" result="noise">
-              <animate attributeName="baseFrequency" dur="4s" values="0.04 0.012;0.055 0.018;0.04 0.012" repeatCount="indefinite" />
+          {/* The halo: the logo's outline (its solid pixels, not its faint baked-in glow),
+              grown, warped by drifting noise into licking flame, softened, and coloured:
+              a red outer fire with a hotter orange one inside it. */}
+          <filter id="home-halo-fire" x="-30%" y="-40%" width="160%" height="180%">
+            <feComponentTransfer in="SourceAlpha" result="shape">
+              <feFuncA type="discrete" tableValues="0 0 1 1 1 1 1 1" />
+            </feComponentTransfer>
+            <feTurbulence type="fractalNoise" baseFrequency="0.012 0.004" numOctaves="3" seed="5" result="noise">
+              <animate attributeName="baseFrequency" dur="5s" values="0.012 0.004;0.017 0.006;0.012 0.004" repeatCount="indefinite" />
             </feTurbulence>
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="46" xChannelSelector="R" yChannelSelector="G" />
-            <feGaussianBlur stdDeviation="3" />
+            <feMorphology in="shape" operator="dilate" radius="46" result="outerShape" />
+            <feDisplacementMap in="outerShape" in2="noise" scale="150" xChannelSelector="R" yChannelSelector="G" result="outerWavy" />
+            <feGaussianBlur in="outerWavy" stdDeviation="26" result="outerSoft" />
+            <feFlood floodColor="#c8280c" floodOpacity="0.9" />
+            <feComposite in2="outerSoft" operator="in" result="outer" />
+            <feMorphology in="shape" operator="dilate" radius="16" result="innerShape" />
+            <feDisplacementMap in="innerShape" in2="noise" scale="90" xChannelSelector="R" yChannelSelector="G" result="innerWavy" />
+            <feGaussianBlur in="innerWavy" stdDeviation="14" result="innerSoft" />
+            <feFlood floodColor="#ff9a2e" floodOpacity="0.9" />
+            <feComposite in2="innerSoft" operator="in" result="inner" />
+            <feMerge>
+              <feMergeNode in="outer" />
+              <feMergeNode in="inner" />
+            </feMerge>
           </filter>
         </defs>
-        <g filter="url(#home-fire-lick)">
-          {TONGUES.map((shape) => (
-            <path key={shape[0]} d={tongue(shape)} fill="url(#home-fire-tongue)" />
-          ))}
-          <ellipse cx="200" cy="150" rx="160" ry="105" fill="url(#home-fire-core)" />
-        </g>
+        <image href={LOGO} width={LOGO_W} height={LOGO_H} filter="url(#home-halo-fire)" />
       </svg>
-      {EMBERS.map((ember, index) => (
-        <span
-          key={index}
-          className="home-ember"
-          aria-hidden="true"
-          style={{
-            left: `${ember.left}%`,
-            '--size': `${ember.size}px`,
-            '--rise': `${ember.duration}s`,
-            '--delay': `${ember.delay}s`,
-            '--drift': `${ember.drift}px`,
-          }}
-        />
-      ))}
-      <img src="/killteamSpeedrunLogo.png" alt="Kill Team Speedrun" />
+      <img src={LOGO} alt="Kill Team Speedrun" />
+      <div className="home-sparks" aria-hidden="true">
+        {SPARKS.map((spark, index) => (
+          <span
+            key={index}
+            className="home-ember"
+            style={{
+              left: `calc(50% + ${spark.x.toFixed(2)}vmax)`,
+              top: `calc(50% + ${spark.y.toFixed(2)}vmax)`,
+              '--size': `${spark.size.toFixed(1)}px`,
+              '--peak': spark.peak.toFixed(2),
+              '--rise': `${spark.duration.toFixed(2)}s`,
+              '--delay': `${spark.delay.toFixed(2)}s`,
+              '--drift': `${spark.drift.toFixed(0)}px`,
+              '--climb': `${-spark.rise.toFixed(0)}px`,
+            }}
+          />
+        ))}
+      </div>
     </div>
   )
 }

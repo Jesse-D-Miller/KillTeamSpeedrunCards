@@ -1255,8 +1255,6 @@
   z-index: 1;
   width: 100%;
   display: block;
-  /* The logo's black backdrop drops out, so the fire shows around the emblem. */
-  mix-blend-mode: screen;
 }
 
 /* Waves of fire rolling out from behind the logo: they swell in quickly, then spread
@@ -1308,22 +1306,27 @@
   pointer-events: none;
 }
 
-/* The flames: a flickering glow whose edges lick (see HomeLogo.jsx). */
-.home-fire {
+/* The fire halo right behind the logo, following its outline (see HomeLogo.jsx). */
+.home-halo {
   position: absolute;
-  left: -18%;
-  top: -22%;
-  width: 136%;
-  height: auto;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: visible;
   animation: home-flicker 2.3s steps(1, end) infinite;
   pointer-events: none;
 }
 
+/* Sparks over the whole page, centred on the logo; .home clips them at the edges. */
+.home-sparks {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
 .home-ember {
   position: absolute;
-  bottom: 30%;
-  z-index: 2;
   width: var(--size);
   height: var(--size);
   border-radius: 50%;
@@ -1333,7 +1336,6 @@
     0 0 14px 4px rgba(230, 50, 10, 0.5);
   opacity: 0;
   animation: home-ember var(--rise) ease-in var(--delay) infinite;
-  pointer-events: none;
 }
 
 @keyframes home-throb {
@@ -1397,19 +1399,20 @@
   }
 }
 
+/* A spark flares, then cools as it rises and drifts; --peak dims the far ones. */
 @keyframes home-ember {
   0% {
     transform: translate(0, 0) scale(1);
     opacity: 0;
   }
   12% {
-    opacity: 1;
+    opacity: var(--peak);
   }
   70% {
-    opacity: 0.8;
+    opacity: calc(var(--peak) * 0.8);
   }
   100% {
-    transform: translate(var(--drift), -190px) scale(0.3);
+    transform: translate(var(--drift), var(--climb)) scale(0.3);
     opacity: 0;
   }
 }
@@ -1420,7 +1423,7 @@
     display: none;
   }
   .home-throb,
-  .home-fire {
+  .home-halo {
     animation: none;
   }
   .home-throb {
