@@ -1031,6 +1031,12 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await shot(a, '07j-fight-drawer-defender')
   await b.mouse.click(...(await emptySpotOf(b)))
   await expect(table.locator('[data-combat]')).toHaveCount(0)
+  // With the fight closed, the two stay marked as engaged (within control range) until
+  // they move apart.
+  await expect(table.locator(`[data-engaged="${biter}|${brawler}"]`)).toHaveCount(1)
+  await expect(table.locator(`[data-engaged-ring="${brawler}"]`)).toHaveCount(1)
+  await tableActions(table, [{ type: 'token/update', id: brawler, x: 14, y: 10.8 }])
+  await expect(table.locator(`[data-engaged-ring="${brawler}"]`)).toHaveCount(0)
   await tableActions(table, [biter, brawler, helper].map((id) => ({ type: 'token/remove', id })))
   await expect(table.locator('.board-token')).toHaveCount(beforeShot)
   await openTab(b, 'Operatives')

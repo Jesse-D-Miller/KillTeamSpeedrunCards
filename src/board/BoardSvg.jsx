@@ -15,6 +15,9 @@ import TargetingOverlay from './TargetingOverlay.jsx'
 import TokenLabel from './TokenLabel.jsx'
 import './board.css'
 
+// Control range: 1" from an operative's base (core rules).
+const CONTROL_RANGE = 1
+
 // Objective markers are 40mm across (core rules); the ring shows the 1" control range from their edge.
 const OBJECTIVE_RADIUS = 40 / 25.4 / 2
 const H = BOARD.height
@@ -266,6 +269,20 @@ function BoardSvg({
     })
     .filter(({ view }) => !(hideDead && view.dead))
   const viewById = new Map(tokenViews.map((entry) => [entry.token.id, entry]))
+  // Engaged: living operatives on opposite sides within each other's control range (1"
+  // edge to edge). They're marked until they move apart.
+  const living = tokenViews.filter(({ token, view }) => token.unitKey && token.seat && !view.dead)
+  const engagements = living.flatMap((a, index) =>
+    living
+      .slice(index + 1)
+      .filter(
+        (b) =>
+          b.token.seat !== a.token.seat &&
+          Math.hypot(a.view.x - b.view.x, a.view.cy - b.view.cy) - a.view.r - b.view.r <= CONTROL_RANGE,
+      )
+      .map((b) => [a, b]),
+  )
+  const engaged = [...new Map(engagements.flat().map((entry) => [entry.token.id, entry])).values()]
 
   // Markers riding on an operative follow it (even mid-drag) in slots around its
   // edge; they're hidden while it's dead. A marker being dragged goes where it's dragged.
@@ -393,6 +410,25 @@ function BoardSvg({
           />
         ) : null,
       )}
+
+      {engagements.length ? (
+        <g className="board-engagements">
+          {engagements.map(([a, b]) => (
+            <line
+              key={`${a.token.id}|${b.token.id}`}
+              className="engaged-line"
+              data-engaged={`${a.token.id}|${b.token.id}`}
+              x1={a.view.x}
+              y1={a.view.cy}
+              x2={b.view.x}
+              y2={b.view.cy}
+            />
+          ))}
+          {engaged.map(({ token, view }) => (
+            <circle key={token.id} className="engaged-ring" data-engaged-ring={token.id} cx={view.x} cy={view.cy} r={view.r + 0.12} />
+          ))}
+        </g>
+      ) : null}
 
       {markerViews.filter((entry) => !entry.riding).map(renderMarker)}
 

@@ -577,6 +577,21 @@
   fill: #4ade80;
 }
 
+/* Operatives within each other's control range (engaged), whatever tool is on. */
+.engaged-line {
+  stroke: #f97316;
+  stroke-width: 0.08;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.engaged-ring {
+  fill: none;
+  stroke: #f97316;
+  stroke-width: 0.06;
+  pointer-events: none;
+}
+
 /* An operative's Vantage floor: a dark disc ringed in its colour, with one or two
    chevrons. */
 .board-token-vantage {
