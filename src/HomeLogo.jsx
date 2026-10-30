@@ -86,21 +86,21 @@ function HomeLogo() {
           {/* The halo: the logo's outline (its solid pixels, not its faint baked-in glow),
               grown, warped by drifting noise into licking flame, softened, and coloured:
               a red outer fire with a hotter orange one inside it. */}
-          <filter id="home-halo-fire" x="-50%" y="-75%" width="200%" height="250%">
+          <filter id="home-halo-fire" x="-30%" y="-40%" width="160%" height="180%">
             <feComponentTransfer in="SourceAlpha" result="shape">
               <feFuncA type="discrete" tableValues="0 0 1 1 1 1 1 1" />
             </feComponentTransfer>
             <feTurbulence type="fractalNoise" baseFrequency="0.012 0.004" numOctaves="3" seed="5" result="noise">
               <animate attributeName="baseFrequency" dur="11s" values="0.012 0.004;0.015 0.005;0.012 0.004" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1" repeatCount="indefinite" />
             </feTurbulence>
-            <feMorphology in="shape" operator="dilate" radius="70" result="outerShape" />
+            <feMorphology in="shape" operator="dilate" radius="46" result="outerShape" />
             <feDisplacementMap in="outerShape" in2="noise" scale="150" xChannelSelector="R" yChannelSelector="G" result="outerWavy" />
-            <feGaussianBlur in="outerWavy" stdDeviation="75" result="outerSoft" />
+            <feGaussianBlur in="outerWavy" stdDeviation="26" result="outerSoft" />
             <feFlood floodColor="#c8280c" floodOpacity="0.9" />
             <feComposite in2="outerSoft" operator="in" result="outer" />
-            <feMorphology in="shape" operator="dilate" radius="24" result="innerShape" />
+            <feMorphology in="shape" operator="dilate" radius="16" result="innerShape" />
             <feDisplacementMap in="innerShape" in2="noise" scale="90" xChannelSelector="R" yChannelSelector="G" result="innerWavy" />
-            <feGaussianBlur in="innerWavy" stdDeviation="34" result="innerSoft" />
+            <feGaussianBlur in="innerWavy" stdDeviation="14" result="innerSoft" />
             <feFlood floodColor="#ff9a2e" floodOpacity="0.9" />
             <feComposite in2="innerSoft" operator="in" result="inner" />
             <feMerge>
