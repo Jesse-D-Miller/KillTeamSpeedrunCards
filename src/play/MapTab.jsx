@@ -18,6 +18,7 @@ import Drawer from './Drawer.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
 import { TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
 import VantageMark from './VantageMark.jsx'
+import { NextTpRailButton } from './NextTp.jsx'
 import UnitCardModal from './UnitCardModal.jsx'
 import WeaponChooser from './WeaponChooser.jsx'
 import { meleeWeaponsFor, rangedWeaponsFor } from '../rules/weaponRules.js'
@@ -1193,6 +1194,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             )
           })}
           <span className="rail-divider" />
+          {game.phase === 'battle' ? <NextTpRailButton /> : null}
           <button type="button" className="rail-tool" onClick={() => setView(FULL_VIEW)} aria-label="Fit">
             <ToolIcon tool="fit" />
             <span>Fit</span>

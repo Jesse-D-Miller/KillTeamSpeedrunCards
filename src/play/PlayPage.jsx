@@ -26,6 +26,7 @@ import SetupStep from './steps/SetupStep.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
 import AttackDrawer from './AttackDrawer.jsx'
 import { useKeyboardOverlay } from './useKeyboardOverlay.js'
+import { EndTurnSheet } from './NextTp.jsx'
 import { usePlayer } from './usePlayer.js'
 import { useAttack } from './useAttack.js'
 import './play.css'
@@ -86,50 +87,6 @@ function VpSheet({ onClose }) {
               ? `Primary op: +${primaryBonus(me)} VP from ${SCORE_CATEGORIES.find(([key]) => key === bonusCategory)[1]}${final ? ', included' : ' (secret until the end)'}.`
               : 'No primary op chosen.'}
           </p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// unactivated: how many living operatives on each side are still ready.
-// waiting: the opponent's name if they've already confirmed, else null.
-function EndTurnSheet({ tp, unactivated = 0, waiting = null, onCancel, onConfirm }) {
-  const last = tp >= MAX_TP
-  return (
-    <div className="sheet-backdrop" onClick={onCancel}>
-      <div className="sheet" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-        <div className="sheet-head">
-          <h3>{last ? 'End the game?' : `End turning point ${tp}?`}</h3>
-        </div>
-        <div className="sheet-body">
-          {unactivated ? (
-            <p className="end-turn-warning">
-              {unactivated} operative{unactivated === 1 ? ' hasn’t' : 's haven’t'} activated yet this turning point.
-            </p>
-          ) : null}
-          <p className="muted">
-            {waiting
-              ? `${waiting} is ready: confirming moves on straight away.`
-              : 'The turning point moves on once both players have confirmed.'}
-          </p>
-          {last ? (
-            <p>This ends turning point {tp} and goes to final scoring.</p>
-          ) : (
-            <ul className="end-turn-list">
-              <li>Both players gain 1 CP</li>
-              <li>All operatives become ready</li>
-              <li>Then roll off for initiative in turning point {tp + 1}</li>
-            </ul>
-          )}
-          <div className="row end-turn-actions">
-            <button type="button" className="btn" onClick={onCancel}>
-              Cancel
-            </button>
-            <button type="button" className="btn is-primary" onClick={onConfirm}>
-              {last ? 'Ready to end' : `Ready for TP ${tp + 1}`}
-            </button>
-          </div>
         </div>
       </div>
     </div>

@@ -580,7 +580,9 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await openTab(a, 'Map')
   await expect(a.getByRole('button', { name: 'Units', exact: true })).toHaveCount(0)
   // Everything else on the operatives comes from their action ring; the rail keeps the rest.
-  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', 'Fit', 'Full screen', 'Tabs'])
+  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', /to go$/, 'Fit', 'Full screen', 'Tabs'])
+  // Next TP in the drawer waits until every operative has activated.
+  await expect(a.getByRole('button', { name: /^Next TP \(\d+ operatives still to activate\)$/ })).toBeDisabled()
   // With no tool on, tapping an operative opens a ring of its actions; a touch
   // elsewhere closes it.
   const ring = a.locator('.unit-radial')

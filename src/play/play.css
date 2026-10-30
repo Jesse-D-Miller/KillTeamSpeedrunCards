@@ -1149,6 +1149,10 @@
   font-weight: 600;
 }
 
+.rail-tool:disabled {
+  opacity: 0.4;
+}
+
 .rail-tool.is-selected {
   background: var(--seat-color);
   color: #0b0b0b;
