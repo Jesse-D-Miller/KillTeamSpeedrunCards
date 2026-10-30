@@ -316,6 +316,11 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await table.waitForTimeout(17000)
   await expect(table.locator('.overlay-measure')).toHaveCount(1)
   await shot(table, '06-map-table')
+  // With Measure on, tapping an operative closes it (the ruler goes) and opens the
+  // operative's action ring.
+  await a.locator(`.map-stage [data-token-id="${deployId}"] .board-token-base`).click()
+  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(6)
+  await expect(table.locator('.overlay-measure')).toHaveCount(0)
 
   // Switching tools clears the measurement; no separate Clear button.
   await expect(a.getByRole('button', { name: 'Clear' })).toHaveCount(0)

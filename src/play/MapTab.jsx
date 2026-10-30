@@ -412,31 +412,26 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       gestureRef.current = { type: 'pan', last: { x: event.clientX, y: event.clientY }, start: { x: event.clientX, y: event.clientY }, moved: false }
       return
     }
-    // Measure is a free ruler: grab an end to stretch it, the middle to slide it,
-    // or anywhere else to start a new one. Nothing snaps.
+    // Measure is a free ruler: grab an end to stretch it, the middle to slide it, or
+    // anywhere else to start a new one (from an operative's base if on one). Nothing
+    // snaps. What a press does is only decided once it moves: a tap on an operative
+    // opens its action ring instead, and a tap on the empty map ends measuring.
     if (tool === 'measure') {
       const line = overlay?.tool === 'measure' && overlay.points.length === 2 ? overlay.points : null
       const reach = GRAB_PX / viewMetrics(svgRef.current.getBoundingClientRect(), viewRef.current).scale
       const end = line ? [0, 1].find((index) => distance(line[index], point) <= reach) : undefined
-      if (end !== undefined) {
-        gestureRef.current = { type: 'measure-end', index: end }
-        return
-      }
-      // A ruler just started from an operative's action ring: the first touch pulls it out.
-      if (line && line[0].x === line[1].x && line[0].y === line[1].y && overlay.anchorId) {
-        const anchor = tokens.find((token) => token.id === overlay.anchorId)
-        if (anchor) {
-          gestureRef.current = { type: 'measure-end', index: 1, anchor }
-          publish({ tool: 'measure', points: [defaultShooterPoint(anchor, point), point] })
-          return
-        }
-      }
-      if (line && distanceToSegment(point, line[0], line[1]) <= reach) {
-        gestureRef.current = { type: 'measure-slide', grab: point, points: line }
-        return
-      }
-      gestureRef.current = { type: 'measure-end', index: 1 }
-      publish({ tool: 'measure', points: [point, point] })
+      const token = target?.token?.unitKey ? target.token : null
+      // A ruler just started from an operative's action ring: the first drag pulls it out.
+      const pending =
+        line && line[0].x === line[1].x && line[0].y === line[1].y && overlay.anchorId
+          ? tokens.find((candidate) => candidate.id === overlay.anchorId)
+          : null
+      const anchor = pending ?? token
+      let plan
+      if (!pending && end !== undefined) plan = { type: 'measure-end', index: end }
+      else if (!pending && line && distanceToSegment(point, line[0], line[1]) <= reach) plan = { type: 'measure-slide', grab: point, points: line }
+      else plan = { type: 'measure-end', index: 1, anchor, initial: [anchor ? defaultShooterPoint(anchor, point) : point, point] }
+      gestureRef.current = { type: 'measure-press', plan, token, screen: { x: event.clientX, y: event.clientY } }
       return
     }
     // Sightline (just the line-of-sight check) and Shoot/Fight (an attack with a
@@ -489,8 +484,17 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const gesture = gestureRef.current
     if (!gesture) return
     const point = toBoard(event.clientX, event.clientY)
+    // A finger that hasn't gone past the tap slop yet is still a tap.
+    const origin = gesture.screen ?? gesture.start
+    if (origin && !gesture.moved && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) < TAP_SLOP_PX) return
+    if (gesture.type === 'measure-press') {
+      // It's a drag: carry out what the press was for.
+      gestureRef.current = gesture.plan
+      if (gesture.plan.initial) publish({ tool: 'measure', points: gesture.plan.initial })
+      moveTool(event)
+      return
+    }
     if (gesture.type === 'press') {
-      if (Math.hypot(event.clientX - gesture.screen.x, event.clientY - gesture.screen.y) < TAP_SLOP_PX) return
       // A drag: measure. From an operative it starts at the edge of its base (distances
       // are measured from bases), and the operative doesn't move.
       const anchor = gesture.token
@@ -498,9 +502,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       publish({ tool: 'measure', points: [anchor ? defaultShooterPoint(anchor, point) : gesture.from, point] })
       return
     }
-    // A finger that hasn't gone past the tap slop yet is still a tap.
-    const origin = gesture.screen ?? gesture.start
-    if (origin && !gesture.moved && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) < TAP_SLOP_PX) return
     if (gesture.type === 'pan') {
       gesture.moved = true
       const rect = svgRef.current.getBoundingClientRect()
@@ -569,6 +570,12 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const gesture = gestureRef.current
     gestureRef.current = null
     if (!gesture) return
+    // Measure, and the finger didn't move: an operative's actions, or done measuring.
+    if (gesture.type === 'measure-press') {
+      if (gesture.token) ringFor(gesture.token.id)
+      else leaveTool()
+      return
+    }
     // No tool, and the finger didn't move: an operative's actions, or a ping.
     if (gesture.type === 'press') {
       if (gesture.token) openRadial(gesture.token)
