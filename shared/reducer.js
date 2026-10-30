@@ -3,6 +3,7 @@ import {
   MAX_CATEGORY_VP,
   MAX_EQUIPMENT_OPTIONS,
   MAX_TP,
+  COMMAND_REROLL,
   PHASES,
   READY_CP,
   SCORE_CATEGORIES,
@@ -15,6 +16,7 @@ import {
   initiativeBefore,
   isSeat,
   otherSeat,
+  ployUses,
 } from './game.js'
 import { ARRANGEMENT_OPTIONS, CRIT_OP_IDS, pickRandom } from './rolls.js'
 
@@ -532,6 +534,33 @@ const handlers = {
       return {
         cp: isActive ? player.cp + 1 : player.cp - 1,
         ploysByTp: { ...player.ploysByTp, [tp]: toggleInList(current, ployId) },
+      }
+    })
+  },
+
+  // A firefight ploy played outside a shot or fight (from the Team tab). on: spend its
+  // CP and count a use; off: undo the last use and refund it.
+  'battle/firefightPloy': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const ployId = String(action.ployId ?? '').slice(0, 80)
+    if (!ployId) fail('Missing ploy.')
+    const cost = clamp(Math.round(toNumber(action.cost, 1)), 0, 3)
+    const { tp } = state.battle
+    return updatePlayer(state, seat, (player) => {
+      const uses = ployUses(player, tp, ployId)
+      if (action.on === false) {
+        if (!uses) return {}
+        return {
+          cp: player.cp + cost,
+          usesByTp: { ...player.usesByTp, [tp]: { ...player.usesByTp?.[tp], [ployId]: uses - 1 } },
+        }
+      }
+      if (uses && ployId !== COMMAND_REROLL) fail('Already used this turning point.')
+      if (player.cp < cost) fail('Not enough CP.')
+      return {
+        cp: player.cp - cost,
+        usesByTp: { ...player.usesByTp, [tp]: { ...player.usesByTp?.[tp], [ployId]: uses + 1 } },
       }
     })
   },

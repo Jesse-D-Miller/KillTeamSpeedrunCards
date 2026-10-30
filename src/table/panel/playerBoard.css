@@ -563,6 +563,15 @@
   font-weight: 600;
 }
 
+/* Strategy ploys are filled, firefight ploys outlined: two kinds, told apart without colour. */
+.pb-ploys .pb-chips li:not(.is-firefight) {
+  background: color-mix(in srgb, var(--seat-color) 22%, transparent);
+}
+
+.pb-chips li.is-firefight {
+  border-style: dashed;
+}
+
 /* ---- tac op + crit op ---- */
 
 .pb-tacop {

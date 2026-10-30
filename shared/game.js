@@ -117,6 +117,12 @@ export const createUnitState = (maxWounds) => ({
 
 export const activePloyIds = (player, tp) => player?.ploysByTp?.[tp] ?? []
 
+// Firefight ploys: each usable once per turning point, except Command Re-roll (core
+// rules). Uses are counted in usesByTp, by ploy id, wherever they were played (the
+// Team tab, or the Shoot/Fight stats drawer).
+export const COMMAND_REROLL = 'command-reroll'
+export const ployUses = (player, tp, ployId) => player?.usesByTp?.[tp]?.[ployId] ?? 0
+
 // ---- activations (Firefight phase) ----
 // Operatives without unit state yet are ready; dead ones never count.
 const activationOf = (player, unitKey) => player?.unitState?.[unitKey]?.activation ?? 'ready'

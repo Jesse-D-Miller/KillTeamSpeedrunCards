@@ -1,3 +1,4 @@
+import { COMMAND_REROLL, ployUses } from '../../shared/game.js'
 import { isHidden } from '../../shared/views.js'
 import TacOpCard from '../components/TacOpCard.jsx'
 import { primaryOpCard } from '../rules/cards.js'
@@ -7,7 +8,51 @@ import { formatCostLabel, parseEquipmentWeaponEffects, selectedEquipmentFor, str
 import { RuleText } from './RuleText.jsx'
 import { usePlayer } from './usePlayer.js'
 
-function RuleList({ title, items, nameOf, idOf }) {
+// The core firefight ploy every kill team has.
+const COMMAND_REROLL_PLOY = {
+  ployId: COMMAND_REROLL,
+  ployName: 'Command Re-roll',
+  description: 'Use this firefight ploy after rolling your attack or defence dice. You can re-roll one of those dice.',
+}
+
+// Play a firefight ploy from here (one used in a shot or fight is switched on in the
+// stats drawer instead; both count the same use). Each is once per turning point,
+// except Command Re-roll.
+function PloyUse({ ploy }) {
+  const { state: game, me, act } = usePlayer()
+  const { tp } = game.battle
+  const uses = ployUses(me, tp, ploy.ployId)
+  const cost = ploy.CP ?? 1
+  const repeatable = ploy.ployId === COMMAND_REROLL
+  const use = (on) => act({ type: 'battle/firefightPloy', ployId: ploy.ployId, cost, on })
+  // Inside the summary: don't open or close the rule as well.
+  const press = (on) => (event) => {
+    event.preventDefault()
+    use(on)
+  }
+  if (uses && !repeatable) {
+    return (
+      <button type="button" className="ploy-use is-used" aria-pressed="true" onClick={press(false)} aria-label={`${ploy.ployName}: used, tap to undo`}>
+        Used ✓
+      </button>
+    )
+  }
+  return (
+    <span className="ploy-use-group">
+      {uses ? (
+        <button type="button" className="ploy-use is-undo" onClick={press(false)} aria-label={`Undo ${ploy.ployName}`}>
+          ×{uses} · Undo
+        </button>
+      ) : null}
+      <button type="button" className="ploy-use" disabled={me.cp < cost} onClick={press(true)} aria-label={`Use ${ploy.ployName}`}>
+        Use · {cost}CP
+      </button>
+    </span>
+  )
+}
+
+// action(item): an optional control shown with the item's name.
+function RuleList({ title, items, nameOf, idOf, action = null }) {
   if (!items.length) return null
   return (
     <div className="step-block">
@@ -16,7 +61,7 @@ function RuleList({ title, items, nameOf, idOf }) {
         <details key={idOf(item)} className="rule-item">
           <summary>
             <span>{nameOf(item)}</span>
-            {formatCostLabel(item) ? <span className="cost">{formatCostLabel(item)}</span> : null}
+            {action ? action(item) : formatCostLabel(item) ? <span className="cost">{formatCostLabel(item)}</span> : null}
           </summary>
           <div className="rule-item-body">
             <RuleText text={item.description} />
@@ -97,9 +142,10 @@ function TeamTab() {
 
       <RuleList
         title="Firefight ploys"
-        items={ploys.filter((ploy) => ploy.ployType === 'T' || ploy.ployType === 'F')}
+        items={[...ploys.filter((ploy) => ploy.ployType === 'T' || ploy.ployType === 'F'), COMMAND_REROLL_PLOY]}
         nameOf={(ploy) => ploy.ployName}
         idOf={(ploy) => ploy.ployId}
+        action={game.phase === 'battle' ? (ploy) => <PloyUse ploy={ploy} /> : null}
       />
       <RuleList
         title="Strat ploys"

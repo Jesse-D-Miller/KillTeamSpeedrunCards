@@ -483,6 +483,18 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(aliceBoard.locator('.pb-pips .pb-pip')).toHaveCount(10)
   await expect(aliceBoard.locator('.pb-ready-count')).toContainText('10')
   await expect(bobBoard.locator('.pb-kills')).toContainText('0 / 10')
+
+  // A firefight ploy played from the Team tab spends its CP and shows on the projector,
+  // outlined, beside any strategy ploys; undoing it refunds the CP.
+  const cpBeforePloy = Number(await aliceBoard.locator('.pb-stat.is-cp .pb-big-value').textContent())
+  await a.getByRole('button', { name: 'Team & rules' }).click()
+  await a.getByRole('button', { name: 'Use Command Re-roll' }).click()
+  await expect(aliceBoard.locator('.pb-ploys [data-ploy="firefight"]')).toHaveText('Command Re-roll')
+  await expect(aliceBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText(String(cpBeforePloy - 1))
+  await a.getByRole('button', { name: 'Undo Command Re-roll' }).click()
+  await expect(aliceBoard.locator('.pb-ploys [data-ploy="firefight"]')).toHaveCount(0)
+  await expect(aliceBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText(String(cpBeforePloy))
+  await a.getByRole('button', { name: 'Operatives' }).click()
   await shot(a, '09-battle-ipad')
   await shot(table, '10-battle-table')
 

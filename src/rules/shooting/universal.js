@@ -1,3 +1,4 @@
+import { COMMAND_REROLL } from '../../../shared/game.js'
 import { mod } from './effects.js'
 
 // Rules every kill team has: universal equipment, the Command Re-roll firefight
@@ -6,7 +7,7 @@ import { mod } from './effects.js'
 
 export const AMMO_CACHE = 'UNIVERSAL-UE-AC'
 export const PORTABLE_BARRICADE = 'UNIVERSAL-UE-PB'
-export const COMMAND_REROLL = 'command-reroll'
+export { COMMAND_REROLL }
 export const COVER_CHOICE = 'core-cover-choice'
 
 export const universalAttack = (ctx) => {

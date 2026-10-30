@@ -630,6 +630,8 @@ All of these were replaced in Approved Ops 2025.
   - Turning it off again in the same shot refunds both.
   - Once used, another shot shows it as USED.
   - Command Re-roll can be used more than once.
+  - Ploys used outside a shot or fight are played from the iPad's Team tab (`battle/firefightPloy`, Use / Undo). It counts the same uses, so a ploy played there shows as USED in the drawer and vice versa.
+  - The projector's "Ploys this TP" lists strategy ploys (filled) and firefight ploys (dashed outline, ×N for repeats).
 - **Hand-checked teams:** Hernkyn Yaegirs, Vespid Stingwings and Kommandos, checked against the current team rules.
   - **Hernkyn Yaegirs:**
     - Hidden Engagement: in cover from every point of the target's base, since the opponent picks the point.

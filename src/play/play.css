@@ -734,6 +734,42 @@
   cursor: pointer;
 }
 
+.rule-item summary {
+  align-items: center;
+}
+
+.ploy-use-group {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.ploy-use {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--seat-color);
+  background: none;
+  color: var(--seat-color);
+  font: inherit;
+  font-weight: 600;
+}
+
+.ploy-use.is-used {
+  background: var(--seat-color);
+  color: #0b0d10;
+}
+
+.ploy-use.is-undo {
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.ploy-use:disabled {
+  opacity: 0.4;
+}
+
 .rule-item-body {
   padding-bottom: 0.8rem;
   font-size: 0.9rem;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createGame, turnState } from '../game.js'
+import { COMMAND_REROLL, createGame, turnState } from '../game.js'
 import { ActionError, applyAction } from '../reducer.js'
 
 const run = (state, steps) =>
@@ -607,5 +607,40 @@ describe('shot cards', () => {
     expect(Object.keys(state.battle.shots).at(-1)).toBe('t1|x14')
     state = applyAction(state, { type: 'battle/nextTp', fromTp: 1 }, 'A')
     expect(state.battle.shots).toEqual({})
+  })
+})
+
+describe('firefight ploys from the Team tab', () => {
+  const battle = () => run(createGame(), [[{ type: 'phase/set', phase: 'battle' }, 'table']])
+  const play = (state, actor, ployId, on = true) => applyAction(state, { type: 'battle/firefightPloy', ployId, cost: 1, on }, actor)
+
+  it('spends 1CP, once per turning point, and undoing refunds it', () => {
+    const start = battle()
+    const cp = start.players.A.cp
+    let state = play(start, 'A', 'VOT-HKY-T-SD')
+    expect(state.players.A.cp).toBe(cp - 1)
+    expect(state.players.A.usesByTp[1]).toEqual({ 'VOT-HKY-T-SD': 1 })
+    expect(() => play(state, 'A', 'VOT-HKY-T-SD')).toThrow(/Already used/)
+    state = play(state, 'A', 'VOT-HKY-T-SD', false)
+    expect(state.players.A.cp).toBe(cp)
+    // Nothing left to undo: no further refund.
+    expect(play(state, 'A', 'VOT-HKY-T-SD', false).players.A.cp).toBe(cp)
+  })
+
+  it('shares the count with the Shoot/Fight drawer', () => {
+    const state = applyAction(battle(), { type: 'shot/toggle', key: 't1|t2', id: 'VOT-HKY-T-SD', on: true, cost: 1, limit: 1 }, 'A')
+    expect(() => play(state, 'A', 'VOT-HKY-T-SD')).toThrow(/Already used/)
+  })
+
+  it('lets Command Re-roll be used more than once, while there is CP', () => {
+    let state = battle()
+    state = play(play(state, 'A', COMMAND_REROLL), 'A', COMMAND_REROLL)
+    expect(state.players.A.usesByTp[1][COMMAND_REROLL]).toBe(2)
+    state = { ...state, players: { ...state.players, A: { ...state.players.A, cp: 0 } } }
+    expect(() => play(state, 'A', COMMAND_REROLL)).toThrow(/Not enough CP/)
+  })
+
+  it('only in the battle', () => {
+    expect(() => play(createGame(), 'A', 'VOT-HKY-T-SD')).toThrow(ActionError)
   })
 })
