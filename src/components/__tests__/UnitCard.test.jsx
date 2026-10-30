@@ -7,14 +7,14 @@ describe('UnitCard readOnly', () => {
     const opType = {
       opTypeName: 'Test Operative',
       WOUNDS: '10',
-      MOVE: '6\"',
+      MOVE: '6"',
       APL: '2',
       SAVE: '3+',
       weapons: [],
       abilities: [],
     }
 
-    render(
+    const { container } = render(
       <UnitCard
         opType={opType}
         currentWounds={10}
@@ -27,7 +27,8 @@ describe('UnitCard readOnly', () => {
     )
 
     expect(screen.queryByLabelText('Add status effect')).toBeNull()
-    const stancePill = screen.getByText('conceal')
-    expect(stancePill.tagName.toLowerCase()).toBe('span')
+    // The order shows as the card's styling; it's changed from the map, not here.
+    expect(container.querySelector('.game-card')).toHaveClass('stance-conceal')
+    expect(screen.queryByRole('button', { name: /stance/i })).toBeNull()
   })
 })

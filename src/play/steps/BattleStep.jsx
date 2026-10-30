@@ -265,7 +265,6 @@ function BattleStep() {
                 if (dead !== unitState.dead) update(unit, { dead })
               }}
               stance={unitState.order}
-              onStanceChange={(order) => update(unit, { order })}
               selectedStatuses={unitState.statuses}
               onStatusChange={(statuses) => update(unit, { statuses })}
               aplAdjustment={unitState.apl}

@@ -98,6 +98,31 @@ describe('game server', () => {
     expect(tableView.state.players.A.tacOp).toEqual({ hidden: true })
   })
 
+  it('answers pings, even before hello', async () => {
+    const socket = await connect()
+    socket.sendJson({ type: 'ping' })
+    await socket.next('pong')
+  })
+
+  it('confirms an action in the state it sends back, and applies a re-sent one only once', async () => {
+    const seatA = await join_({ role: 'seat', seat: 'A' })
+    const { token } = await seatA.next('welcome')
+    seatA.drain()
+    seatA.sendJson({ type: 'action', id: 'tab1-1', action: { type: 'player/rename', name: 'Once' } })
+    const confirmed = await seatA.next('state', (message) => message.ack === 'tab1-1')
+    expect(confirmed.state.players.A.name).toBe('Once')
+
+    // Reconnected without hearing back: the same id again is confirmed, not applied.
+    seatA.terminate()
+    const again = await join_({ role: 'seat', seat: 'A', token })
+    await again.next('welcome')
+    again.drain()
+    again.sendJson({ type: 'action', id: 'tab1-1', action: { type: 'player/rename', name: 'Twice' } })
+    const repeat = await again.next('state', (message) => message.ack === 'tab1-1')
+    expect(repeat.state.players.A.name).toBe('Once')
+    await again.next('ack', (message) => message.id === 'tab1-1')
+  })
+
   it('reports invalid actions only to the sender', async () => {
     const seatA = await join_({ role: 'seat', seat: 'A' })
     await seatA.next('welcome')

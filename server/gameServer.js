@@ -12,6 +12,9 @@ import { viewFor } from '../shared/views.js'
 
 const HEARTBEAT_MS = 15000
 const SAVE_DELAY_MS = 250
+// Devices re-send actions they never heard back about after reconnecting; remember
+// this many outcomes so a retry is acknowledged instead of applied twice.
+const RECENT_ACTIONS = 500
 
 const loadSnapshot = (path) => {
   try {
@@ -42,6 +45,7 @@ export const createGameServer = ({ server, persistPath = null, log = console.log
   let state = snapshot?.state ?? createGame()
   const seatTokens = snapshot?.seatTokens ?? { A: null, B: null }
   const wss = new WebSocketServer({ server, path: '/ws' })
+  const recentActions = new Map()
   let saveTimer = null
 
   const save = () => {
@@ -75,13 +79,15 @@ export const createGameServer = ({ server, persistPath = null, log = console.log
     }
   }
 
-  const sendState = (socket, meta = presence()) => {
-    send(socket, { type: 'state', state: viewFor(state, socket.seat || 'table'), presence: meta })
+  // ack: the id of the sender's action this state includes, so it can stop showing
+  // that action as pending in the same update that shows its result.
+  const sendState = (socket, meta = presence(), ack = undefined) => {
+    send(socket, { type: 'state', state: viewFor(state, socket.seat || 'table'), presence: meta, ack })
   }
 
-  const broadcastState = () => {
+  const broadcastState = (from = null, ack = undefined) => {
     const meta = presence()
-    clients().forEach((socket) => sendState(socket, meta))
+    clients().forEach((socket) => sendState(socket, meta, socket === from ? ack : undefined))
   }
 
   const relay = (from, payload) => {
@@ -142,14 +148,31 @@ export const createGameServer = ({ server, persistPath = null, log = console.log
     broadcastState()
   }
 
+  const remember = (id, outcome) => {
+    if (id == null) return
+    recentActions.set(String(id), outcome)
+    if (recentActions.size > RECENT_ACTIONS) recentActions.delete(recentActions.keys().next().value)
+  }
+
   const handleAction = (socket, message) => {
+    const seen = message.id != null ? recentActions.get(String(message.id)) : undefined
+    if (seen) {
+      if (seen.error) send(socket, { type: 'error', id: message.id, message: seen.error })
+      else {
+        sendState(socket, presence(), message.id)
+        send(socket, { type: 'ack', id: message.id })
+      }
+      return
+    }
     try {
       state = applyAction(state, message.action ?? {}, socket.seat || 'table')
-      if (message.id != null) send(socket, { type: 'ack', id: message.id })
+      remember(message.id, { ok: true })
       save()
-      broadcastState()
+      broadcastState(socket, message.id)
+      if (message.id != null) send(socket, { type: 'ack', id: message.id })
     } catch (error) {
       if (!(error instanceof ActionError)) log('Action failed:', error)
+      remember(message.id, { error: error.message })
       send(socket, { type: 'error', id: message.id, message: error.message })
     }
   }
@@ -168,6 +191,8 @@ export const createGameServer = ({ server, persistPath = null, log = console.log
         send(socket, { type: 'error', message: 'Invalid message.' })
         return
       }
+      // The devices' own liveness check (iPads can't see the protocol pings).
+      if (message.type === 'ping') return send(socket, { type: 'pong' })
       if (message.type === 'hello') return handleHello(socket, message)
       if (!socket.role) {
         send(socket, { type: 'error', message: 'Say hello first.' })

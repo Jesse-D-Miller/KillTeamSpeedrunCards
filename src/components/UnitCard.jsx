@@ -140,7 +140,6 @@ function UnitCard({
   onToggleDetails,
   onWoundsChange,
   stance = 'conceal',
-  onStanceChange,
   selectedStatuses = [],
   onStatusChange,
   aplAdjustment = 0,
@@ -162,6 +161,7 @@ function UnitCard({
   const [statusDetail, setStatusDetail] = useState(null)
   const [aplModalOpen, setAplModalOpen] = useState(false)
   const [markModalOpen, setMarkModalOpen] = useState(false)
+  const [collapsedFor, setCollapsedFor] = useState(collapseSignal)
   const cardRef = useRef(null)
   const onDeadChangeRef = useRef(onDeadChange)
   const ruleDetails = useMemo(() => {
@@ -207,12 +207,17 @@ function UnitCard({
     }
   }, [isDead])
 
-  useEffect(() => {
+  // A new collapse signal closes everything that's open on the card.
+  if (collapsedFor !== collapseSignal) {
+    setCollapsedFor(collapseSignal)
     setRuleModal(null)
     setStatusModalOpen(false)
     setStatusDetail(null)
     setAplModalOpen(false)
     setMarkModalOpen(false)
+  }
+
+  useEffect(() => {
     if (cardRef.current) {
       cardRef.current.querySelectorAll('details[open]').forEach((element) => {
         element.open = false
@@ -305,17 +310,14 @@ function UnitCard({
   const legionaryDisplay = legionaryMeta ?? LEGIONARY_SELECT_MARK
   const isKhorneMark = legionaryMark === 'KHORNE'
   const isTzeentchMark = legionaryMark === 'TZEENTCH'
-  const legionaryOption = useMemo(() => {
-    if (!isLegionary || !legionaryMeta?.dataLabel) return null
-    const options = opType?.options ?? []
-    return (
-      options.find((option) =>
-        String(option.optionName || '')
-          .toLowerCase()
-          .startsWith(`${legionaryMeta.dataLabel.toLowerCase()} -`),
-      ) || null
-    )
-  }, [isLegionary, legionaryMeta, opType?.options])
+  const legionaryOption =
+    isLegionary && legionaryMeta?.dataLabel
+      ? (opType?.options ?? []).find((option) =>
+          String(option.optionName || '')
+            .toLowerCase()
+            .startsWith(`${legionaryMeta.dataLabel.toLowerCase()} -`),
+        ) || null
+      : null
 
   const toggleStatus = (status) => {
     if (!onStatusChange) return
@@ -348,7 +350,7 @@ function UnitCard({
     }
     setRuleModal(legionaryDisplay.label)
   }
-  const handleLegionaryPillClick = (event) => {
+  const handleLegionaryPillClick = () => {
     if (!legionaryMeta && !readOnly) {
       setMarkModalOpen(true)
       return

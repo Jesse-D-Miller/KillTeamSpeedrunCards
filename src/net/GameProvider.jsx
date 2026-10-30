@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { applyAction } from '../../shared/reducer.js'
 import { GameContext } from './gameContext.js'
 
-// Single connection to the table server. The server owns the game; this just mirrors
-// whatever snapshot it last sent and forwards actions. Reconnects forever with backoff
-// and immediately when an iPad wakes up.
+// Single connection to the table server. The server owns the game; this mirrors the
+// snapshot it last sent and forwards actions. Reconnects forever with backoff and
+// immediately when an iPad wakes up.
+//
+// iPad Safari can drop a connection (sleep, switching apps, going full screen) and
+// still report it open, so taps would vanish into it. This device checks the line
+// itself: it pings every few seconds, and straight away on waking, and replaces a
+// connection that stops answering. Actions wait in order until the server confirms
+// them and are re-sent after a reconnect (the server ignores repeats); meanwhile the
+// screen shows them applied, so a tap never waits on the network.
 
 const EPHEMERAL_INTERVAL_MS = 33
 // Other devices drop a preview they haven't heard about for this long (a device that
@@ -11,6 +19,30 @@ const EPHEMERAL_INTERVAL_MS = 33
 // within it, and again after reconnecting: it stays up exactly as long as it does here.
 const EPHEMERAL_STALE_MS = 15000
 const EPHEMERAL_KEEPALIVE_MS = 4000
+
+const PING_MS = 4000
+// No reply to a ping for this long: the connection is dead, whatever it says.
+const PONG_LIMIT_MS = 6000
+// Just woke up: a working connection answers well within this.
+const WAKE_PROBE_MS = 2500
+const CONNECT_TIMEOUT_MS = 5000
+// An action still unconfirmed after this long is given up on.
+const ACTION_TIMEOUT_MS = 20000
+
+// Ids for this page's actions, unique across reloads (crypto.randomUUID needs https).
+const newSessionId = () => Math.random().toString(36).slice(2, 10)
+
+// The server's snapshot with this device's unconfirmed actions applied on top.
+const predict = (state, pending, actor) =>
+  pending.reduce((current, { action }) => {
+    try {
+      const next = applyAction(current, action, actor, () => 0.5)
+      // A phase change rolls dice and reveals what only the server knows: wait for it.
+      return next.phase === current.phase ? next : current
+    } catch {
+      return current
+    }
+  }, state)
 
 const tokenKey = (seat) => `kt-seat-token-${seat}`
 
@@ -42,14 +74,53 @@ export function GameProvider({ role, seat = null, children }) {
   const [presence, setPresence] = useState(null)
   const [error, setError] = useState(null)
   const [ephemerals, setEphemerals] = useState({})
+  // Actions sent but not yet confirmed, in order: [{ id, action }].
+  const [pending, setPending] = useState([])
   const socketRef = useRef(null)
+  // id -> { action, resolve, reject, timer }, in the order they were dispatched.
   const pendingRef = useRef(new Map())
+  const sessionRef = useRef(newSessionId())
   const nextIdRef = useRef(1)
   const takeoverRef = useRef(false)
   const stoppedRef = useRef(false)
   const attemptRef = useRef(0)
   const reconnectRef = useRef(() => {})
   const ephemeralRef = useRef({ timer: null, payload: undefined, lastSent: 0 })
+  const lastPingRef = useRef(0)
+  // When the oldest unanswered ping went out (null: nothing unanswered).
+  const awaitingRef = useRef(null)
+
+  const settle = useCallback((id, failure) => {
+    const entry = pendingRef.current.get(id)
+    if (!entry) return
+    pendingRef.current.delete(id)
+    window.clearTimeout(entry.timer)
+    setPending((current) => current.filter((item) => item.id !== id))
+    if (failure) entry.reject(failure)
+    else entry.resolve()
+  }, [])
+
+  // Drop a connection (closed, or not answering) and schedule the next attempt.
+  const lose = useCallback((socket) => {
+    if (socketRef.current !== socket) return
+    socketRef.current = null
+    window.clearTimeout(socket.openTimer)
+    socket.close()
+    setStatus((current) => (current === 'seat_taken' || current === 'released' ? current : 'offline'))
+    if (stoppedRef.current) return
+    const delay = Math.min(4000, 250 * 2 ** attemptRef.current)
+    attemptRef.current += 1
+    window.setTimeout(() => {
+      if (socketRef.current === null) reconnectRef.current()
+    }, delay)
+  }, [])
+
+  const ping = useCallback((socket) => {
+    const now = Date.now()
+    lastPingRef.current = now
+    if (awaitingRef.current == null) awaitingRef.current = now
+    socket.send(JSON.stringify({ type: 'ping' }))
+  }, [])
 
   const connect = useCallback(() => {
     if (stoppedRef.current) return
@@ -58,9 +129,16 @@ export function GameProvider({ role, seat = null, children }) {
 
     const socket = new WebSocket(socketUrl())
     socketRef.current = socket
+    awaitingRef.current = null
+    socket.openTimer = window.setTimeout(() => {
+      if (socket.readyState === WebSocket.CONNECTING) lose(socket)
+    }, CONNECT_TIMEOUT_MS)
 
     socket.addEventListener('open', () => {
+      window.clearTimeout(socket.openTimer)
       attemptRef.current = 0
+      // First check after a full interval.
+      lastPingRef.current = Date.now()
       socket.send(
         JSON.stringify(
           role === 'table'
@@ -72,12 +150,18 @@ export function GameProvider({ role, seat = null, children }) {
     })
 
     socket.addEventListener('message', (event) => {
+      if (socketRef.current !== socket) return
+      // Any message shows the line works.
+      awaitingRef.current = null
       const message = JSON.parse(event.data)
       switch (message.type) {
         case 'welcome':
           if (message.token) writeToken(seat, message.token)
+          socket.welcomed = true
           setStatus('online')
           if (ephemeralRef.current.payload) socket.send(JSON.stringify({ type: 'ephemeral', payload: ephemeralRef.current.payload }))
+          // Anything unconfirmed goes (again) in order; the server skips what it already has.
+          pendingRef.current.forEach((entry, id) => socket.send(JSON.stringify({ type: 'action', id, action: entry.action })))
           break
         case 'seat_taken':
           setStatus('seat_taken')
@@ -89,6 +173,8 @@ export function GameProvider({ role, seat = null, children }) {
         case 'state':
           setState(message.state)
           setPresence(message.presence)
+          // Confirmed in the same update that shows its result, so nothing flickers.
+          if (message.ack != null) settle(message.ack)
           break
         case 'ephemeral':
           setEphemerals((current) => {
@@ -98,57 +184,79 @@ export function GameProvider({ role, seat = null, children }) {
             return next
           })
           break
-        case 'ack': {
-          const pending = pendingRef.current.get(message.id)
-          pendingRef.current.delete(message.id)
-          pending?.resolve()
+        case 'ack':
+          settle(message.id)
           break
-        }
-        case 'error': {
-          const pending = pendingRef.current.get(message.id)
-          pendingRef.current.delete(message.id)
-          pending?.reject(new Error(message.message))
+        case 'error':
+          settle(message.id, new Error(message.message))
           setError(message.message)
           break
-        }
         default:
       }
     })
 
-    socket.addEventListener('close', () => {
-      if (socketRef.current !== socket) return
-      socketRef.current = null
-      pendingRef.current.forEach((pending) => pending.reject(new Error('Disconnected')))
-      pendingRef.current.clear()
-      setStatus((current) => (current === 'seat_taken' || current === 'released' ? current : 'offline'))
-      if (stoppedRef.current) return
-      const delay = Math.min(5000, 500 * 2 ** attemptRef.current)
-      attemptRef.current += 1
-      window.setTimeout(() => {
-        if (socketRef.current === null) reconnectRef.current()
-      }, delay)
-    })
-  }, [role, seat])
+    socket.addEventListener('close', () => lose(socket))
+  }, [role, seat, settle, lose])
 
   useEffect(() => {
     reconnectRef.current = connect
     stoppedRef.current = false
     connect()
+    // Waking up (unlocked, back from another app, out of full screen): connect now, or
+    // check that the connection that looks open still answers.
     const wake = () => {
-      if (document.visibilityState === 'visible') connect()
+      if (document.visibilityState !== 'visible') return
+      const socket = socketRef.current
+      if (!socket) {
+        attemptRef.current = 0
+        connect()
+        return
+      }
+      if (socket.readyState !== WebSocket.OPEN) return
+      ping(socket)
+      const asked = awaitingRef.current
+      window.setTimeout(() => {
+        // Still waiting on that ping (any message since would have cleared it).
+        if (socketRef.current === socket && awaitingRef.current != null && awaitingRef.current <= asked) {
+          attemptRef.current = 0
+          lose(socket)
+        }
+      }, WAKE_PROBE_MS)
     }
     document.addEventListener('visibilitychange', wake)
+    document.addEventListener('fullscreenchange', wake)
+    document.addEventListener('webkitfullscreenchange', wake)
     window.addEventListener('online', wake)
     window.addEventListener('focus', wake)
+    window.addEventListener('pageshow', wake)
     return () => {
       stoppedRef.current = true
       document.removeEventListener('visibilitychange', wake)
+      document.removeEventListener('fullscreenchange', wake)
+      document.removeEventListener('webkitfullscreenchange', wake)
       window.removeEventListener('online', wake)
       window.removeEventListener('focus', wake)
-      socketRef.current?.close()
+      window.removeEventListener('pageshow', wake)
+      const socket = socketRef.current
       socketRef.current = null
+      if (socket) {
+        window.clearTimeout(socket.openTimer)
+        socket.close()
+      }
     }
-  }, [connect])
+  }, [connect, ping, lose])
+
+  // Keep checking the line while it's open.
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      const socket = socketRef.current
+      if (!socket || socket.readyState !== WebSocket.OPEN) return
+      const now = Date.now()
+      if (awaitingRef.current != null && now - awaitingRef.current > PONG_LIMIT_MS) lose(socket)
+      else if (now - lastPingRef.current >= PING_MS) ping(socket)
+    }, 1000)
+    return () => window.clearInterval(interval)
+  }, [ping, lose])
 
   // Drop previews from devices that went quiet without clearing them.
   useEffect(() => {
@@ -169,18 +277,23 @@ export function GameProvider({ role, seat = null, children }) {
     return true
   }, [])
 
+  // Resolves when the server has applied the action; rejects if it refuses it, or if
+  // the table can't be reached for a while. Shown applied straight away either way.
   const dispatch = useCallback(
     (action) =>
       new Promise((resolve, reject) => {
-        const id = nextIdRef.current++
-        if (!sendRaw({ type: 'action', id, action })) {
-          setError('Not connected to the table.')
-          reject(new Error('Not connected'))
-          return
-        }
-        pendingRef.current.set(id, { resolve, reject })
+        const id = `${sessionRef.current}-${nextIdRef.current++}`
+        const timer = window.setTimeout(() => {
+          setError('Couldn’t reach the table. Check this iPad’s Wi-Fi.')
+          settle(id, new Error('Not connected'))
+        }, ACTION_TIMEOUT_MS)
+        pendingRef.current.set(id, { action, resolve, reject, timer })
+        setPending((current) => [...current, { id, action }])
+        const socket = socketRef.current
+        // Otherwise it goes when the connection is back (see 'welcome').
+        if (socket?.welcomed && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'action', id, action }))
       }),
-    [sendRaw],
+    [settle],
   )
 
   // Fire-and-forget dispatch for UI handlers that don't need the result.
@@ -190,7 +303,6 @@ export function GameProvider({ role, seat = null, children }) {
     },
     [dispatch],
   )
-
   // Throttled to ~30Hz; the latest payload always wins. `null` clears immediately.
   const sendEphemeral = useCallback(
     (payload) => {
@@ -238,12 +350,15 @@ export function GameProvider({ role, seat = null, children }) {
 
   const releaseSeat = useCallback((target) => sendRaw({ type: 'release_seat', seat: target }), [sendRaw])
 
+  const actor = role === 'table' ? 'table' : seat
+  const shown = useMemo(() => (state && pending.length ? predict(state, pending, actor) : state), [state, pending, actor])
+
   const value = useMemo(
     () => ({
       role,
       seat,
       status,
-      state,
+      state: shown,
       presence,
       error,
       clearError: () => setError(null),
@@ -254,7 +369,7 @@ export function GameProvider({ role, seat = null, children }) {
       takeover,
       releaseSeat,
     }),
-    [role, seat, status, state, presence, error, ephemerals, dispatch, act, sendEphemeral, takeover, releaseSeat],
+    [role, seat, status, shown, presence, error, ephemerals, dispatch, act, sendEphemeral, takeover, releaseSeat],
   )
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>

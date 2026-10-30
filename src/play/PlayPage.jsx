@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   MAX_TP,
@@ -24,6 +24,7 @@ import ResultsStep from './steps/ResultsStep.jsx'
 import SetupStep from './steps/SetupStep.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
 import AttackDrawer from './AttackDrawer.jsx'
+import { useKeyboardOverlay } from './useKeyboardOverlay.js'
 import { usePlayer } from './usePlayer.js'
 import { useAttack } from './useAttack.js'
 import './play.css'
@@ -253,6 +254,8 @@ function IncomingAttack() {
 function SeatScreen() {
   const { status, state, seat, takeover } = useGame()
   const [tab, setTab] = useState('main')
+  const rootRef = useRef(null)
+  useKeyboardOverlay(rootRef)
 
   if (status === 'seat_taken') {
     return (
@@ -295,9 +298,13 @@ function SeatScreen() {
 
   return (
     <RuleProvider>
-      <div className={`play-root${immersive ? ' is-immersive' : ''}`} style={{ '--seat-color': seatColor(seat) }}>
+      <div ref={rootRef} className={`play-root${immersive ? ' is-immersive' : ''}`} style={{ '--seat-color': seatColor(seat) }}>
         {immersive ? null : <Header />}
-        {status !== 'online' ? <div className="play-offline">Reconnecting to the table…</div> : null}
+        {status !== 'online' ? (
+          <div className="play-offline" role="status">
+            Reconnecting to the table…
+          </div>
+        ) : null}
         <main className={`play-main${immersive ? ' is-map' : ''}`}>
           {activeTab === 'main' ? <MainStep onOpenMap={() => setTab('map')} /> : null}
           {activeTab === 'map' ? <MapTab tabs={phase.tabs} tabLabel={tabLabel} onSelectTab={setTab} /> : null}
