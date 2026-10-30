@@ -1,16 +1,20 @@
-function CardPicker({ cards, selectedSrc, onPick, disabled = false }) {
+import PrimaryOpCard from './PrimaryOpCard.jsx'
+
+// The primary op cards to pick from; `selected` is the picked card's category.
+function CardPicker({ cards, selected, onPick, disabled = false }) {
   return (
     <div className="card-picker">
       {cards.map((card) => (
         <button
-          key={card.src}
+          key={card.category}
           type="button"
-          className={`card-pick${card.src === selectedSrc ? ' is-selected' : ''}`}
+          className={`card-pick${card.category === selected ? ' is-selected' : ''}`}
           onClick={() => onPick(card)}
           disabled={disabled}
-          aria-pressed={card.src === selectedSrc}
+          aria-pressed={card.category === selected}
+          aria-label={card.label}
         >
-          <img src={card.src} alt={card.label} loading="lazy" />
+          <PrimaryOpCard category={card.category} />
         </button>
       ))}
     </div>

@@ -438,9 +438,10 @@
   overflow: hidden;
 }
 
-.card-pick img {
+.card-pick .primary-op-card {
   display: block;
   width: 100%;
+  height: auto;
 }
 
 .card-pick.is-selected {
@@ -753,8 +754,10 @@
   margin: 0;
 }
 
-.ops-row img {
+.ops-row img,
+.ops-row .primary-op-card {
   width: 100%;
+  height: auto;
   border-radius: 12px;
 }
 
@@ -835,8 +838,10 @@
   gap: 0.5rem;
 }
 
-.results-cards img {
+.results-cards img,
+.results-cards .primary-op-card {
   width: 48%;
+  height: auto;
   border-radius: 8px;
 }
 

@@ -5,6 +5,7 @@ import TacOpCard from '../../components/TacOpCard.jsx'
 import { getKillteamById } from '../../data/ktData.js'
 import { getTacOp } from '../../data/tacOps.js'
 import { primaryOpCard } from '../../rules/cards.js'
+import PrimaryOpCard from '../PrimaryOpCard.jsx'
 import { seatColor } from '../../board/colors.js'
 import { usePlayer } from '../usePlayer.js'
 
@@ -49,7 +50,7 @@ function ResultsStep() {
               <div className="results-cards">
                 {player.tacOp && !isHidden(player.tacOp) ? <TacOpCard tacOp={getTacOp(player.tacOp.id)} compact /> : null}
                 {primaryOpCard(player.primaryOp) ? (
-                  <img src={primaryOpCard(player.primaryOp).src} alt={`Primary op: ${primaryOpCard(player.primaryOp).label}`} />
+                  <PrimaryOpCard category={player.primaryOp.category} />
                 ) : null}
               </div>
             </div>

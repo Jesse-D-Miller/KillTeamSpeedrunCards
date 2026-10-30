@@ -3,7 +3,7 @@ import { activePloyIds, createUnitState, initiativeBefore, otherSeat } from '../
 import UnitCard from '../../components/UnitCard.jsx'
 import { seatColor } from '../../board/colors.js'
 import { formatCostLabel, isLegionaryUnit } from '../../rules/equipment.js'
-import { PRIMARY_OP_CARDS, primaryOpCard } from '../../rules/cards.js'
+import { PRIMARY_OP_CARDS } from '../../rules/cards.js'
 import { cardDescription, cardLabel } from '../../rules/initiative.js'
 import { maxWoundsFor } from '../../rules/roster.js'
 import CardPicker from '../CardPicker.jsx'
@@ -132,7 +132,7 @@ export function StrategySheet({ onClose }) {
               </p>
               <CardPicker
                 cards={PRIMARY_OP_CARDS}
-                selectedSrc={primaryOpCard(me.primaryOp)?.src}
+                selected={me.primaryOp?.category}
                 onPick={(card) => act({ type: 'battle/primaryOp', category: card.category })}
                 disabled={!initiative}
               />

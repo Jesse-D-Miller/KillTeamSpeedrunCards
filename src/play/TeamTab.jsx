@@ -1,6 +1,7 @@
 import { isHidden } from '../../shared/views.js'
 import TacOpCard from '../components/TacOpCard.jsx'
 import { primaryOpCard } from '../rules/cards.js'
+import PrimaryOpCard from './PrimaryOpCard.jsx'
 import { getTacOp } from '../data/tacOps.js'
 import { formatCostLabel, parseEquipmentWeaponEffects, selectedEquipmentFor, stripEquipmentTable } from '../rules/equipment.js'
 import { RuleText } from './RuleText.jsx'
@@ -66,7 +67,7 @@ function TeamTab() {
           )}
           {primaryOpCard(me.primaryOp) ? (
             <figure>
-              <img src={primaryOpCard(me.primaryOp).src} alt={`Primary op: ${primaryOpCard(me.primaryOp).label}`} />
+              <PrimaryOpCard category={me.primaryOp.category} />
             </figure>
           ) : null}
         </div>
