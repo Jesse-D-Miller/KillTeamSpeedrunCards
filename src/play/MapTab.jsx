@@ -80,6 +80,7 @@ const RADIAL_ACTIONS = [
   { id: 'range', label: 'Range', icon: 'range' },
   { id: 'vantage', label: 'Vantage', icon: 'vantage', own: true },
   { id: 'edit', label: 'Edit', icon: 'edit' },
+  { id: 'ping', label: 'Ping', icon: 'ping' },
   { id: 'select', label: 'Select', icon: 'select' },
 ]
 
@@ -696,6 +697,12 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     // Some open a second ring of choices instead.
     if (id === 'range' || id === 'vantage' || id === 'edit') {
       setRadial((current) => current && { ...current, menu: id })
+      return
+    }
+    // Ping marks the operative on the projector; the tool stays as it is.
+    if (id === 'ping') {
+      setRadial(null)
+      ping({ x: token.x, y: token.y })
       return
     }
     if (['move', 'shoot', 'fight'].includes(id)) activateByTap(token.id)
