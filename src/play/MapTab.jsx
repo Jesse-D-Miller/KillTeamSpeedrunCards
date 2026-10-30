@@ -56,15 +56,21 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 const GRAB_PX = 24
 // A finger that moves less than this (screen pixels) is a tap, not a drag.
 const TAP_SLOP_PX = 8
-// The action ring around a tapped operative: its radius, and its buttons (own: only
-// for your own operatives).
+// The action ring around a tapped operative: its smallest radius (it widens so its
+// buttons never overlap), and its buttons (own: only for your own operatives).
 const RADIAL_PX = 78
+const radialReach = (count) => Math.max(RADIAL_PX, Math.ceil((count * 70) / (2 * Math.PI)))
+// Room kept around the ring's centre so even a full ring stays on screen.
+const RADIAL_ROOM = radialReach(10) + 36
+// Range: the ring drawn around an operative, in inches (0 = none).
+const RANGES = [0, 1, 2, 3, 6]
 const RADIAL_ACTIONS = [
   { id: 'move', label: 'Move', icon: 'move', own: true },
   { id: 'measure', label: 'Measure', icon: 'measure' },
   { id: 'los', label: 'Sightline', icon: 'los' },
   { id: 'shoot', label: 'Shoot', icon: 'attack', own: true },
   { id: 'fight', label: 'Fight', icon: 'fight', own: true },
+  { id: 'range', label: 'Range', icon: 'range' },
   { id: 'select', label: 'Select', icon: 'select' },
 ]
 
@@ -256,9 +262,10 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const railRect = stageRef.current.parentElement.querySelector('.tool-drawer')?.getBoundingClientRect()
     const railRight = railRect ? Math.max(0, railRect.right - stageRect.left) : 0
     const { scale, offX, offY } = viewMetrics(svgRect, viewRef.current)
-    const room = RADIAL_PX + 36
+    const room = RADIAL_ROOM
     setRadial({
       tokenId: token.id,
+      menu: 'main',
       x: clamp(offX + (token.x - viewRef.current.x) * scale - stageRect.left, railRight + room, stageRect.width - room),
       y: clamp(offY + (toSvgY(token.y) - viewRef.current.y) * scale - stageRect.top, room, stageRect.height - room),
     })
@@ -681,6 +688,11 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // Moving, shooting or fighting with your own ready operative in the Firefight phase
   // activates it.
   const runAction = (id, token) => {
+    // Some open a second ring of choices instead.
+    if (id === 'range') {
+      setRadial((current) => current && { ...current, menu: id })
+      return
+    }
     if (['move', 'shoot', 'fight'].includes(id)) activateByTap(token.id)
     setRadial(null)
     clearTool()
@@ -909,7 +921,35 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       />
     ) : null
   const radialToken = radial ? tokens.find((token) => token.id === radial.tokenId) ?? null : null
-  const radialActions = radialToken ? RADIAL_ACTIONS.filter((action) => !action.own || radialToken.seat === seat) : []
+  // What the ring shows: the operative's actions, or one of its second rings of choices.
+  //   [{ key, label, icon?, text? (shown big instead of an icon), selected?, run }]
+  const back = { key: 'back', label: 'Back', icon: 'back', run: () => setRadial((current) => ({ ...current, menu: 'main' })) }
+  const ringItems = () => {
+    if (!radialToken) return []
+    if (radial.menu === 'range') {
+      return [
+        ...RANGES.map((inches) => ({
+          key: `range-${inches}`,
+          label: inches ? `${inches}" range` : 'No range',
+          text: inches ? `${inches}"` : 'Off',
+          selected: (radialToken.ring ?? 0) === inches,
+          run: () => {
+            act({ type: 'token/update', id: radialToken.id, ring: inches })
+            setRadial(null)
+          },
+        })),
+        back,
+      ]
+    }
+    return RADIAL_ACTIONS.filter((action) => !action.own || radialToken.seat === seat).map((action) => ({
+      key: action.id,
+      label: action.label,
+      icon: action.icon,
+      run: () => runAction(action.id, radialToken),
+    }))
+  }
+  const radialItems = ringItems()
+  const reach = radialReach(radialItems.length)
 
   return (
     <section className="map-tab">
@@ -936,22 +976,30 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           ) : null}
         </BoardSvg>
         {radialToken ? (
-          <div className="unit-radial" data-ring-for={radialToken.id} style={{ left: radial.x, top: radial.y }} role="menu" aria-label={`${radialToken.label || 'Operative'} actions`}>
-            {radialActions.map((action, index) => (
+          <div
+            className="unit-radial"
+            data-ring-for={radialToken.id}
+            data-menu={radial.menu}
+            style={{ left: radial.x, top: radial.y }}
+            role="menu"
+            aria-label={`${radialToken.label || 'Operative'} actions`}
+          >
+            {radialItems.map((item, index) => (
               <button
-                key={action.id}
+                key={item.key}
                 type="button"
                 role="menuitem"
-                className="unit-radial-button glass"
+                className={`unit-radial-button glass${item.selected ? ' is-selected' : ''}`}
                 style={{
-                  left: RADIAL_PX * Math.cos(((-90 + (index * 360) / radialActions.length) * Math.PI) / 180),
-                  top: RADIAL_PX * Math.sin(((-90 + (index * 360) / radialActions.length) * Math.PI) / 180),
+                  left: reach * Math.cos(((-90 + (index * 360) / radialItems.length) * Math.PI) / 180),
+                  top: reach * Math.sin(((-90 + (index * 360) / radialItems.length) * Math.PI) / 180),
                 }}
-                onClick={() => runAction(action.id, radialToken)}
-                aria-label={action.label}
+                onClick={item.run}
+                aria-label={item.label}
+                aria-pressed={item.selected ?? undefined}
               >
-                <ToolIcon tool={action.icon} />
-                <span>{action.label}</span>
+                {item.text ? <span className="unit-radial-text">{item.text}</span> : <ToolIcon tool={item.icon} />}
+                {item.text ? null : <span>{item.label}</span>}
               </button>
             ))}
           </div>

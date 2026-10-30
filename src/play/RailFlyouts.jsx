@@ -70,7 +70,6 @@ export function TokenFlyout({ categories, menu, onOpenCategory, onChoose }) {
   )
 }
 
-const RINGS = [0, 1, 2, 3, 6]
 // Marker and token disc sizes (diameter, mm). Operative bases use BASE_SIZES_MM.
 const MARKER_SIZES_MM = [10, 15, 20, 25, 28.5, 32, 40, 50, 60]
 const MM_PER_IN = 25.4
@@ -164,22 +163,6 @@ export function SelectPanel({ item, act, onRemoved, onDetach, vantage = null, on
           </div>
         </div>
       ) : null}
-
-      <div className="select-field">
-        <span className="muted">Range</span>
-        <div className="select-chips">
-          {RINGS.map((ring) => (
-            <button
-              key={ring}
-              type="button"
-              className={`chip${(value.ring ?? 0) === ring ? ' is-selected' : ''}`}
-              onClick={() => update({ ring })}
-            >
-              {ring ? `${ring}"` : 'Off'}
-            </button>
-          ))}
-        </div>
-      </div>
 
       <div className="select-actions">
         {value.lastMove ? (

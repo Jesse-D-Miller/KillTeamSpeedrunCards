@@ -334,7 +334,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // With Measure on, tapping an operative closes it (the ruler goes) and opens the
   // operative's action ring.
   await a.locator(`.map-stage [data-token-id="${deployId}"] .board-token-base`).click()
-  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(6)
+  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(7)
   await expect(table.locator('.overlay-measure')).toHaveCount(0)
 
   // Switching tools clears the measurement; no separate Clear button.
@@ -400,7 +400,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(weaponList).toHaveCount(0)
   // Tapping the shooter closes Sightline and opens its action ring.
   await tapToken(sniper)
-  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(6)
+  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(7)
   await expect(table.locator('.targeting')).toHaveCount(0)
   // Shoot/Fight: tap the shooter and its weapon list pops out, set to Shoot (no enemy
   // is within its control range). The switch shows its melee weapons instead.
@@ -445,7 +445,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // Tapping the shooter ends Shoot/Fight and opens its action ring; the side bars go
   // back to normal.
   await tapToken(sniper)
-  await expect(a.locator(`.unit-radial[data-ring-for="${sniper}"]`).getByRole('menuitem')).toHaveCount(6)
+  await expect(a.locator(`.unit-radial[data-ring-for="${sniper}"]`).getByRole('menuitem')).toHaveCount(7)
   await expect(table.locator('.targeting')).toHaveCount(0)
   await expect(table.locator('[data-combat]')).toHaveCount(0)
   // On Vantage (set with Select): shooting down at an Engage target gives Accurate.
@@ -550,7 +550,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     )
   const [mineId] = await tokenIdsOf('#ff5a4e')
   await tokenOf(mineId).click()
-  await expect(ring.getByRole('menuitem')).toHaveText(['Move', 'Measure', 'Sightline', 'Shoot', 'Fight', 'Select'])
+  await expect(ring.getByRole('menuitem')).toHaveText(['Move', 'Measure', 'Sightline', 'Shoot', 'Fight', 'Range', 'Select'])
   // (Once its buttons have finished popping out.)
   await a.waitForTimeout(250)
   await shot(a, '06r-action-ring-ipad')
@@ -683,7 +683,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // With Move on, tapping an operative goes back to its action ring (Move is off), and
   // tapping the empty map just ends moving.
   await tokenOf('t2').click()
-  await expect(ring.getByRole('menuitem')).toHaveCount(6)
+  await expect(ring.getByRole('menuitem')).toHaveCount(7)
   await ring.getByRole('menuitem', { name: 'Move', exact: true }).click()
   await expect(ring).toHaveCount(0)
   await a.mouse.click(...emptySpot)
@@ -782,6 +782,20 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(a.locator('.map-stage .board-token-name[data-facing="0"]')).toHaveCount(10)
   await expect(a.locator('.map-stage [data-order-for="t1"]')).toHaveAttribute('data-facing', '0')
 
+  // Range, from the action ring, opens a second ring of distances; the one picked is
+  // drawn round the operative until it's turned off. (Token off first: its button
+  // reopens its list, then turns it off.)
+  await tokenButton.click()
+  await tokenButton.click()
+  await ringAction(a, 't1', 'Range')
+  await expect(ring.getByRole('menuitem')).toHaveText(['Off', '1"', '2"', '3"', '6"', 'Back'])
+  await expect(ring.getByRole('menuitem', { name: 'No range' })).toHaveAttribute('aria-pressed', 'true')
+  await a.waitForTimeout(250)
+  await shot(a, '07r-range-ring')
+  await ring.getByRole('menuitem', { name: '3" range' }).click()
+  await expect(ring).toHaveCount(0)
+  await expect(table.locator('[data-ring-for="t1"][data-ring="3"]')).toHaveCount(1)
+
   // Select edits anything on the board; the changes stay.
   await a.getByRole('button', { name: 'Select', exact: true }).click()
   // No hint panel until something is selected, and Select never moves what it touches.
@@ -798,8 +812,6 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await selectPanel.getByRole('textbox').fill('Boss')
   await selectPanel.getByRole('textbox').press('Enter')
   await expect(table.locator('.board-token-name').filter({ hasText: 'Boss' })).toHaveCount(1)
-  await selectPanel.getByRole('button', { name: '3"', exact: true }).click()
-  await expect(table.locator('[data-ring-for="t1"][data-ring="3"]')).toHaveCount(1)
   const theynBase = table.locator('[data-token-id="t1"] .board-token-base')
   const theynR = Number(await theynBase.getAttribute('r'))
   await selectPanel.getByRole('button', { name: 'Larger base' }).click()
@@ -844,7 +856,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await openTab(b, 'Map')
   // An opponent's operative offers only Measure, Sightline and Select in its ring.
   await b.locator(`.map-stage [data-token-id="${mark}"] .board-token-base`).click()
-  await expect(b.locator('.unit-radial').getByRole('menuitem')).toHaveText(['Measure', 'Sightline', 'Select'])
+  await expect(b.locator('.unit-radial').getByRole('menuitem')).toHaveText(['Measure', 'Sightline', 'Range', 'Select'])
   await b.locator(`.map-stage [data-token-id="${mark}"] .board-token-base`).click()
   await expect(b.locator('.unit-radial')).toHaveCount(0)
   await ringAction(b, stinger, 'Shoot')

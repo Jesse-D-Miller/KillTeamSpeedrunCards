@@ -1053,6 +1053,17 @@
   animation: unit-radial-in 0.16s ease-out both;
 }
 
+.unit-radial-button.is-selected {
+  background: var(--seat-color);
+  color: #0b0b0b;
+}
+
+.unit-radial-text {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
 .unit-radial-button .tool-icon {
   width: 22px;
   height: 22px;
