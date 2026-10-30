@@ -269,8 +269,10 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator('.board-token-ring')).toHaveCount(0)
 
   await a.getByRole('button', { name: 'Show tools' }).click()
-  // Measure is a free ruler: nothing snaps, ends stretch, the middle slides it.
-  await a.getByRole('button', { name: 'Measure', exact: true }).click()
+  // Measure (from an operative's action ring) is a free ruler: nothing snaps, ends
+  // stretch, the middle slides it. Its ruler starts at the operative's base.
+  const deployId = await table.locator('.board-token').nth(1).getAttribute('data-token-id')
+  await ringAction(a, deployId, 'Measure')
   const dragPx = async (from, to) => {
     await a.mouse.move(from.x, from.y)
     await a.mouse.down()
@@ -283,6 +285,10 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   })
   const rulerLabel = table.locator('.overlay-measure .overlay-label')
   const inchesOf = async () => Number.parseFloat(await rulerLabel.textContent())
+  // The first drag pulls the ruler out of the operative's base, wherever it starts.
+  await dragPx(at(0.35, 0.3), at(0.35, 0.3, 1))
+  await expect(table.locator('.overlay-measure')).toHaveCount(1)
+  // Pressing away from that ruler starts a fresh one.
   await dragPx(at(0.35, 0.62), at(0.35, 0.62, 3))
   await expect.poll(inchesOf).toBeCloseTo(3, 0)
   // The start end-line's centre (it's drawn across the ruler).
