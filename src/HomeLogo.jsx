@@ -1,21 +1,16 @@
 // The opening screen's logo, burning:
 // - a fire halo right behind it that follows the logo's own outline (shield and
 //   wings), grown out and warped into a wavy, flickering edge;
-// - long waves of fire rolling out from behind it, fading as they spread;
+// - the page reddening the further it is from the logo, as if lit by its heat;
 // - a slow, uneven heartbeat glow;
 // - sparks drifting up all over the page, fainter and smaller the further they are
 //   from the logo.
-// Still, with no waves or sparks, under Reduce Motion.
+// Still, with no sparks, under Reduce Motion.
 
 const LOGO = '/killteamSpeedrunLogo.png'
 // The logo image's own size, so the halo lines up with it exactly.
 const LOGO_W = 1536
 const LOGO_H = 1024
-
-// Fire waves: one leaves the logo every second, each taking WAVE_SECONDS to spread
-// out and fade, so WAVE_SECONDS of them are on screen at once.
-const WAVE_SECONDS = 8
-const WAVES = Array.from({ length: WAVE_SECONDS }, (_, index) => ({ duration: WAVE_SECONDS, delay: -index }))
 
 // Sparks: scattered around the logo out to the edges of the page, most of them close
 // in. Fixed (a seeded scatter), so the page looks the same on every load.
@@ -49,36 +44,10 @@ const SPARKS = (() => {
 function HomeLogo() {
   return (
     <div className="home-logo">
-      {WAVES.map((wave, index) => (
-        <svg
-          key={index}
-          className="home-wave"
-          viewBox="0 0 200 200"
-          aria-hidden="true"
-          style={{ '--wave': `${wave.duration}s`, '--wave-delay': `${wave.delay}s` }}
-        >
-          <circle cx="100" cy="100" r="96" fill="url(#home-wave-band)" filter="url(#home-wave-lick)" />
-        </svg>
-      ))}
+      <span className="home-heat" aria-hidden="true" />
       <span className="home-throb" aria-hidden="true" />
       <svg className="home-halo" viewBox={`0 0 ${LOGO_W} ${LOGO_H}`} aria-hidden="true">
         <defs>
-          {/* A wave: a soft band of fire, bright on its inner edge and smoky outside. */}
-          <radialGradient id="home-wave-band" cx="50%" cy="50%" r="50%">
-            <stop offset="0" stopColor="#ff8a1c" stopOpacity="0" />
-            <stop offset="0.5" stopColor="#ff8a1c" stopOpacity="0" />
-            <stop offset="0.66" stopColor="#ff7a1a" stopOpacity="0.5" />
-            <stop offset="0.78" stopColor="#d8300e" stopOpacity="0.38" />
-            <stop offset="0.9" stopColor="#7a0e04" stopOpacity="0.12" />
-            <stop offset="1" stopColor="#8a1205" stopOpacity="0" />
-          </radialGradient>
-          <filter id="home-wave-lick" x="-20%" y="-20%" width="140%" height="140%">
-            {/* Fixed noise (not animated): each wave is drawn once and only scaled, so
-                eight at a time stay smooth on an iPad. */}
-            <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="9" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" />
-            <feGaussianBlur stdDeviation="1.5" />
-          </filter>
           {/* The halo: the logo's outline (its solid pixels, not its faint baked-in glow),
               grown, warped by drifting noise into licking flame, softened, and coloured:
               a red outer fire with a hotter orange one inside it. */}
