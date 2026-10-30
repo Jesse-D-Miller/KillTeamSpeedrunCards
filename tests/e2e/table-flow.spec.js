@@ -436,8 +436,10 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator(`[data-badge-for="${inOpen}"]`)).toHaveAttribute('data-status', 'obscured')
   const smokeId = await table.locator('[data-catalog-id="smoke-grenade"]').getAttribute('data-marker-id')
   await tableActions(table, [{ type: 'marker/remove', id: smokeId }])
-  // Tapping the empty map ends Shoot/Fight, and the side bars go back to normal.
-  await a.mouse.click(...(await emptySpotOf(a)))
+  // Tapping the shooter ends Shoot/Fight and opens its action ring; the side bars go
+  // back to normal.
+  await tapToken(sniper)
+  await expect(a.locator(`.unit-radial[data-ring-for="${sniper}"]`).getByRole('menuitem')).toHaveCount(6)
   await expect(table.locator('.targeting')).toHaveCount(0)
   await expect(table.locator('[data-combat]')).toHaveCount(0)
   // On Vantage (set with Select): shooting down at an Engage target gives Accurate.

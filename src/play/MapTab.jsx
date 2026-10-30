@@ -436,8 +436,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       return
     }
     // Sightline (just the line-of-sight check) and Shoot/Fight (an attack with a
-    // weapon): tap an operative, then an enemy. Drag the white point to start the
-    // targeting lines from another part of the shooter's base.
+    // weapon), started from an operative's action ring: tap an enemy to target it. Drag
+    // the white point to start the targeting lines from another part of the shooter's base.
     if (tool === 'los' || tool === 'attack') {
       const kind = tool === 'los' ? 'target' : 'attack'
       const current = overlay?.tool === kind ? overlay : null
@@ -452,40 +452,12 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         gestureRef.current = { type: 'target-point', screen: { x: event.clientX, y: event.clientY }, moved: false, shooterId: shooter?.id }
         return
       }
-      // Sightline: a tap on the shooter or one of its side opens that operative's action
-      // ring (closing Sightline); a tap off any operative ends Sightline.
-      if (kind === 'target') {
-        if (!alive) leaveTool()
-        else if (!shooter || tapped.seat === shooter.seat) ringFor(tapped.id)
-        else publish({ ...current, targetId: tapped.id })
-        return
-      }
-      // Shoot/Fight: a tap off any operative ends it.
-      if (!alive) {
-        leaveTool()
-        return
-      }
-      if (tapped.id === current?.shooterId) {
-        clearTool()
-        setWeaponMenuOpen(false)
-        return
-      }
-      if (shooter && tapped.seat !== shooter.seat) {
-        publish({ ...current, targetId: tapped.id })
-      } else {
-        // A new attacker: pick its weapon first. It's a fight if an enemy is already
-        // within its control range (the switch in the list changes it).
-        const engaged = tokens.some(
-          (enemy) =>
-            enemy.unitKey &&
-            enemy.seat &&
-            enemy.seat !== tapped.seat &&
-            !game.players[enemy.seat]?.unitState?.[enemy.unitKey]?.dead &&
-            distance(enemy, tapped) - tokenRadiusIn(enemy) - tokenRadiusIn(tapped) <= 1,
-        )
-        publish({ tool: 'attack', mode: engaged ? 'fight' : 'shoot', shooterId: tapped.id, targetId: null, point: null, weaponId: null })
-        setWeaponMenuOpen(true)
-      }
+      // A tap on the shooter or another operative on its side opens that operative's
+      // action ring (closing the tool); an enemy is the target; a tap off any operative
+      // ends the tool.
+      if (!alive) leaveTool()
+      else if (!shooter || tapped.seat === shooter.seat) ringFor(tapped.id)
+      else publish({ ...current, targetId: tapped.id })
       return
     }
     if (tool === 'ping') {
@@ -585,8 +557,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const gesture = gestureRef.current
     gestureRef.current = null
     if (!gesture) return
-    // The white point tapped, not dragged: in Sightline, that's a tap on the shooter.
-    if (gesture.type === 'target-point' && !gesture.moved && tool === 'los' && gesture.shooterId) {
+    // The white point tapped, not dragged: that's a tap on the shooter.
+    if (gesture.type === 'target-point' && !gesture.moved && gesture.shooterId) {
       ringFor(gesture.shooterId)
       return
     }
