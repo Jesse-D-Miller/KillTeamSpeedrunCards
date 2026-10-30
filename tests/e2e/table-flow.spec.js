@@ -334,7 +334,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // With Measure on, tapping an operative closes it (the ruler goes) and opens the
   // operative's action ring.
   await a.locator(`.map-stage [data-token-id="${deployId}"] .board-token-base`).click()
-  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(7)
+  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(8)
   await expect(table.locator('.overlay-measure')).toHaveCount(0)
 
   // Switching tools clears the measurement; no separate Clear button.
@@ -400,7 +400,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(weaponList).toHaveCount(0)
   // Tapping the shooter closes Sightline and opens its action ring.
   await tapToken(sniper)
-  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(7)
+  await expect(a.locator('.unit-radial').getByRole('menuitem')).toHaveCount(8)
   await expect(table.locator('.targeting')).toHaveCount(0)
   // Shoot/Fight: tap the shooter and its weapon list pops out, set to Shoot (no enemy
   // is within its control range). The switch shows its melee weapons instead.
@@ -445,15 +445,21 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // Tapping the shooter ends Shoot/Fight and opens its action ring; the side bars go
   // back to normal.
   await tapToken(sniper)
-  await expect(a.locator(`.unit-radial[data-ring-for="${sniper}"]`).getByRole('menuitem')).toHaveCount(7)
+  await expect(a.locator(`.unit-radial[data-ring-for="${sniper}"]`).getByRole('menuitem')).toHaveCount(8)
   await expect(table.locator('.targeting')).toHaveCount(0)
   await expect(table.locator('[data-combat]')).toHaveCount(0)
-  // On Vantage (set with Select): shooting down at an Engage target gives Accurate.
-  await a.getByRole('button', { name: 'Select', exact: true }).click()
-  await tapToken(sniper)
-  await a.locator('.select-panel').getByRole('button', { name: '2" up' }).click()
-  await expect(table.locator(`[data-vantage-for="${sniper}"]`)).toHaveText('▲2"')
-  await a.getByRole('button', { name: 'Select', exact: true }).click()
+  // On Vantage (picked by floor from the action ring, and marked with a chevron per
+  // floor): shooting down at an Engage target gives Accurate.
+  await ringAction(a, sniper, 'Vantage')
+  const ringA = a.locator(`.unit-radial[data-ring-for="${sniper}"]`)
+  await expect(ringA.getByRole('menuitem')).toHaveText(['Ground', '1st floor', '2nd floor', 'Back'])
+  await expect(ringA.getByRole('menuitem', { name: 'Ground' })).toHaveAttribute('aria-pressed', 'true')
+  await a.waitForTimeout(250)
+  await shot(a, '07v-vantage-ring')
+  await ringA.getByRole('menuitem', { name: '1st floor' }).click()
+  await expect(table.locator(`[data-vantage-for="${sniper}"]`)).toHaveAttribute('data-floor', '1')
+  await expect(table.locator(`[data-vantage-for="${sniper}"] path`)).toHaveCount(1)
+  await shot(table, '07w-vantage-table')
   await tableActions(table, [{ type: 'unit/update', seat: 'B', unitKey: 'TEST-OPEN', patch: { order: 'engage' } }])
   await ringAction(a, sniper, 'Sightline')
   await tapToken(inOpen)
@@ -550,7 +556,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     )
   const [mineId] = await tokenIdsOf('#ff5a4e')
   await tokenOf(mineId).click()
-  await expect(ring.getByRole('menuitem')).toHaveText(['Move', 'Measure', 'Sightline', 'Shoot', 'Fight', 'Range', 'Select'])
+  await expect(ring.getByRole('menuitem')).toHaveText(['Move', 'Measure', 'Sightline', 'Shoot', 'Fight', 'Range', 'Vantage', 'Select'])
   // (Once its buttons have finished popping out.)
   await a.waitForTimeout(250)
   await shot(a, '06r-action-ring-ipad')
@@ -683,7 +689,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // With Move on, tapping an operative goes back to its action ring (Move is off), and
   // tapping the empty map just ends moving.
   await tokenOf('t2').click()
-  await expect(ring.getByRole('menuitem')).toHaveCount(7)
+  await expect(ring.getByRole('menuitem')).toHaveCount(8)
   await ring.getByRole('menuitem', { name: 'Move', exact: true }).click()
   await expect(ring).toHaveCount(0)
   await a.mouse.click(...emptySpot)

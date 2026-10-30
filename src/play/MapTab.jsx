@@ -17,6 +17,7 @@ import { maxWoundsFor, tokenLabelFor } from '../rules/roster.js'
 import Drawer from './Drawer.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
 import { SelectPanel, TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
+import VantageMark from './VantageMark.jsx'
 import WeaponChooser from './WeaponChooser.jsx'
 import { meleeWeaponsFor, rangedWeaponsFor } from '../rules/weaponRules.js'
 import AttackDrawer from './AttackDrawer.jsx'
@@ -64,6 +65,13 @@ const radialReach = (count) => Math.max(RADIAL_PX, Math.ceil((count * 70) / (2 *
 const RADIAL_ROOM = radialReach(10) + 36
 // Range: the ring drawn around an operative, in inches (0 = none).
 const RANGES = [0, 1, 2, 3, 6]
+// Vantage: which floor of Vantage terrain an operative is on, and the height the rules
+// use for it (inches up; see shared/targeting.js).
+const FLOORS = [
+  { height: 0, floor: 0, label: 'Ground' },
+  { height: 2, floor: 1, label: '1st floor' },
+  { height: 4, floor: 2, label: '2nd floor' },
+]
 const RADIAL_ACTIONS = [
   { id: 'move', label: 'Move', icon: 'move', own: true },
   { id: 'measure', label: 'Measure', icon: 'measure' },
@@ -71,6 +79,7 @@ const RADIAL_ACTIONS = [
   { id: 'shoot', label: 'Shoot', icon: 'attack', own: true },
   { id: 'fight', label: 'Fight', icon: 'fight', own: true },
   { id: 'range', label: 'Range', icon: 'range' },
+  { id: 'vantage', label: 'Vantage', icon: 'vantage', own: true },
   { id: 'select', label: 'Select', icon: 'select' },
 ]
 
@@ -689,7 +698,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // activates it.
   const runAction = (id, token) => {
     // Some open a second ring of choices instead.
-    if (id === 'range') {
+    if (id === 'range' || id === 'vantage') {
       setRadial((current) => current && { ...current, menu: id })
       return
     }
@@ -893,14 +902,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           act={act}
           onRemoved={() => setSelectedId(null)}
           onDetach={detachSelected}
-          vantage={
-            selected?.unitKey && selected.seat === seat
-              ? game.players[seat].unitState?.[selected.unitKey]?.vantage ?? 0
-              : null
-          }
-          onVantage={(vantage) =>
-            act({ type: 'unit/update', unitKey: selected.unitKey, maxWounds: maxWoundsOf(selected.id), patch: { vantage } })
-          }
         />
       ) : null,
   }
@@ -922,7 +923,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     ) : null
   const radialToken = radial ? tokens.find((token) => token.id === radial.tokenId) ?? null : null
   // What the ring shows: the operative's actions, or one of its second rings of choices.
-  //   [{ key, label, icon?, text? (shown big instead of an icon), selected?, run }]
+  //   [{ key, label, icon?, mark? (a graphic instead of the icon), text? (shown big
+  //   instead of an icon and label), caption? (shown instead of the label), selected?, run }]
   const back = { key: 'back', label: 'Back', icon: 'back', run: () => setRadial((current) => ({ ...current, menu: 'main' })) }
   const ringItems = () => {
     if (!radialToken) return []
@@ -935,6 +937,28 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           selected: (radialToken.ring ?? 0) === inches,
           run: () => {
             act({ type: 'token/update', id: radialToken.id, ring: inches })
+            setRadial(null)
+          },
+        })),
+        back,
+      ]
+    }
+    if (radial.menu === 'vantage') {
+      const height = game.players[radialToken.seat]?.unitState?.[radialToken.unitKey]?.vantage ?? 0
+      return [
+        ...FLOORS.map((floor) => ({
+          key: `floor-${floor.height}`,
+          label: floor.label,
+          mark: <VantageMark floor={floor.floor} />,
+          caption: floor.label,
+          selected: height === floor.height,
+          run: () => {
+            act({
+              type: 'unit/update',
+              unitKey: radialToken.unitKey,
+              maxWounds: maxWoundsOf(radialToken.id),
+              patch: { vantage: floor.height },
+            })
             setRadial(null)
           },
         })),
@@ -998,8 +1022,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
                 aria-label={item.label}
                 aria-pressed={item.selected ?? undefined}
               >
-                {item.text ? <span className="unit-radial-text">{item.text}</span> : <ToolIcon tool={item.icon} />}
-                {item.text ? null : <span>{item.label}</span>}
+                {item.mark ?? (item.text ? <span className="unit-radial-text">{item.text}</span> : <ToolIcon tool={item.icon} />)}
+                {item.text ? null : <span>{item.caption ?? item.label}</span>}
               </button>
             ))}
           </div>

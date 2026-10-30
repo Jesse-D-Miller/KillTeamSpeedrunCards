@@ -107,9 +107,7 @@ function SizeStepper({ label, value, sizes, onChange }) {
 
 // Select: edit whatever is selected. Changes are saved on the server straight away.
 //   item: { type: 'token' | 'marker', value }.
-// vantage / onVantage: your own operative's height on Vantage terrain (0, 2 or 4"),
-// used by the Sightline tool; null for anything else.
-export function SelectPanel({ item, act, onRemoved, onDetach, vantage = null, onVantage }) {
+export function SelectPanel({ item, act, onRemoved, onDetach }) {
   const { type, value } = item
   const update = (patch) => act({ type: `${type}/update`, id: value.id, ...patch })
   return (
@@ -145,24 +143,6 @@ export function SelectPanel({ item, act, onRemoved, onDetach, vantage = null, on
           onChange={(mm) => update({ radius: mm / MM_PER_IN / 2 })}
         />
       )}
-
-      {vantage != null ? (
-        <div className="select-field">
-          <span className="muted">On Vantage</span>
-          <div className="select-chips">
-            {[0, 2, 4].map((height) => (
-              <button
-                key={height}
-                type="button"
-                className={`chip${vantage === height ? ' is-selected' : ''}`}
-                onClick={() => onVantage(height)}
-              >
-                {height ? `${height}" up` : 'Floor'}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
 
       <div className="select-actions">
         {value.lastMove ? (

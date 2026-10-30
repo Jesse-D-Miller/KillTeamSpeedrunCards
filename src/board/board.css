@@ -577,12 +577,22 @@
   fill: #4ade80;
 }
 
-.board-vantage {
-  fill: #fff;
-  font-size: 0.28px;
-  font-weight: 800;
-  paint-order: stroke;
-  stroke: #0b0d10;
-  stroke-width: 0.07px;
+/* An operative's Vantage floor: a dark disc ringed in its colour, with one or two
+   chevrons. */
+.board-token-vantage {
   pointer-events: none;
+}
+
+.board-token-vantage circle {
+  fill: #0b0d10;
+  stroke: var(--token-color);
+  stroke-width: 0.045;
+}
+
+.board-token-vantage path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 0.05;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }

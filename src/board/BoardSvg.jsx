@@ -462,22 +462,30 @@ function BoardSvg({
         ) : null,
       )}
 
-      {/* Operatives up on Vantage terrain (set with Select) show their height. */}
-      {tokenViews.map(({ token, view, status }) =>
-        status?.vantage && !view.dead ? (
-          <text
+      {/* Operatives up on Vantage terrain (set from the action ring) show which floor:
+          one chevron for the 1st floor (2" up), two for the 2nd (4" up). */}
+      {tokenViews.map(({ token, view, status }) => {
+        if (!status?.vantage || view.dead) return null
+        const floor = status.vantage >= 4 ? 2 : 1
+        return (
+          <g
             key={`vantage-${token.id}`}
-            className="board-vantage"
+            className="board-token-vantage"
             data-vantage-for={token.id}
-            x={view.x + view.r * 0.8}
-            y={view.cy - view.r * 0.8}
-            textAnchor="middle"
-            dominantBaseline="central"
+            data-floor={floor}
+            style={{ '--token-color': seatColor(token.seat) }}
+            data-facing={view.facing}
+            // On the right of the base as its player reads it (clear of the name across the
+            // top and the order tag below), chevrons pointing up for them too.
+            transform={`${view.facing ? `rotate(${view.facing} ${view.x} ${view.cy}) ` : ''}translate(${view.x + view.r + 0.08} ${view.cy})`}
           >
-            ▲{status.vantage}"
-          </text>
-        ) : null,
-      )}
+            <circle r={0.21} />
+            {Array.from({ length: floor }, (_, index) => (
+              <path key={index} d="M-0.1 0.05 L0 -0.05 L0.1 0.05" transform={`translate(0 ${(index - (floor - 1) / 2) * 0.1})`} />
+            ))}
+          </g>
+        )
+      })}
 
       {overlays.map(({ owner, payload }) =>
         payload.tool === 'target' || payload.tool === 'attack' ? (

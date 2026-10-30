@@ -535,6 +535,7 @@ All of these were replaced in Approved Ops 2025.
 - **Tac ops:** the 12 as text cards (`src/data/tacOps.js`), limited to the kill team's archetypes.
 - **Scouting:** the step is removed.
 - **Setting up operatives:** only before the battle (deployment). From the first turning point the iPad map has no Units tool.
+- **Vantage on the iPad:** picked by floor from an operative's action ring: Ground, 1st floor (treated as 2" up) or 2nd floor (4" up). Those heights drive the Vantage rules in the targeting check; the operative shows one chevron per floor.
 - **Primary op:** a secret pick in the TP1 strategy sheet (`battle/primaryOp`, TP1 only). Its bonus (half that op's VP, rounded up) is added to every VP total automatically when the game ends: projector, both iPads and the results screen. Until then it's left out of the totals, and only its owner's VP sheet shows it.
 - **Setup:** roll off; the winner decides initiative; the initiative player picks the drop zone (enforced); the other player gets the Re-roll card.
 - **Each turning point:** a roll-off (ties go to the player without initiative); the winner decides; the loser gains the ±TP card (not in TP4). Played cards are discarded at the next TP.
