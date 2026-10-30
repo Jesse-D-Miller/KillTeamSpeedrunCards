@@ -1279,16 +1279,16 @@
     opacity: 0;
   }
   10% {
-    opacity: 0.85;
-  }
-  35% {
     opacity: 0.5;
   }
+  35% {
+    opacity: 0.3;
+  }
   75% {
-    opacity: 0.12;
+    opacity: 0.08;
   }
   100% {
-    transform: translate(-50%, -50%) scale(3.4);
+    transform: translate(-50%, -50%) scale(7);
     opacity: 0;
   }
 }

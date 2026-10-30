@@ -15,10 +15,10 @@ const LOGO_H = 1024
 // Fire waves: each takes its own time to roll out and starts at its own point in the
 // cycle, so the pulses come unevenly and never settle into a rhythm.
 const WAVES = [
-  { duration: 7.4, delay: 0 },
-  { duration: 8.9, delay: -2.3 },
-  { duration: 6.8, delay: -4.1 },
-  { duration: 9.6, delay: -6.7 },
+  { duration: 11.1, delay: 0 },
+  { duration: 13.4, delay: -3.5 },
+  { duration: 10.2, delay: -6.2 },
+  { duration: 14.4, delay: -10 },
 ]
 
 // Sparks: scattered around the logo out to the edges of the page, most of them close
