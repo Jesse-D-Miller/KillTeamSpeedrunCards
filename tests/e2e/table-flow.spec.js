@@ -998,9 +998,11 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await sturdy.click()
   await expect(aliceBoard.locator('.pb-combat-cp')).toHaveText(`${aliceCp} CP`)
   await expect(shotAttack.locator('[data-cell="crit"]')).toHaveAttribute('data-tone', 'same')
-  // Done: a tap on the empty map ends it; the side bars go back.
-  await b.mouse.click(...(await emptySpotOf(b)))
+  // Done: once the Vespid's activation ends (expended), the shot's screens go: the side
+  // bars go back and both drawers close.
+  await tableActions(table, [{ type: 'unit/update', seat: 'B', unitKey: 'TAU-VESP-WAR-9', patch: { activation: 'expended' } }])
   await expect(table.locator('[data-combat]')).toHaveCount(0)
+  await expect(bobDrawer).toHaveCount(0)
   await expect(aliceBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText(String(aliceCp))
   await expect(aliceDrawer).toHaveCount(0)
   await tableActions(table, [
@@ -1047,8 +1049,12 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   expect(await boardOverflows(table)).toEqual([])
   await shot(table, '07i-fight-sidebars-table')
   await shot(a, '07j-fight-drawer-defender')
-  await b.mouse.click(...(await emptySpotOf(b)))
+  // Taken out, the Yaegir's fight stays up until another operative activates.
+  await tableActions(table, [{ type: 'unit/update', seat: 'A', unitKey: 'VOT-HKY-WAR-8', patch: { dead: true } }])
+  await expect(table.locator('[data-combat]')).not.toHaveCount(0)
+  await tableActions(table, [{ type: 'unit/update', seat: 'B', unitKey: 'TAU-VESP-VSS-8', patch: { activation: 'active' } }])
   await expect(table.locator('[data-combat]')).toHaveCount(0)
+  await tableActions(table, [{ type: 'unit/update', seat: 'A', unitKey: 'VOT-HKY-WAR-8', patch: { dead: false } }])
   // With the fight closed, the two stay marked as engaged (within control range) until
   // they move apart.
   await expect(table.locator(`[data-engaged="${biter}|${brawler}"]`)).toHaveCount(1)

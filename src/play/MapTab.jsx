@@ -899,6 +899,32 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // The stats drawer: my attack once it has a target and weapon, or one aimed at my operative.
   const attack = useAttack(tool === 'attack' ? overlay : null)
 
+  // An attack's screens (the lines here and on the projector, the side bars and both
+  // stats drawers) go once it's over: when the attacker's activation ends (it's marked
+  // expended), or once another operative activates after its target was taken out.
+  // These are changes, not states: a counteracting operative is already expended.
+  const aiming = (tool === 'attack' || tool === 'los') && overlay?.shooterId ? overlay : null
+  const unitOf = (id) => {
+    const token = tokens.find((candidate) => candidate.id === id)
+    return token?.unitKey ? game.players[token.seat]?.unitState?.[token.unitKey] ?? {} : null
+  }
+  const shooterActivation = aiming ? unitOf(aiming.shooterId)?.activation ?? 'ready' : null
+  const targetDead = Boolean(aiming?.targetId && unitOf(aiming.targetId)?.dead)
+  const othersActive = tokens
+    .filter((token) => token.id !== aiming?.shooterId && unitOf(token.id)?.activation === 'active')
+    .map((token) => token.id)
+    .join(',')
+  const lastAimRef = useRef(null)
+  useEffect(() => {
+    const before = lastAimRef.current
+    lastAimRef.current = aiming ? { shooterId: aiming.shooterId, shooterActivation, othersActive } : null
+    if (!aiming || before?.shooterId !== aiming.shooterId) return
+    const activationEnded = before.shooterActivation !== 'expended' && shooterActivation === 'expended'
+    const nextActivation = targetDead && othersActive && othersActive !== before.othersActive
+    // The game moved on (server state), so this device's tool follows.
+    if (activationEnded || nextActivation) leaveTool()
+  })
+
   // Units and Token each pop a panel out beside their button.
   const flyouts = {
     units: unitsOpen ? (
