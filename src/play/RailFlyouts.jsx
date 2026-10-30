@@ -1,5 +1,4 @@
 import { BASE_SIZES_MM, DEFAULT_BASE_MM } from '../../shared/game.js'
-import { weaponLabel, weaponRuleChips } from '../rules/weaponRules.js'
 
 // Glass panels that pop out of the map's tool rail, beside their button.
 
@@ -32,49 +31,6 @@ function Swatch({ entry }) {
     <span className={`flyout-swatch is-${entry.kind}`} aria-hidden="true">
       {entry.kind === 'base' ? '' : entry.short}
     </span>
-  )
-}
-
-// Sightline: pick the shooter's weapon so its Range, Blast/Torrent and other rules
-// apply. "No weapon" checks targeting only.
-// Shoot/Fight: a switch for the action, then every weapon the operative can use for it.
-//   mode: 'shoot' | 'fight'
-export function WeaponFlyout({ mode, onMode, weapons, selectedId, onChoose }) {
-  return (
-    <nav className="rail-flyout anchored-flyout weapon-flyout glass" aria-label="Choose a weapon">
-      <div className="weapon-mode segmented" role="group" aria-label="Shoot or fight">
-        {[
-          ['shoot', 'Shoot'],
-          ['fight', 'Fight'],
-        ].map(([id, label]) => (
-          <button key={id} type="button" className={mode === id ? 'is-selected' : ''} aria-pressed={mode === id} onClick={() => onMode(id)}>
-            {label}
-          </button>
-        ))}
-      </div>
-      {weapons.map((weapon) => (
-        <button
-          key={weapon.id}
-          type="button"
-          className={`flyout-weapon${weapon.id === selectedId ? ' is-selected' : ''}`}
-          onClick={() => onChoose(weapon.id)}
-        >
-          <span>{weaponLabel(weapon)}</span>
-          <span className="flyout-weapon-rules">
-            {[
-              weapon.atk != null ? `${weapon.atk} / ${weapon.hit}+ / ${weapon.dmg.normal}/${weapon.dmg.crit}` : null,
-              ...weaponRuleChips(weapon.rules),
-              weapon.uses,
-            ]
-              .filter(Boolean)
-              .join(' · ') || 'No special rules'}
-          </span>
-        </button>
-      ))}
-      {!weapons.length ? (
-        <span className="muted flyout-note">{mode === 'fight' ? 'No melee weapons found.' : 'No ranged weapons found.'}</span>
-      ) : null}
-    </nav>
   )
 }
 

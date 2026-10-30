@@ -396,7 +396,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect.poll(pointOffset).toBeLessThan(-0.3)
   expect(Math.abs(await pointOffset())).toBeLessThanOrEqual(Number(await sniperBase.getAttribute('r')) + 0.001)
   // Sightline is just the line-of-sight check: no weapons.
-  const weaponList = a.getByRole('navigation', { name: 'Choose a weapon' })
+  const weaponList = a.getByRole('dialog', { name: 'Choose a weapon' })
   await expect(weaponList).toHaveCount(0)
   // Tapping the shooter closes Sightline and opens its action ring.
   await tapToken(sniper)
@@ -404,16 +404,22 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator('.targeting')).toHaveCount(0)
   // Shoot/Fight: tap the shooter and its weapon list pops out, set to Shoot (no enemy
   // is within its control range). The switch shows its melee weapons instead.
+  // Fight from the ring shows the melee weapons full screen; Cancel ends it.
+  await ringAction(a, sniper, 'Fight')
+  await expect(weaponList.locator('.weapon-card-name')).toHaveText([/Fists/])
+  await weaponList.getByRole('button', { name: 'Cancel' }).click()
+  await expect(weaponList).toHaveCount(0)
+  // Shoot shows each ranged profile as a big card: its stats, and its rules as printed.
   await ringAction(a, sniper, 'Shoot')
-  await expect(weaponList.getByRole('button', { name: 'Shoot', exact: true })).toHaveAttribute('aria-pressed', 'true')
-  await expect(weaponList.locator('.flyout-weapon')).toHaveCount(3)
-  await weaponList.getByRole('button', { name: 'Fight', exact: true }).click()
-  await expect(weaponList.locator('.flyout-weapon')).toHaveText([/Fists/])
-  await weaponList.getByRole('button', { name: 'Shoot', exact: true }).click()
+  await expect(weaponList.locator('.weapon-card')).toHaveCount(3)
+  const breaching = weaponList.locator('.weapon-card', { hasText: 'Breaching' })
+  await expect(breaching.locator('.weapon-card-stat-value')).toHaveText(['5', '4+', '3/5'])
+  await expect(breaching.locator('.weapon-card-chips li')).toContainText(['BLAST 2"', 'HEAVY · REPOSITION ONLY'])
+  await expect(breaching.locator('.weapon-card-printed')).toContainText('Blast 2"')
   await shot(a, '07b-weapon-list')
   // Choosing closes the list. A Blast 2" profile rings the target and tags everyone it
   // would also hit.
-  await weaponList.getByRole('button', { name: /BLAST 2"/ }).click()
+  await breaching.getByRole('button', { name: /Breaching/ }).click()
   await expect(weaponList).toHaveCount(0)
   await tapToken(edge)
   await expect(table.locator('[data-area-ring="2"]')).toHaveCount(1)
@@ -568,14 +574,15 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     .poll(async () => Number.parseFloat(await table.locator('.overlay-measure .overlay-label').textContent()))
     .toBeCloseTo(fromBase, 0)
   expect(await table.locator(`[data-token-id="${mineId}"] .board-token-base`).getAttribute('cx')).toBe(mineCx)
-  // Shoot from the ring: the Shoot/Fight tool comes on with the weapon list open.
+  // Shoot from the ring: the Shoot/Fight tool comes on with the weapon chooser open.
   await tokenOf(mineId).click()
   await ring.getByRole('menuitem', { name: 'Shoot' }).click()
-  await expect(a.locator('.weapon-flyout')).toBeVisible()
+  const chooser = a.getByRole('dialog', { name: 'Choose a weapon' })
+  await expect(chooser).toBeVisible()
   await expect(table.locator('.overlay-measure')).toHaveCount(0)
-  // A tap on the empty map ends it.
-  await a.mouse.click(...emptySpot)
-  await expect(a.locator('.weapon-flyout')).toHaveCount(0)
+  // Cancel ends it.
+  await chooser.getByRole('button', { name: 'Cancel' }).click()
+  await expect(chooser).toHaveCount(0)
 
   // In battle, drag an operative in an L: it moves in whole-inch steps, the path stays, and undo puts it back.
   await ringAction(a, 't1', 'Move')
@@ -841,7 +848,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await b.locator(`.map-stage [data-token-id="${mark}"] .board-token-base`).click()
   await expect(b.locator('.unit-radial')).toHaveCount(0)
   await ringAction(b, stinger, 'Shoot')
-  await b.getByRole('navigation', { name: 'Choose a weapon' }).getByRole('button', { name: /Neutron Blaster/ }).click()
+  await b.getByRole('dialog', { name: 'Choose a weapon' }).getByRole('button', { name: /Neutron Blaster/ }).click()
   await b.locator(`.map-stage [data-token-id="${mark}"] .board-token-base`).click()
   // The projector keeps the play area clear: Bob's side bar swaps to his attack and
   // Alice's to her defence. No distance or "check at the table" pills any more.
@@ -927,8 +934,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   ).slice(-3)
   // Fight from the ring: the list shows its melee weapons.
   await ringAction(b, biter, 'Fight')
-  const bobWeapons = b.getByRole('navigation', { name: 'Choose a weapon' })
-  await expect(bobWeapons.getByRole('button', { name: 'Fight', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  const bobWeapons = b.getByRole('dialog', { name: 'Choose a weapon' })
   await bobWeapons.getByRole('button', { name: /Claws/ }).click()
   await b.locator(`.map-stage [data-token-id="${brawler}"] .board-token-base`).click()
   await expect(table.locator('[data-fight-line]')).toHaveCount(1)
@@ -1114,7 +1120,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   const [gun, prey] = (await table.locator('.board-token').evaluateAll((nodes) => nodes.map((node) => node.dataset.tokenId))).slice(-2)
   await openTab(b, 'Map')
   await ringAction(b, gun, 'Shoot')
-  await b.getByRole('navigation', { name: 'Choose a weapon' }).getByRole('button', { name: /Neutron Blaster/ }).click()
+  await b.getByRole('dialog', { name: 'Choose a weapon' }).getByRole('button', { name: /Neutron Blaster/ }).click()
   await b.locator(`.map-stage [data-token-id="${prey}"] .board-token-base`).click()
   await expect(table.locator('.pb-board.is-portrait.is-combat')).toHaveCount(2)
   const tileLefts = await table

@@ -16,7 +16,8 @@ import { categoriesFor, radiusFor } from '../data/tokenCatalog.js'
 import { maxWoundsFor, tokenLabelFor } from '../rules/roster.js'
 import Drawer from './Drawer.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
-import { SelectPanel, TokenFlyout, UnitsFlyout, WeaponFlyout } from './RailFlyouts.jsx'
+import { SelectPanel, TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
+import WeaponChooser from './WeaponChooser.jsx'
 import { meleeWeaponsFor, rangedWeaponsFor } from '../rules/weaponRules.js'
 import AttackDrawer from './AttackDrawer.jsx'
 import ToolIcon from './ToolIcon.jsx'
@@ -892,21 +893,20 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       ) : null,
   }
   const pressTool = { units: pressUnits, token: pressToken }
-  // Shoot/Fight: the switch, then the attacker's ranged or melee weapons.
+  // Shoot or Fight: the attacker's ranged or melee weapons, full screen. Cancel ends it.
   const weaponMenu =
     attacker && weaponMenuOpen ? (
-      <div className="weapon-panel">
-        <WeaponFlyout
-          mode={overlay.mode}
-          onMode={(mode) => publish({ ...overlay, mode, weaponId: null })}
-          weapons={overlay.mode === 'fight' ? meleeWeaponsFor(game, attacker) : rangedWeaponsFor(game, attacker)}
-          selectedId={overlay.weaponId ?? null}
-          onChoose={(weaponId) => {
-            publish({ ...overlay, weaponId })
-            setWeaponMenuOpen(false)
-          }}
-        />
-      </div>
+      <WeaponChooser
+        mode={overlay.mode}
+        operativeName={attacker.label}
+        weapons={overlay.mode === 'fight' ? meleeWeaponsFor(game, attacker) : rangedWeaponsFor(game, attacker)}
+        selectedId={overlay.weaponId ?? null}
+        onChoose={(weaponId) => {
+          publish({ ...overlay, weaponId })
+          setWeaponMenuOpen(false)
+        }}
+        onClose={leaveTool}
+      />
     ) : null
   const radialToken = radial ? tokens.find((token) => token.id === radial.tokenId) ?? null : null
   const radialActions = radialToken ? RADIAL_ACTIONS.filter((action) => !action.own || radialToken.seat === seat) : []

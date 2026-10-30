@@ -102,6 +102,8 @@ const STUN_GRENADE = {
   hit: null,
   dmg: null,
   rules: { range: 6, stunArea: 1, devastating: null, heavy: null, special: [] },
+  wr: 'Rng 6"',
+  note: 'The target, and every other operative within 1" of it, takes a stun test: on a 3+, it gets APL −1.',
   source: 'grenade',
   grenade: 'stun',
 }
@@ -215,6 +217,7 @@ export const rangedWeaponsFor = (game, token) => {
         profile: weapon.profiles.length > 1 ? profile.profileName : '',
         ...statsOf(profile),
         rules: parseWeaponRules(profile.WR),
+        wr: profile.WR ?? '',
         source: 'datacard',
       })),
     )
@@ -227,6 +230,7 @@ export const rangedWeaponsFor = (game, token) => {
         profile: '',
         ...statsOf(weapon),
         rules: parseWeaponRules(weapon.WR),
+        wr: weapon.WR ?? '',
         source: 'equipment',
         uses: usesNote(item.description),
       })),
@@ -243,6 +247,7 @@ export const rangedWeaponsFor = (game, token) => {
         profile: '',
         ...statsOf(weapon),
         rules: parseWeaponRules(weapon.WR),
+        wr: weapon.WR ?? '',
         source: 'grenade',
         grenade: kind,
         // Grenadier: using it doesn't count towards limits, and may improve Hit.
@@ -265,7 +270,7 @@ export const rangedWeaponsFor = (game, token) => {
 // loadout), then melee weapons from equipment its player took (e.g. Kommando Choppas,
 // Yaegir Plasma Knives). An operative that already has that weapon on its datacard
 // uses the better, datacard version.
-//   -> [{ id, name, profile, atk, hit, dmg, rules, source: 'datacard' | 'equipment' }]
+//   -> [{ id, name, profile, atk, hit, dmg, rules, wr (the rules as printed), source: 'datacard' | 'equipment' }]
 export const meleeWeaponsFor = (game, token) => {
   const player = game.players?.[token?.seat]
   if (!player || !token?.unitKey) return []
@@ -284,6 +289,7 @@ export const meleeWeaponsFor = (game, token) => {
         profile: weapon.profiles.length > 1 ? profile.profileName : '',
         ...statsOf(profile),
         rules: parseWeaponRules(profile.WR),
+        wr: profile.WR ?? '',
         source: 'datacard',
       })),
     )
@@ -297,6 +303,7 @@ export const meleeWeaponsFor = (game, token) => {
         profile: '',
         ...statsOf(weapon),
         rules: parseWeaponRules(weapon.WR),
+        wr: weapon.WR ?? '',
         source: 'equipment',
         eqId: item.eqId,
       })),
