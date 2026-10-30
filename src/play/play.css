@@ -1269,10 +1269,10 @@
   border-radius: 50%;
   background: radial-gradient(
     closest-side,
-    transparent 6%,
-    rgba(110, 14, 4, 0.18) 16%,
-    rgba(140, 20, 6, 0.38) 30%,
-    rgba(160, 26, 8, 0.55) 48%,
+    transparent 21%,
+    rgba(110, 14, 4, 0.18) 29%,
+    rgba(140, 20, 6, 0.38) 38%,
+    rgba(160, 26, 8, 0.55) 50%,
     rgba(170, 30, 10, 0.62) 100%
   );
   pointer-events: none;
