@@ -603,7 +603,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await openTab(a, 'Map')
   await expect(a.getByRole('button', { name: 'Units', exact: true })).toHaveCount(0)
   // Everything else on the operatives comes from their action ring; the rail keeps the rest.
-  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', 'Ops', 'Equipment', 'Firefight', 'Strat ploys', 'Faction', /to go$/, 'My board', 'Fit', 'Full screen', 'Tabs'])
+  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', 'Ops', 'Equipment', 'Firefight', 'Strat ploys', 'Faction', 'Next TP', 'My board', 'Fit', 'Full screen', 'Tabs'])
   // My board: Alice drags a piece of her side bar on her iPad and the projector follows;
   // Reset puts it back. (Map 2: landscape bars.)
   const aliceScore = aliceBoard.locator('[data-piece="score"]')
@@ -627,7 +627,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(aliceScore).toHaveAttribute('style', /left: 3%/)
   await arranger.getByRole('button', { name: 'Done' }).click()
   await expect(arranger).toHaveCount(0)
-  // Next TP in the drawer waits until every operative has activated.
+  // Next TP in the drawer waits until every operative has activated, saying how many are left.
+  await expect(a.locator('.tool-rail .rail-tool-note')).toHaveText(/^\d+ left to activate$/)
   await expect(a.getByRole('button', { name: /^Next TP \(\d+ operatives still to activate\)$/ })).toBeDisabled()
   // With no tool on, tapping an operative opens a ring of its actions; a touch
   // elsewhere closes it.

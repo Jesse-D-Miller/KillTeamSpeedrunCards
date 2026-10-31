@@ -15,7 +15,8 @@ const PATHS = {
   base: 'M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM2.5 12h2.5M19 12h2.5',
   remove: 'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13',
   card: 'M6 3h12v18H6zM9 7h6M9 11h6M9 15h4',
-  nextTp: 'M5 5v14l9-7zM16 5v14M20 5v14',
+  // A new round: an arrow coming back round on itself.
+  nextTp: 'M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4v5h-5',
   ops: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
   equipment: 'M14.5 3.5a4.5 4.5 0 0 0-4.3 5.8L3.5 16v4.5H8l6.7-6.7a4.5 4.5 0 1 0-.2-10.3z',
   firefight: 'M13 2 4 14h7l-1 8 9-12h-7z',

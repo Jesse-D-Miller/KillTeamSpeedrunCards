@@ -1152,6 +1152,13 @@
   opacity: 0.4;
 }
 
+/* A second, smaller line under a rail button's label (e.g. Next TP's count). */
+.rail-tool-note {
+  font-size: 0.6rem;
+  line-height: 1.15;
+  text-align: center;
+}
+
 .rail-tool.is-selected {
   background: var(--seat-color);
   color: #0b0b0b;

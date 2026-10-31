@@ -88,7 +88,9 @@ export function NextTpRailButton() {
         aria-label={unactivated ? `Next TP (${unactivated} operatives still to activate)` : 'Next TP'}
       >
         <ToolIcon tool="nextTp" />
-        <span>{unactivated ? `${unactivated} to go` : tp >= MAX_TP ? 'End game' : 'Next TP'}</span>
+        <span>{tp >= MAX_TP ? 'End game' : 'Next TP'}</span>
+        {/* Greyed out until every operative on both sides has activated. */}
+        {unactivated ? <small className="rail-tool-note">{unactivated} left to activate</small> : null}
       </button>
       {confirmingTp === tp ? (
         <EndTurnSheet
