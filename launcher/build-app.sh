@@ -48,7 +48,14 @@ for size in 16 32 128 256 512; do
   sips -z $((size * 2)) $((size * 2)) "$WORK/square.png" --out "$WORK/AppIcon.iconset/icon_${size}x${size}@2x.png" >/dev/null
 done
 iconutil -c icns "$WORK/AppIcon.iconset" -o "$APP/Contents/Resources/AppIcon.icns"
-# Finder caches icons; touching the app makes it pick up the new one.
-touch "$APP"
+# macOS 26 puts app icons that aren't its rounded-square shape on a grey plate. A
+# custom Finder icon isn't, so the logo also goes on as one, transparent around the
+# emblem. Setting it also refreshes Finder's cached icon.
+osascript -l JavaScript - "$WORK/square.png" "$APP" >/dev/null <<'JS'
+ObjC.import('AppKit')
+function run([image, app]) {
+  return $.NSWorkspace.sharedWorkspace.setIconForFileOptions($.NSImage.alloc.initWithContentsOfFile(image), app, 0)
+}
+JS
 
 echo "Made $APP"
