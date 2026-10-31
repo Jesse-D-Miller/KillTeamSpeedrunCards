@@ -694,7 +694,7 @@ All of these were replaced in Approved Ops 2025.
 - **Distance:** a move is laid in 1" steps along the finger's route and stops at its action's limit. Held past the limit for a second, the route bends toward the finger without getting longer: each 1" step keeps its length and the start stays put. A second move in the same activation carries on from the first one's route.
 - **End-of-move rules are warnings**, shown in red on the move banner: a Charge must end within 1" of an enemy; a Move or Dash can't end within an enemy's control range; a Fall Back must start within one and not end in one. Control range also needs visibility, and terrain (climbing, walls) isn't checked, so the app warns rather than refusing the move.
 - **Free move:** dragging your own operative with no tool picked moves it with no limit (no move action). Dragging an enemy operative or the empty map still measures.
-- The move action is saved with the move (`lastMove.kind`). Rules that depend on it (Kunnin' But Brutal, Heavy (Dash only), Ocelli) don't read it yet.
+- The move actions are saved with the movement (`lastMove.kinds`, with `free` for a drag with none picked). **Heavy (Dash only / Reposition only)** reads them: a matching move is allowed, any other is flagged can't shoot. **Kunnin' But Brutal** shows as unavailable when the Kommando made moves this activation but none was a Charge. A free drag leaves both to the players, as before. Ocelli needs FLY, which isn't tracked.
 
 ### Arranging the side bars (app feature, not a rule)
 

@@ -850,9 +850,12 @@ const handlers = {
     const from = token.lastMove?.from ?? { x: token.x, y: token.y }
     const steps = (Array.isArray(action.path) ? action.path : []).slice(1, MAX_PATH_POINTS).map(sanitizePoint)
     const prevMovedTp = token.lastMove ? token.lastMove.prevMovedTp ?? null : operativeUnit(state, token)?.movedTp ?? null
-    // Which move action it was (Move, Dash, Charge, Fall Back), if one was picked.
+    // Which move action it was (Move, Dash, Charge, Fall Back), if one was picked, and
+    // every action this movement has used so far ('free' for a drag with none picked),
+    // for rules like Heavy (Dash only).
     const kind = isMoveKind(action.kind) ? action.kind : null
-    const moved = setMovePath(state, id, from, [from, ...steps], { prevMovedTp, kind })
+    const kinds = [...new Set([...(token.lastMove?.kinds ?? []), kind ?? 'free'])]
+    const moved = setMovePath(state, id, from, [from, ...steps], { prevMovedTp, kind, kinds })
     // Back-tracking all the way to where it started undoes the move and its activation.
     if (!steps.length) return returnToStart(restoreMovedTp(moved, token), token)
     const maxWounds = token.maxWounds ?? action.maxWounds

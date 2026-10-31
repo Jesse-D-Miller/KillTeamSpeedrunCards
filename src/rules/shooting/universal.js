@@ -122,6 +122,7 @@ export const universalDefence = (ctx) => {
 }
 
 const HEAVY_ONLY = { dash: 'Dash', reposition: 'Reposition' }
+const MOVE_NAMES = { reposition: 'Reposition', dash: 'Dash', charge: 'Charge', fallBack: 'Fall Back' }
 
 // The core rules, read off the final targeting check.
 //   state: { cover, obscured, choose, chooseCover } after the defender's choice.
@@ -135,8 +136,19 @@ export const coreModifiers = (ctx, analysis, rules, effects, state) => {
     if (analysis.shooterWarnings.some((text) => text.startsWith('ENGAGED'))) warn('core-engaged', 'Within an enemy’s control range')
   }
   if (rules?.heavy && ctx.movedThisActivation) {
+    // Heavy (x only): the moves it made this activation, if they were picked from its
+    // Move ring, settle it; a free drag leaves it to the players.
+    const kinds = ctx.moveKinds ?? []
+    const known = kinds.length > 0 && !kinds.includes('free')
+    const others = kinds.filter((kind) => kind !== rules.heavy)
     if (rules.heavy === 'any') warn('core-heavy', 'Heavy: it moved this activation')
-    else {
+    else if (known && others.length) {
+      warn('core-heavy', `Heavy (${HEAVY_ONLY[rules.heavy]} only): it made a ${others.map((kind) => MOVE_NAMES[kind]).join(' and ')}`)
+    } else if (known) {
+      attack.push(
+        mod({ id: 'core-heavy', owner: 'attacker', source: 'weapon', name: 'Heavy', mode: 'note', text: `Moved with a ${HEAVY_ONLY[rules.heavy]}: allowed` }),
+      )
+    } else {
       attack.push(
         mod({
           id: 'core-heavy',

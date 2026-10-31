@@ -124,18 +124,24 @@ export const fight = (ctx, side) => {
     mods.push(mod({ id: PLOYS.waaagh, owner, source: 'strat', name: 'WAAAGH!', text: 'Balanced', effect: { addRules: { balanced: true } }, tone: 'good' }))
   }
   if (weapon && !retaliating && operative.order === 'conceal' && ctx.inBattle) {
+    // Its moves this activation, when picked from the Move ring, say whether it charged.
+    const kinds = ctx.moveKindsOf(ctx.fighter(side).token, operative)
+    const charged = kinds.includes('charge')
+    const known = !kinds.includes('free')
+    const base = { id: PLOYS.kunninButBrutal, owner, source: 'firefight', name: 'Kunnin’ But Brutal' }
     mods.push(
-      mod({
-        id: PLOYS.kunninButBrutal,
-        owner,
-        source: 'firefight',
-        name: 'Kunnin’ But Brutal',
-        mode: 'toggle',
-        cost: 1,
-        limit: 1,
-        text: 'If it charged this activation: its first strike with a normal success counts as a crit',
-        tone: 'good',
-      }),
+      known && !charged
+        ? mod({ ...base, mode: 'inactive', text: 'It didn’t charge this activation' })
+        : mod({
+            ...base,
+            mode: 'toggle',
+            cost: 1,
+            limit: 1,
+            text: charged
+              ? 'Charged this activation: its first strike with a normal success counts as a crit'
+              : 'If it charged this activation: its first strike with a normal success counts as a crit',
+            tone: 'good',
+          }),
     )
   }
   if (ctx.inBattle && !operative.keywords.has('BOMB SQUIG') && !operative.keywords.has('GROT')) {

@@ -365,12 +365,14 @@ describe('token movement', () => {
   it('moves along the path and remembers it', () => {
     const state = moved()
     expect(state.tokens[0]).toMatchObject({ x: 4, y: 3 })
-    expect(state.tokens[0].lastMove).toEqual({ from: { x: 2, y: 2 }, path, inches: 3, prevMovedTp: null, kind: null })
+    expect(state.tokens[0].lastMove).toEqual({ from: { x: 2, y: 2 }, path, inches: 3, prevMovedTp: null, kind: null, kinds: ['free'] })
   })
 
   it('remembers which move action it was (Move, Dash, Charge, Fall Back), if any', () => {
     const charged = applyAction(moved(), { type: 'token/move', id: 't1', path: [...path, { x: 4, y: 4 }], kind: 'charge' }, 'A')
     expect(charged.tokens[0].lastMove.kind).toBe('charge')
+    // The movement remembers every action in it.
+    expect(charged.tokens[0].lastMove.kinds).toEqual(['free', 'charge'])
     const junk = applyAction(moved(), { type: 'token/move', id: 't1', path: [...path, { x: 4, y: 4 }], kind: 'teleport' }, 'A')
     expect(junk.tokens[0].lastMove.kind).toBeNull()
   })

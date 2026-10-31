@@ -105,6 +105,13 @@ export const buildShotContext = ({ game, layout, shooterToken, targetToken, weap
     gap: gapBetween(shooterToken, targetToken),
     counteracting,
     movedThisActivation,
+    // The move actions it used this activation ('free' for a drag with none picked).
+    moveKinds: movedThisActivation ? shooterToken.lastMove.kinds ?? ['free'] : [],
+    // The same for either operative in a fight (it moved this activation or counteraction).
+    moveKindsOf: (token, operative) =>
+      inBattle && token?.lastMove && (operative.activation === 'active' || (operative.activation === 'expended' && operative.counteractedTp === tp))
+        ? token.lastMove.kinds ?? ['free']
+        : [],
     movedThisTp: inBattle && (shooter.movedTp === tp || Boolean(shooterToken.lastMove)),
     targetExpended: target.activation === 'expended',
     // Set by computeShot as it goes: the first targeting check, then the attacker's

@@ -197,6 +197,20 @@ describe('Hernkyn Yaegirs', () => {
     expect(rerolls(shot)).toEqual([])
   })
 
+  it('Heavy (Reposition only) reads the moves picked from the Move ring', () => {
+    const gunner = 'VOT-HKY-GNR-0'
+    const movedWith = (kinds) =>
+      setup({
+        tokens: [op('s', 'A', gunner, 2, 5, { lastMove: { from: { x: 1, y: 5 }, path: [], inches: 1, kinds } }), op('t', 'B', WARRIOR, 8)],
+        units: { A: { [gunner]: { order: 'engage', activation: 'active' } } },
+      })
+    expect(find(shoot(movedWith(['reposition']), 'VOT-HKY-GNR-APM-0'), 'attack', 'Heavy').text).toBe('Moved with a Reposition: allowed')
+    const dashed = shoot(movedWith(['reposition', 'dash']), 'VOT-HKY-GNR-APM-0')
+    expect(find(dashed, 'attack', 'Can’t shoot').text).toBe('Heavy (Reposition only): it made a Dash')
+    // A free drag (no move action picked) is left to the players.
+    expect(find(shoot(movedWith(['free']), 'VOT-HKY-GNR-APM-0'), 'attack', 'Heavy').text).toMatch(/only if that move was a Reposition/)
+  })
+
   it('Tracker: Punishing against an expended enemy within 6"', () => {
     const tracker = 'VOT-HKY-TRK-0'
     const game = (activation) =>
@@ -508,6 +522,21 @@ describe('fights', () => {
   // (claws 3 / 4+ / 3/4) in base contact.
   const brawl = (extra = {}) =>
     setup({ tokens: [op('s', 'A', THEYN, 5), op('t', 'B', WARRIOR, 6.2)], units: { A: engage(THEYN), B: engage(WARRIOR) }, ...extra })
+
+  it('Kunnin’ But Brutal knows whether the Kommando charged', () => {
+    const BOY = 'ORK-KOM-BOY-0'
+    const brawler = (kinds) =>
+      setup({
+        teams: ['ORK-KOM', 'TAU-VESP'],
+        tokens: [op('s', 'A', BOY, 5, 5, kinds ? { lastMove: { from: { x: 2, y: 5 }, path: [], inches: 3, kinds } } : {}), op('t', 'B', WARRIOR, 6.2)],
+        units: { A: { [BOY]: { order: 'conceal', activation: 'active' } }, B: engage(WARRIOR) },
+      })
+    const ploy = (game) => find({ modifiers: fight(game, 'ORK-KOM-BOY-CHP-0').modifiers }, 'attack', 'Kunnin’ But Brutal')
+    expect(ploy(brawler(['charge']))).toMatchObject({ mode: 'toggle', text: expect.stringMatching(/^Charged this activation/) })
+    expect(ploy(brawler(['dash']))).toMatchObject({ mode: 'inactive', text: 'It didn’t charge this activation' })
+    expect(ploy(brawler(null)).mode).toBe('inactive')
+    expect(ploy(brawler(['free']))).toMatchObject({ mode: 'toggle', text: expect.stringMatching(/^If it charged/) })
+  })
 
   it('both sides roll their melee weapon; the defender retaliates with their first by default', () => {
     const result = fight(brawl(), 'VOT-HKY-THEYN-PK-0')
