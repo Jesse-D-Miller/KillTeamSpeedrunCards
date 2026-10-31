@@ -707,5 +707,10 @@ All of these were replaced in Approved Ops 2025.
 - **Wounds corrected (31 Oct 2026),** checked against Wahapedia's current datacards (`wahapedia.ru/kill-team3/kill-teams/<slug>/`, lowercase slug):
   - **Raveners** (Aug 2026 dataslate): Ravener Prime 21 → **19**; Felltalon, Tremorscythe, Venomspitter, Warrior and Wrecker 20 → **18**. APL, Move and Save already matched.
   - **Canoptek Tomb Crawler** (Apr 2026 dataslate): 21 → **18**. The rest of Canoptek Circle matched.
-  - Not yet checked: the same dataslates' rules-text changes (Felltalon's Toxic Lunge, Whipcord Emergence, Dominate, Dimensional Banishment), which the app only shows as text.
+  - **Rules text from the same dataslates (Aug 2026):**
+    - **Felltalon's Toxic Lunge:** the target must be visible, and an enemy within control range must be picked first.
+    - **Whipcord Emergence:** on your TUNNEL, re-roll only defence dice results of one (was any). Also fixed the data's "f that" typos. The text reader labels it "Re-roll defence dice showing 1".
+    - **Dimensional Banishment:** no effect on NEMESIS operatives or the Red Terror NPO.
+    - **Obelisk Node Control:** Pick Up Marker is now excluded, as well as Retrieve.
+    - **Dominate** (tac op): only tokens on operatives in the killzone score. The app's tac op text already said this.
 - **Kill team archetypes:** each team's tac op archetypes are in the `archetypes` field (e.g. "Seek & Destroy/Security").

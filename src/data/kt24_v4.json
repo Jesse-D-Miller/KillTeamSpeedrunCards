@@ -22212,7 +22212,7 @@
             "opTypeId": "NEC-CAN-GEO",
             "abilityName": "Obelisk Node Control",
             "AP": null,
-            "description": "Whenever this operative would perform a mission action (excluding Retrieve, Approved Ops 2025), if it requires this operative to control an objective marker, you can instead determine control from one of your OBELISK NODE markers (see Obelisk Node Matrix faction rule).\r Whenever this operative would perform the Operate Hatch action, you can open or close a hatchway thats access point is within 1\" of one of your OBELISK NODE markers instead.\r Note that you must still fulfil the Operate Hatch action’s conditions.",
+            "description": "Whenever this operative would perform a mission action (excluding Pick Up Marker or Retrieve, Approved Ops 2025), if it requires this operative to control an objective marker, you can instead determine control from one of your OBELISK NODE markers (see Obelisk Node Matrix faction rule).\r Whenever this operative would perform the Operate Hatch action, you can open or close a hatchway thats access point is within 1\" of one of your OBELISK NODE markers instead.\r Note that you must still fulfil the Operate Hatch action’s conditions.",
             "isFactionRule": false
           },
           {
@@ -22624,7 +22624,7 @@
             "opTypeId": "NEC-CAN-TC",
             "abilityName": "*Dimensional Banishment",
             "AP": null,
-            "description": "After this operative uses this weapon, if you inflicted damage or retained any critical successes, if the target wasn’t incapacitated, roll 2D6: if the result is higher than the target’s remaining wounds, the target is incapacitated (taking precedence over rules that prevent incapacitation, e.g. Medic!, FELLGOR RAVAGER Frenzy) and your opponent cannot place a Reanimation marker (HIEROTEK CIRCLE ) for that operative, if relevant.",
+            "description": "After this operative uses this weapon, if you inflicted damage or retained any critical successes, if the target wasn’t incapacitated, roll 2D6: if the result is higher than the target’s remaining wounds, the target is incapacitated (taking precedence over rules that prevent incapacitation, e.g. Medic!, FELLGOR RAVAGER Frenzy) and your opponent cannot place a Reanimation marker (HIEROTEK CIRCLE ) for that operative, if relevant. This rule has no effect if the target is a NEMESIS operative or Red Terror NPO.",
             "isFactionRule": false
           },
           {
@@ -116467,7 +116467,7 @@
             "opTypeId": "TYR-RAV-FTL",
             "abilityName": "Toxic Lunge",
             "AP": 1,
-            "description": "\n- Select one enemy operative within 2\" of this operative. Alternatively, if this operative is underground, select one enemy operative on your TUNNEL. Inflict D3+2 damage on that enemy operative and it gains one of your Poison tokens (if it doesn’t already have one).\n- This operative can perform this action while underground (this takes precedence over the normal Burrow rules).\n",
+            "description": "\n- Select one enemy operative visible to and within 2\" of this operative. If enemy operatives are within control range of this operative, you cannot select an enemy operative that isn’t. Alternatively, if this operative is underground, select one enemy operative on your TUNNEL. Inflict D3+2 damage on that enemy operative and it gains one of your Poison tokens (if it doesn’t already have one).\n- This operative can perform this action while underground (this takes precedence over the normal Burrow rules).\n",
             "isFactionRule": false
           },
           {
@@ -116948,7 +116948,7 @@
         "ployType": "S",
         "seq": 1,
         "ployName": "Whipcord Emergence",
-        "description": "Whenever an operative is shooting a friendly RAVENER operative:\n\n- f that friendly operative has performed the Burrow action during that turning point, you can re-roll one of your defence dice.\n- f that friendly operative is on your TUNNEL, you can re-roll any of your defence dice.\n"
+        "description": "Whenever an operative is shooting a friendly RAVENER operative:\n\n- If that friendly operative has performed the Burrow action during that turning point, you can re-roll one of your defence dice.\n- If that friendly operative is on your TUNNEL, you can re-roll any of your defence dice results of one.\n"
       },
       {
         "ployId": "TYR-RAV-S-WOOS",

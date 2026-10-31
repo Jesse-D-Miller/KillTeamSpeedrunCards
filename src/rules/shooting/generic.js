@@ -173,7 +173,11 @@ export const parseDefenceText = (raw) => {
   }
   if (/re-roll (?:one|any) of your defence dice/i.test(text)) {
     effect.reroll = 'defence'
-    summary.push(/re-roll any/i.test(text) ? 'Re-roll any defence dice' : 'Re-roll one defence die')
+    // "Re-roll any of your defence dice results of one" (e.g. Whipcord Emergence since
+    // Aug 2026) only re-rolls 1s, not any dice.
+    const anyDice = /re-roll any of your defence dice(?! results of one)/i.test(text)
+    const ones = /re-roll any of your defence dice results of one/i.test(text)
+    summary.push(anyDice ? 'Re-roll any defence dice' : ones ? 'Re-roll defence dice showing 1' : 'Re-roll one defence die')
   }
   if (/cannot be selected as a valid target/i.test(text)) {
     effect.notValid = 'Not a valid target (team rule)'

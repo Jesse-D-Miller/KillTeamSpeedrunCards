@@ -440,6 +440,9 @@ describe('other kill teams (read from their rules text)', () => {
     expect(parseDefenceText('Whenever an operative is shooting this operative, ignore the Piercing weapon rule.').effect).toEqual({ ignorePiercing: true })
     expect(parseDefenceText('you can retain one of your defence dice as a normal success without rolling it').effect).toEqual({ extraAutoSaves: 1 })
     expect(parseDefenceText('worsen the Hit stat of that operative’s weapons by 1').effect).toEqual({ hit: 1 })
+    // Only 1s, not any dice (Whipcord Emergence, Aug 2026).
+    expect(parseDefenceText('you can re-roll any of your defence dice results of one.').summary).toBe('Re-roll defence dice showing 1')
+    expect(parseDefenceText('you can re-roll any of your defence dice.').summary).toBe('Re-roll any defence dice')
   })
 
   it('applies an active, unconditional strategy ploy; conditional rules wait for their owner', () => {
