@@ -697,11 +697,15 @@ All of these were replaced in Approved Ops 2025.
 
 ## 13. Data caveats in this repo
 
-- **Kill team data:** `src/data/kt24_v4.json` (from vjosset/killteamjson) can lag behind balance dataslates; for example, it may not have the Aug 2026 Raveners Wounds change or the Apr 2026 Tomb Crawler 18W. **Spectre Squad** (released May 2026 with Terror on Devlan) is missing.
+- **Kill team data:** `src/data/kt24_v4.json` (from vjosset/killteamjson) can lag behind balance dataslates, so check a team against Wahapedia before relying on it. **Spectre Squad** (released May 2026 with Terror on Devlan) is missing.
 - **Corrected against the current rules (25 Oct 2026):** every weapon profile of the three hand-checked teams was compared with Wahapedia's team pages. Fixed:
   - Hernkyn Yaegir bolt shotgun (long range) is 4 / 5+ / **2/3**, not 2/2 (Theyn and Warrior).
   - Stabilised Bolt Shells also give **Accurate 1**.
   - The Kommando Burna Boy's burna (deluge) has **Seek**, not Seek Light.
   - The Comms Boy's weapon is the **shokka pistol** (Collapsible Stocks names it).
   - Vespid Stingwings matched the June 2026 official rules.
+- **Wounds corrected (31 Oct 2026),** checked against Wahapedia's current datacards (`wahapedia.ru/kill-team3/kill-teams/<slug>/`, lowercase slug):
+  - **Raveners** (Aug 2026 dataslate): Ravener Prime 21 → **19**; Felltalon, Tremorscythe, Venomspitter, Warrior and Wrecker 20 → **18**. APL, Move and Save already matched.
+  - **Canoptek Tomb Crawler** (Apr 2026 dataslate): 21 → **18**. The rest of Canoptek Circle matched.
+  - Not yet checked: the same dataslates' rules-text changes (Felltalon's Toxic Lunge, Whipcord Emergence, Dominate, Dimensional Banishment), which the app only shows as text.
 - **Kill team archetypes:** each team's tac op archetypes are in the `archetypes` field (e.g. "Seek & Destroy/Security").
