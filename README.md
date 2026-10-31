@@ -89,7 +89,7 @@ The server owns the single game state. Devices send small **actions** (`muster/t
 
 ### Desktop icon (macOS)
 
-Run `zsh launcher/build-app.sh` once to make **KTSpeed.app** on the Desktop (again if the repo moves). Double-clicking it:
+Run `zsh launcher/build-app.sh` once to make **KTSpeedRun.app** on the Desktop (again if the repo moves). Double-clicking it:
 
 - opens a Terminal window and runs `npm run table` (build, then the server on port 3000), keeping the Mac awake with `caffeinate`;
 - copies the server's log to `server/data/table.log`;
