@@ -1,3 +1,4 @@
+import { boardLayoutFor, isBoardPiece, isBoardShape, placePiece } from './boardLayout.js'
 import {
   DEFAULT_BASE_MM,
   MAX_CATEGORY_VP,
@@ -364,6 +365,39 @@ const handlers = {
       Object.entries(action.patch ?? {}).filter(([key]) => allowed.includes(key)),
     )
     return { ...state, settings: { ...state.settings, ...patch } }
+  },
+
+  // ---- side bar arrangement ----
+  // A player drops one piece of their own side bar; it snaps and nudges clear of others.
+  'board/layout': (state, action, actor) => {
+    const seat = resolveSeat(action, actor)
+    const shape = String(action.shape ?? '')
+    const piece = String(action.piece ?? '')
+    if (!isBoardShape(shape)) fail('Unknown board shape.')
+    if (!isBoardPiece(piece)) fail('Unknown board piece.')
+    const x = Number(action.x)
+    const y = Number(action.y)
+    if (!Number.isFinite(x) || !Number.isFinite(y)) fail('A position is required.')
+    const spot = placePiece(boardLayoutFor(state.settings, seat, shape), piece, { x, y })
+    const layouts = state.settings.boardLayouts ?? {}
+    const mine = layouts[seat] ?? {}
+    return {
+      ...state,
+      settings: {
+        ...state.settings,
+        boardLayouts: { ...layouts, [seat]: { ...mine, [shape]: { ...mine[shape], [piece]: spot } } },
+      },
+    }
+  },
+
+  'board/resetLayout': (state, action, actor) => {
+    const seat = resolveSeat(action, actor)
+    const shape = String(action.shape ?? '')
+    if (!isBoardShape(shape)) fail('Unknown board shape.')
+    const layouts = state.settings.boardLayouts ?? {}
+    const mine = { ...layouts[seat] }
+    delete mine[shape]
+    return { ...state, settings: { ...state.settings, boardLayouts: { ...layouts, [seat]: mine } } }
   },
 
   // ---- setup ----

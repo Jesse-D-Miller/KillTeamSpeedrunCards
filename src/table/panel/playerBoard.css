@@ -24,7 +24,6 @@
   display: grid;
   gap: var(--gap);
   padding: calc(5.2cqmin * var(--fit, 1));
-  border: calc(1cqmin * var(--fit, 1)) solid var(--seat-color);
   border-radius: calc(6.5cqmin * var(--fit, 1));
   background: #0b0d10;
   color: var(--ink);
@@ -105,6 +104,38 @@
   display: flex;
   gap: var(--gap);
   align-items: stretch;
+}
+
+/* The battle board: each piece where its player put it (see PlayerBoard.jsx); every
+   section fills its piece. */
+.pb-board.is-free {
+  display: block;
+  padding: 0;
+}
+
+.pb-piece {
+  position: absolute;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pb-piece > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pb-board.is-free .pb-piece > .pb-section,
+.pb-board.is-free .pb-piece > .pb-tacop,
+.pb-board.is-free .pb-piece > .pb-critop {
+  width: 100%;
+  height: 100%;
+}
+
+.pb-board.is-free .pb-area-ploys {
+  overflow: hidden;
 }
 
 /* In landscape every section fills its grid area. */

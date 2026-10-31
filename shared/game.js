@@ -65,6 +65,9 @@ export const DEFAULT_SETTINGS = {
   showObjectives: true,
   showPanels: true,
   panelInches: 8,
+  // Each player's own arrangement of their side bar (see boardLayout.js), kept between
+  // games: { A: { portrait: { score: { x, y } } }, B: {} }.
+  boardLayouts: { A: {}, B: {} },
 }
 
 export const createGame = (settings = DEFAULT_SETTINGS) => ({

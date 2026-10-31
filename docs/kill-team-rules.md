@@ -688,6 +688,11 @@ All of these were replaced in Approved Ops 2025.
 
 **Order tags:** the red/black swap is the user's table convention. The rules flip every token to its light (ready) side in each Ready step; tracking ready/expended by alternating colours each TP gives the same information.
 
+### Arranging the side bars (app feature, not a rule)
+
+- **My board** (iPad map drawer): each player drags the pieces of their own in-game side bar (name, score, turning points, kill op, ploys, tac op, crit op). Drops snap to 1% of the bar and move to the nearest free spot if they'd cover another piece. The projector follows. **Reset** restores the defaults.
+- Layouts are saved by seat in `settings.boardLayouts` (they survive a new game), with portrait (Map 1) and landscape (Map 2) bars kept separately. Setup and combat views are still laid out automatically. The outer coloured border is gone.
+
 ### Game history and the stats page (app feature, not a rule)
 
 - **What is saved:** every game that reaches the results is added to `server/data/history.json` on the table's Mac (gitignored, never pushed). Going back to the battle and on to the results again replaces that game's record instead of adding a second one.

@@ -22,7 +22,7 @@ const openTab = async (page, name) => {
 // bottom padding, which scroll sizes don't count for flex columns).
 const boardOverflows = (page) =>
   page.evaluate(() =>
-    [...document.querySelectorAll('.pb-board .pb-section, .pb-board .pb-critop-body, .pb-board .pb-tacop')]
+    [...document.querySelectorAll('.pb-board .pb-section, .pb-board .pb-critop-body, .pb-board .pb-tacop, .pb-board .pb-piece:not([data-piece="critop"])')]
       .filter((el) => {
         if (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1) return true
         const last = el.lastElementChild
@@ -603,7 +603,30 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await openTab(a, 'Map')
   await expect(a.getByRole('button', { name: 'Units', exact: true })).toHaveCount(0)
   // Everything else on the operatives comes from their action ring; the rail keeps the rest.
-  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', 'Ops', 'Equipment', 'Firefight', 'Strat ploys', 'Faction', /to go$/, 'Fit', 'Full screen', 'Tabs'])
+  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', 'Ops', 'Equipment', 'Firefight', 'Strat ploys', 'Faction', /to go$/, 'My board', 'Fit', 'Full screen', 'Tabs'])
+  // My board: Alice drags a piece of her side bar on her iPad and the projector follows;
+  // Reset puts it back. (Map 2: landscape bars.)
+  const aliceScore = aliceBoard.locator('[data-piece="score"]')
+  await expect(aliceBoard).toHaveClass(/is-free/)
+  await expect(aliceScore).toHaveAttribute('style', /left: 3%/)
+  await a.getByRole('button', { name: 'My board' }).click()
+  const arranger = a.getByRole('dialog', { name: 'Arrange my board' })
+  await expect(arranger).toContainText('Landscape bars (Map 2)')
+  const scoreHandle = arranger.locator('[data-handle="score"]')
+  const handleBox = await scoreHandle.boundingBox()
+  await a.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
+  await a.mouse.down()
+  await a.mouse.move(handleBox.x + handleBox.width / 2 + 120, handleBox.y + handleBox.height / 2 - 40, { steps: 6 })
+  await expect(scoreHandle).toHaveClass(/is-dragging/)
+  await a.mouse.up()
+  await expect(aliceScore).not.toHaveAttribute('style', /left: 3%/)
+  await expect(arranger.locator('[data-piece="score"]')).toHaveAttribute('style', await aliceScore.getAttribute('style'))
+  await shot(a, '10a-my-board-ipad')
+  expect(await boardOverflows(table)).toEqual([])
+  await arranger.getByRole('button', { name: 'Reset' }).click()
+  await expect(aliceScore).toHaveAttribute('style', /left: 3%/)
+  await arranger.getByRole('button', { name: 'Done' }).click()
+  await expect(arranger).toHaveCount(0)
   // Next TP in the drawer waits until every operative has activated.
   await expect(a.getByRole('button', { name: /^Next TP \(\d+ operatives still to activate\)$/ })).toBeDisabled()
   // With no tool on, tapping an operative opens a ring of its actions; a touch

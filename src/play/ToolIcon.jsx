@@ -24,6 +24,8 @@ const PATHS = {
   back: 'M14.5 5.5 8 12l6.5 6.5',
   ping: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v3M12 19v3M2 12h3M19 12h3',
   fit: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
+  // A side bar with pieces laid out on it.
+  board: 'M6 3h12v18H6zM9 6h6v3H9zM9 11h6v2H9zM9 15h3v3H9z',
   tabs: 'M4 6h16v4H4zM4 14h16v4H4z',
   fullscreen: 'M4 9V4h5M4 4l6 6M20 9V4h-5M20 4l-6 6M4 15v5h5M4 20l6-6M20 15v5h-5M20 20l-6-6',
   exitFullscreen: 'M10 4v6H4M10 10 4 4M14 4v6h6M14 10l6-6M10 20v-6H4M10 14l-6 6M14 20v-6h6M14 14l6 6',

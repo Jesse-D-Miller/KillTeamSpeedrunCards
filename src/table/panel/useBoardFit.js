@@ -41,7 +41,8 @@ export const useBoardFit = () => {
     const board = ref.current
     if (!board) return undefined
     const fit = () => {
-      const sections = [...board.querySelectorAll('.pb-section:not(.pb-critop), .pb-tacop')]
+      // On the arranged battle board each piece is a fixed box too (the crit op has its own fit).
+      const sections = [...board.querySelectorAll('.pb-section:not(.pb-critop), .pb-tacop, .pb-piece:not([data-piece="critop"])')]
       fitVariable(board, '--fit', sections)
       const critBody = board.querySelector('.pb-critop-body')
       if (critBody) fitVariable(board, '--crit-fit', [critBody])

@@ -22,6 +22,7 @@ import VantageMark from './VantageMark.jsx'
 import { NextTpRailButton } from './NextTp.jsx'
 import { TeamEquipment, TeamFactionRules, TeamFirefightPloys, TeamOps, TeamStratPloys } from './TeamSections.jsx'
 import UnitCardModal from './UnitCardModal.jsx'
+import BoardArranger from './BoardArranger.jsx'
 import WeaponChooser from './WeaponChooser.jsx'
 import { meleeWeaponsFor, rangedWeaponsFor } from '../rules/weaponRules.js'
 import AttackDrawer from './AttackDrawer.jsx'
@@ -173,6 +174,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // measure, two fingers to pan and zoom.
   const [tool, setTool] = useState(null)
   const [tabsOpen, setTabsOpen] = useState(false)
+  const [arranging, setArranging] = useState(false)
   // The team section open beside the tool drawer (an id from TEAM_SECTIONS), or null.
   const [teamSection, setTeamSection] = useState(null)
   const [overlay, setOverlay] = useState(null)
@@ -1231,6 +1233,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       </div>
       {weaponMenu}
       {cardToken ? <UnitCardModal token={cardToken} onClose={() => setCardFor(null)} /> : null}
+      {arranging ? <BoardArranger onClose={() => setArranging(false)} /> : null}
       <AttackDrawer {...attack} />
 
       <Drawer
@@ -1281,6 +1284,10 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           ))}
           <span className="rail-divider" />
           {game.phase === 'battle' ? <NextTpRailButton /> : null}
+          <button type="button" className="rail-tool" onClick={() => setArranging(true)} aria-label="My board">
+            <ToolIcon tool="board" />
+            <span>My board</span>
+          </button>
           <button type="button" className="rail-tool" onClick={() => setView(FULL_VIEW)} aria-label="Fit">
             <ToolIcon tool="fit" />
             <span>Fit</span>
