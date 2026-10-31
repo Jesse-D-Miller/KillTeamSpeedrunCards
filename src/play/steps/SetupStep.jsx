@@ -4,7 +4,7 @@ import CritOpsCard from '../../components/CritOpsCard.jsx'
 import BoardSvg from '../../board/BoardSvg.jsx'
 import { CRIT_OPS, MAPS, arrangementsForMap, getCritOp } from '../../board/boardData.js'
 import { seatColor } from '../../board/colors.js'
-import { defaultUnitKeys } from '../../rules/roster.js'
+import { defaultUnitKeys, factionEquipmentIds } from '../../rules/roster.js'
 import { usePlayer } from '../usePlayer.js'
 
 // How complete each army's data/rules support is (was hard-coded in SelectArmy).
@@ -40,6 +40,8 @@ function KillteamPicker() {
       type: 'setup/killteam',
       killteamId,
       units: defaultUnitKeys(killteam),
+      // The team's own equipment starts picked (up to four options); players swap from there.
+      equipment: factionEquipmentIds(killteam),
     })
     setBrowsing(false)
   }

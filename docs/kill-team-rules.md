@@ -524,7 +524,7 @@ All of these were replaced in Approved Ops 2025.
 - Injured below half wounds.
 - +1CP each Ready step, +2CP for the player without initiative from TP2.
 - **Start with 2CP**, +1 in the TP1 Ready step (fixed 25 Oct 2026).
-- **Up to 4 equipment options**, with a grenade pair counting as one, and no auto-selection (fixed 25 Oct 2026).
+- **Up to 4 equipment options**, with a grenade pair counting as one (fixed 25 Oct 2026). Since 31 Oct 2026 the team's own faction equipment starts selected when the team is picked (a convenience; the player can swap any of it for universal equipment).
 - Objective markers 40mm; other markers 20mm (fixed 25 Oct 2026).
 - Deploy in thirds, initiative player first, on Conceal orders.
 - Operatives start on Conceal.

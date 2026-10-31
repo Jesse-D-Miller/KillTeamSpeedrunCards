@@ -185,8 +185,15 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   const picks = b.locator('.unit-pick')
   for (let index = 0; index < 6; index += 1) await picks.nth(index).locator('.unit-card, article, div').first().click({ position: { x: 20, y: 12 } })
   await expect(b.locator('.unit-pick.is-selected')).toHaveCount(6)
-  // Up to four equipment options; nothing is pre-selected.
+  // Up to four equipment options; the team's own faction equipment starts picked.
   await a.locator('.segmented button', { hasText: 'Equipment' }).click()
+  await expect(a.getByText('4 of 4 equipment options chosen.', { exact: false })).toBeVisible()
+  const yaegirKit = ['Firestorm Bolt Shells', 'KV-Ceramide Undersuit', 'Plasma Knives', 'Stabilized Bolt Shells']
+  for (const name of yaegirKit) {
+    await expect(a.locator('.equipment-toggle', { hasText: name })).toHaveAttribute('aria-pressed', 'true')
+  }
+  // The rest of this run expects Ladders only, so clear the faction picks.
+  for (const name of yaegirKit) await a.locator('.equipment-toggle', { hasText: name }).click()
   await expect(a.getByText('0 of 4 equipment options chosen.', { exact: false })).toBeVisible()
   // Ready waits until operatives, equipment and a tac op are all picked, and says what's
   // still missing.
@@ -202,6 +209,9 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(aliceHeader.getByRole('button', { name: 'Ready', exact: true })).toBeEnabled()
   // Bob picks his equipment and tac op too.
   await b.locator('.segmented button', { hasText: 'Equipment' }).click()
+  for (const name of ['Neurostimulant', 'Accelerant Stimulant', 'Convergence Stimulant', 'Aggression Stimulant']) {
+    await b.locator('.equipment-toggle', { hasText: name }).click()
+  }
   await b.locator('.equipment-toggle', { hasText: 'Ladders' }).click()
   await b.getByRole('button', { name: 'Tac op', exact: true }).click()
   await b.locator('.tacop-pick').first().click()
