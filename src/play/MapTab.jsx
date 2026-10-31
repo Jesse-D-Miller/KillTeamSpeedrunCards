@@ -1141,7 +1141,20 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           run: () => startMove(kind, radialToken),
         })),
         ...(radialToken.lastMove
-          ? [{ key: 'move-adjust', label: 'Adjust', text: `${MOVE_ADJUST_REACH}"`, caption: 'Adjust', run: () => startMove('adjust', radialToken) }]
+          ? [
+              { key: 'move-adjust', label: 'Adjust', text: `${MOVE_ADJUST_REACH}"`, caption: 'Adjust', run: () => startMove('adjust', radialToken) },
+              // Puts the operative back where its movement this activation started (every
+              // move, Dash and drag of it), ready again if moving had activated it.
+              {
+                key: 'move-undo',
+                label: 'Undo',
+                icon: 'back',
+                run: () => {
+                  act({ type: 'token/undoMove', id: radialToken.id })
+                  setRadial(null)
+                },
+              },
+            ]
           : []),
         back,
       ]
@@ -1190,29 +1203,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       return [
         { key: 'name', label: 'Name', icon: 'name', run: openMenu('name') },
         { key: 'base', label: radialIsOperative ? 'Base size' : 'Size', icon: 'base', run: openMenu('base') },
-        // What Select used to offer for an operative that has moved.
-        ...(radialIsOperative && radialToken.lastMove
-          ? [
-              {
-                key: 'undo-step',
-                label: 'Undo 1"',
-                icon: 'back',
-                run: () => {
-                  act({ type: 'token/undoStep', id: radialToken.id })
-                  setRadial(null)
-                },
-              },
-              {
-                key: 'undo-move',
-                label: 'Undo move',
-                icon: 'back',
-                run: () => {
-                  act({ type: 'token/undoMove', id: radialToken.id })
-                  setRadial(null)
-                },
-              },
-            ]
-          : []),
         ...(radialToken.attachedTo
           ? [
               {

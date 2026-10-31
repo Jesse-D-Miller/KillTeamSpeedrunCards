@@ -652,7 +652,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await a.mouse.click(...emptySpot)
   await expect(table.locator('.overlay-ping')).toHaveCount(1)
   // With no tool, dragging your own operative moves it, unrestricted (no move action
-  // picked); Undo move (in its Edit ring) puts it back, ready again.
+  // picked); Undo (in its Move ring) puts it back, ready again.
   const mineCx = await table.locator(`[data-token-id="${mineId}"] .board-token-base`).getAttribute('cx')
   const mineBox = await tokenOf(mineId).boundingBox()
   const mineAt = { x: mineBox.x + mineBox.width / 2, y: mineBox.y + mineBox.height / 2 }
@@ -663,8 +663,9 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await a.mouse.up()
   await expect(table.locator(`.move-count[data-count-for="${mineId}"]`)).toHaveText('3.0"')
   await expect(table.locator(`[data-token-id="${mineId}"] .board-token-base`)).not.toHaveAttribute('cx', mineCx)
-  await ringAction(a, mineId, 'Edit')
-  await ring.getByRole('menuitem', { name: 'Undo move', exact: true }).click()
+  await ringAction(a, mineId, 'Move')
+  await expect(ring.getByRole('menuitem')).toHaveText(['5"Move', '3"Dash', '7"Charge', '5"Fall Back', '1"Adjust', 'Undo', 'Back'])
+  await ring.getByRole('menuitem', { name: 'Undo', exact: true }).click()
   await expect(table.locator(`[data-token-id="${mineId}"] .board-token-base`)).toHaveAttribute('cx', mineCx)
   await expect(table.locator(`[data-token-id="${mineId}"]`)).not.toHaveClass(/is-active/)
   // Shoot from the ring: the Shoot/Fight tool comes on with the weapon chooser open.
@@ -940,11 +941,11 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator('.overlay-ping')).toHaveCount(1)
   await expect(markerRing).toHaveCount(0)
 
-  // Edit (from the ring) changes anything on the board; the changes stay. Theyn has
-  // moved this turning point, so his Edit ring can also undo that, as Select used to.
+  // Edit (from the ring) changes anything on the board; the changes stay. (Undoing a
+  // move is in the Move ring.)
   await ringAction(a, 't1', 'Edit')
   const theynRing = a.locator('.unit-radial[data-ring-for="t1"]')
-  await expect(theynRing.getByRole('menuitem')).toHaveText(['Name', 'Base size', 'Undo 1"', 'Undo move', 'Remove', 'Back'])
+  await expect(theynRing.getByRole('menuitem')).toHaveText(['Name', 'Base size', 'Remove', 'Back'])
   await theynRing.getByRole('menuitem', { name: 'Name' }).click()
   await theynRing.getByRole('textbox', { name: 'Name' }).fill('Boss')
   await theynRing.getByRole('textbox', { name: 'Name' }).press('Enter')
