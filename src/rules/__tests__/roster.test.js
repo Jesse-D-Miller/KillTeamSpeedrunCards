@@ -31,8 +31,19 @@ describe('roster counts from the team composition', () => {
     expect(counts('IMP-NOV')).toMatchObject({ 'Novitiate Militant': 9, 'Novitiate Purgatus': 2, 'Novitiate Exactor': 1 })
     // "Other than BOMB SQUIG, BREAKA BOY FIGHTER, and TANKBUSTA GUNNER operatives ..."
     expect(counts('ORK-WK')).toMatchObject({ 'Breaka Boy Fighter': 5, 'Tankbusta Gunner': 5, 'Breaka Boy Krusha': 1 })
-    // Warriors by keyword: "INFILTRATOR WARRIOR", "INCURSOR WARRIOR", "REIVER WARRIOR".
+    // "Other than WARRIOR operatives": Phobos's Infiltrator, Incursor and Reiver Warriors
+    // all have the WARRIOR keyword.
     expect(counts('TYR-RAV')).toMatchObject({ 'Ravener Warrior': 4, 'Ravener Wrecker': 1 })
+    expect(counts('IMP-PHO')).toMatchObject({ 'Infiltrator Warrior': 5, 'Reiver Warrior': 5, 'Incursor Marksman': 1 })
+  })
+
+  it('counts an entry of several operatives taken together', () => {
+    // "- 2 Psychic Familiar operatives (Still count as one selection)"
+    expect(counts('TYR-BBRO')).toMatchObject({ 'Psychic Familiar': 2, Magus: 1 })
+  })
+
+  it('reads a once-only sentence restored in the data', () => {
+    expect(counts('CHAOS-NC')).toMatchObject({ 'Night Lord Warrior': 5, 'Night Lord Screecher': 1 })
   })
 
   it('takes "each operative once" with no exceptions literally, and no sentence as no limit', () => {

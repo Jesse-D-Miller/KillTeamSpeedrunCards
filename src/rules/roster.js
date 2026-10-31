@@ -109,9 +109,12 @@ const buildUnitCounts = (killteam, operatives) => {
     }
 
     if (currentGroupCount && line.startsWith('-')) {
-      const matched = entryOperative(line.replace(/^-\s*/, '').replace(/\*+$/, ''), opTypeLookup)
+      // An entry can be several operatives taken as one: "- 2 Psychic Familiar operatives".
+      const entry = line.replace(/^-\s*/, '').replace(/\*+$/, '')
+      const several = Number(entry.match(/^(\d+)\s/)?.[1] ?? 1)
+      const matched = entryOperative(entry.replace(/^\d+\s+/, ''), opTypeLookup)
       if (matched) {
-        currentGroupUnits.set(matched, (currentGroupUnits.get(matched) ?? 0) + 1)
+        currentGroupUnits.set(matched, (currentGroupUnits.get(matched) ?? 0) + several)
       }
     }
   })
