@@ -369,7 +369,7 @@ const handlers = {
   },
 
   // ---- side bar arrangement ----
-  // A player drops one piece of their own side bar; it snaps and nudges clear of others.
+  // A player drops one piece of their own side bar; it snaps to the grid.
   'board/layout': (state, action, actor) => {
     const seat = resolveSeat(action, actor)
     const shape = String(action.shape ?? '')
@@ -379,14 +379,18 @@ const handlers = {
     const x = Number(action.x)
     const y = Number(action.y)
     if (!Number.isFinite(x) || !Number.isFinite(y)) fail('A position is required.')
-    const spot = placePiece(boardLayoutFor(state.settings, seat, shape), piece, { x, y })
+    // bounds: how far past the bar this piece may go (worked out on the iPad, which knows
+    // which side faces the mat); kept sane by placePiece.
+    const spot = placePiece(boardLayoutFor(state.settings, seat, shape), piece, { x, y }, action.bounds)
     const layouts = state.settings.boardLayouts ?? {}
     const mine = layouts[seat] ?? {}
+    // The piece just moved goes on top of the others.
+    const z = 1 + Math.max(0, ...Object.values(mine[shape] ?? {}).map((other) => other.z ?? 0))
     return {
       ...state,
       settings: {
         ...state.settings,
-        boardLayouts: { ...layouts, [seat]: { ...mine, [shape]: { ...mine[shape], [piece]: spot } } },
+        boardLayouts: { ...layouts, [seat]: { ...mine, [shape]: { ...mine[shape], [piece]: { ...spot, z } } } },
       },
     }
   },

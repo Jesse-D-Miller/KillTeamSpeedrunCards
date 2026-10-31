@@ -2404,9 +2404,44 @@
   place-items: center;
 }
 
-.arranger-board {
+/* The room a player can use: the bar plus the picture around it (dashed). */
+.arranger-area {
   position: relative;
+  box-sizing: border-box;
+  border: 2px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
 }
+
+.arranger-board {
+  position: absolute;
+}
+
+/* Which edge of the bar faces the mat (pieces can't go past it). */
+.arranger-mat {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  pointer-events: none;
+}
+
+.arranger-mat span {
+  margin: auto;
+  padding: 2px 10px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.arranger-mat.is-top span { margin-top: -26px; }
+.arranger-mat.is-bottom span { margin-bottom: -26px; }
+.arranger-mat.is-left span { margin-left: -12px; transform: translateX(-100%); }
+.arranger-mat.is-right span { margin-right: -12px; transform: translateX(100%); }
+.arranger-mat.is-top { border-top: 3px solid rgba(255, 255, 255, 0.35); }
+.arranger-mat.is-bottom { border-bottom: 3px solid rgba(255, 255, 255, 0.35); }
+.arranger-mat.is-left { border-left: 3px solid rgba(255, 255, 255, 0.35); }
+.arranger-mat.is-right { border-right: 3px solid rgba(255, 255, 255, 0.35); }
 
 .arranger-handles {
   position: absolute;

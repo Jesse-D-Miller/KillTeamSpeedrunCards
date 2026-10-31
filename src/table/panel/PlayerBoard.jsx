@@ -25,7 +25,13 @@ import './playerBoard.css'
 // In the battle each piece sits where its player put it (see shared/boardLayout.js);
 // layout overrides that while the player is dragging on their iPad, and upright skips
 // the rotation there.
-const pieceStyle = ({ x, y, w, h }) => ({ left: `${x * 100}%`, top: `${y * 100}%`, width: `${w * 100}%`, height: `${h * 100}%` })
+const pieceStyle = ({ x, y, w, h, z = 0 }) => ({
+  left: `${x * 100}%`,
+  top: `${y * 100}%`,
+  width: `${w * 100}%`,
+  height: `${h * 100}%`,
+  zIndex: z,
+})
 
 function PlayerBoard({ game, seat, rotation, connected, widthPx, heightPx, combat = null, layout = null, upright = false }) {
   const player = game.players[seat]

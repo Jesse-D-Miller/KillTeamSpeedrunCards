@@ -698,7 +698,7 @@ All of these were replaced in Approved Ops 2025.
 
 ### Arranging the side bars (app feature, not a rule)
 
-- **My board** (iPad map drawer): each player drags the pieces of their own in-game side bar (name, score, turning points, kill op, ploys, tac op, crit op). Drops snap to 1% of the bar and move to the nearest free spot if they'd cover another piece. The projector follows. **Reset** restores the defaults.
+- **My board** (iPad map drawer): each player drags the pieces of their own in-game side bar (name, score, turning points, kill op, ploys, tac op, crit op). Drops snap to 1% of the bar. Pieces can overlap (the one moved last sits on top), and can go past the bar out to the edge of the projected picture (1.6", the casualty margin) on every side except the one facing the mat. The projector follows. **Reset** restores the defaults.
 - Layouts are saved by seat in `settings.boardLayouts` (they survive a new game), with portrait (Map 1) and landscape (Map 2) bars kept separately. Setup and combat views are still laid out automatically. The outer coloured border is gone.
 
 ### Game history and the stats page (app feature, not a rule)

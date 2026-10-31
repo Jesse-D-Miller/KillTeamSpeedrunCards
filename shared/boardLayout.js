@@ -43,7 +43,6 @@ export const DEFAULT_BOARD_LAYOUTS = {
 const SNAP = 0.01
 
 const round = (value) => Math.round(value / SNAP) * SNAP
-const clamp = (value, max) => Math.min(Math.max(value, 0), Math.max(max, 0))
 const fix = (value) => Number(value.toFixed(3))
 
 export const isBoardShape = (shape) => BOARD_SHAPES.includes(shape)
@@ -56,33 +55,50 @@ export const boardLayoutFor = (settings, seat, shape) => {
     BOARD_PIECES.map((piece) => {
       const base = DEFAULT_BOARD_LAYOUTS[shape][piece]
       const spot = saved[piece]
-      return [piece, Number.isFinite(spot?.x) && Number.isFinite(spot?.y) ? { ...base, x: spot.x, y: spot.y } : base]
+      // z: pieces moved later sit on top of earlier ones where they overlap.
+      return [piece, Number.isFinite(spot?.x) && Number.isFinite(spot?.y) ? { ...base, x: spot.x, y: spot.y, z: spot.z ?? 0 } : base]
     }),
   )
 }
 
-const overlaps = (a, b) => a.x < b.x + b.w - 1e-6 && b.x < a.x + a.w - 1e-6 && a.y < b.y + b.h - 1e-6 && b.y < a.y + a.h - 1e-6
+// Where pieces may go, as fractions of the board: the bar itself is 0..1, and pieces
+// can go out past its edges (to the edge of the projected picture) except on the
+// side facing the mat. Bounds from a device are kept within this much of the bar.
+const MAX_REACH = 0.5
+export const BAR_ONLY = { minX: 0, maxX: 1, minY: 0, maxY: 1 }
 
-// Where a dropped piece lands: snapped, kept on the board, and moved to the nearest
-// free spot (in any direction) if it would cover another piece; left where dropped if
-// the board has no room for it.
-export const placePiece = (layout, piece, { x, y }) => {
-  const { w, h } = layout[piece]
-  const others = BOARD_PIECES.filter((other) => other !== piece).map((other) => layout[other])
-  const at = (px, py) => ({ x: fix(clamp(round(px), 1 - w)), y: fix(clamp(round(py), 1 - h)), w, h })
-  const dropped = at(x, y)
-  const free = (rect) => !others.some((other) => overlaps(rect, other))
-  if (free(dropped)) return { x: dropped.x, y: dropped.y }
-  // Every snapped spot on the board, nearest first.
-  const steps = Math.round(1 / SNAP)
-  let best = null
-  for (let i = 0; i <= steps; i += 1) {
-    for (let j = 0; j <= steps; j += 1) {
-      const spot = at(i * SNAP, j * SNAP)
-      if (spot.x !== fix(i * SNAP) || spot.y !== fix(j * SNAP) || !free(spot)) continue
-      const distance = Math.hypot(spot.x - dropped.x, spot.y - dropped.y)
-      if (!best || distance < best.distance) best = { ...spot, distance }
-    }
+const sanitizeBounds = (bounds) => {
+  const pick = (value, fallback, lo, hi) => (Number.isFinite(value) ? Math.min(Math.max(value, lo), hi) : fallback)
+  return {
+    minX: pick(bounds?.minX, 0, -MAX_REACH, 0),
+    maxX: pick(bounds?.maxX, 1, 1, 1 + MAX_REACH),
+    minY: pick(bounds?.minY, 0, -MAX_REACH, 0),
+    maxY: pick(bounds?.maxY, 1, 1, 1 + MAX_REACH),
   }
-  return best ? { x: best.x, y: best.y } : { x: dropped.x, y: dropped.y }
+}
+
+// The room around a bar: `margin` inches past every edge except the one facing the mat.
+//   width/height: the bar in inches, upright as its player reads it; rotation: how it
+//   turns on the table (degrees); matSide: 'left' or 'right' of the bar on the table.
+export const barBounds = ({ width, height, rotation, matSide, margin }) => {
+  const r = (rotation * Math.PI) / 180
+  const toMat = matSide === 'left' ? -1 : 1
+  // The mat's direction in the bar's own axes (screen y points down).
+  const across = toMat * Math.cos(r)
+  const down = toMat * -Math.sin(r)
+  return {
+    minX: across < -0.5 ? 0 : -margin / width,
+    maxX: across > 0.5 ? 1 : 1 + margin / width,
+    minY: down < -0.5 ? 0 : -margin / height,
+    maxY: down > 0.5 ? 1 : 1 + margin / height,
+  }
+}
+
+// Where a dropped piece lands: snapped to 1% and kept within the bounds. Pieces may
+// overlap; players lay them out as they like.
+export const placePiece = (layout, piece, { x, y }, bounds = BAR_ONLY) => {
+  const { w, h } = layout[piece]
+  const { minX, maxX, minY, maxY } = sanitizeBounds(bounds)
+  const fit = (value, lo, hi) => Math.min(Math.max(round(value), lo), Math.max(hi, lo))
+  return { x: fix(fit(x, minX, maxX - w)), y: fix(fit(y, minY, maxY - h)) }
 }

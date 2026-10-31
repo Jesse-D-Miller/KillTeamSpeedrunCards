@@ -111,6 +111,8 @@
 .pb-board.is-free {
   display: block;
   padding: 0;
+  /* Pieces can sit past the bar, out to the edge of the picture. */
+  overflow: visible;
 }
 
 .pb-piece {
