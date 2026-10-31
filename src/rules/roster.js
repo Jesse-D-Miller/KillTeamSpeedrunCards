@@ -8,17 +8,29 @@ const normalizeText = (value) =>
         .trim()
     : ''
 
+// Which operatives can be taken more than once, by keyword. Worded several ways:
+// "Other than TROOPER operatives(,) your kill team / killteam can only include each
+// operative (on this list | above) once", "each option", or with no exceptions (then
+// none repeat: []). With no such sentence at all, any can repeat (null).
 const parseRepeatableKeywords = (composition) => {
-  if (!composition) return []
-  const match = composition.match(
-    /Other than ([^.]+?) operatives?, your kill team can only include each operative on this list once/i,
+  const text = String(composition ?? '')
+  const match = text.match(
+    /Other than ([^.]+?) operatives?,? your kill ?team can only include each (?:operative|option)[^.]*?\bonce/i,
   )
-  if (!match) return []
+  if (!match) return /can only include each (?:operative|option)[^.]*?\bonce/i.test(text) ? [] : null
   return match[1]
     .split(/,| and /i)
     .map((value) => normalizeText(value))
     .filter(Boolean)
 }
+
+const NUMBER_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 }
+
+// "Your kill team can only include up to two PURGATUS operatives": keyword -> cap.
+const parseCaps = (composition) =>
+  [...String(composition ?? '').matchAll(/up to (one|two|three|four|five|six|\d+) ([A-Z][A-Z' -]*?[A-Z]) operatives?/g)].map(
+    ([, count, keyword]) => ({ keyword: normalizeText(keyword), count: NUMBER_WORDS[count.toLowerCase()] ?? Number(count) }),
+  )
 
 const UNIT_COUNT_OVERRIDES = {
   'VOT-HKY': {
@@ -35,14 +47,30 @@ const UNIT_COUNT_OVERRIDES = {
   },
 }
 
+// A list entry names an operative without its team ("- TROOPER", "- GUNNER with
+// meltagun and gun butt"), so it's matched on the operative's short name as well as its
+// full one; the longest match wins, so "STUB-GUNNER" isn't read as "GUNNER".
+const entryOperative = (line, lookup) => {
+  const entry = normalizeText(line)
+  const names = (opType) => [opType.normalized, opType.short]
+  return lookup
+    .flatMap((opType) => names(opType).map((name) => ({ opType, name })))
+    .filter(({ name }) => name && (entry === name || entry.startsWith(`${name} `) || entry.includes(` ${name} `)))
+    .sort((a, b) => b.name.length - a.name.length)[0]?.opType
+}
+
 const buildUnitCounts = (killteam, operatives) => {
   const composition = killteam?.composition ?? ''
   if (!composition || operatives.length === 0) return new Map()
 
   const repeatableKeywords = parseRepeatableKeywords(composition)
+  const caps = parseCaps(composition)
+  const shortNames = shortNamesFor(killteam)
   const opTypeLookup = operatives.map((opType) => ({
     name: opType.opTypeName,
     normalized: normalizeText(opType.opTypeName),
+    short: normalizeText(shortNames.get(opType.opTypeId)),
+    keywords: String(opType.keywords ?? '').split(',').map(normalizeText),
   }))
 
   const lines = composition
@@ -52,18 +80,20 @@ const buildUnitCounts = (killteam, operatives) => {
 
   const counts = new Map()
   let currentGroupCount = null
-  let currentGroupUnits = new Set()
+  // Operative -> how many list entries name it (one per weapon option, e.g. Gunners).
+  let currentGroupUnits = new Map()
 
   const applyGroup = () => {
     if (!currentGroupCount || currentGroupUnits.size === 0) return
-    currentGroupUnits.forEach((name) => {
-      const normalizedName = normalizeText(name)
-      const isRepeatable = repeatableKeywords.length
-        ? repeatableKeywords.some((keyword) => normalizedName.includes(keyword))
-        : true
-      const count = isRepeatable ? currentGroupCount : 1
-      const previous = counts.get(name) ?? 1
-      counts.set(name, Math.max(previous, count))
+    currentGroupUnits.forEach((entries, opType) => {
+      // "Other than TROOPER operatives, ... only once": operatives with that keyword (or
+      // that name) repeat freely; the rest once per list entry naming them.
+      const named = (keyword) => keyword === opType.short || opType.keywords.includes(keyword)
+      const isRepeatable = repeatableKeywords ? repeatableKeywords.some(named) : true
+      const cap = caps.find(({ keyword }) => named(keyword))?.count ?? Infinity
+      const count = Math.min(isRepeatable ? currentGroupCount : entries, currentGroupCount, cap)
+      const previous = counts.get(opType.name) ?? 1
+      counts.set(opType.name, Math.max(previous, count))
     })
   }
 
@@ -74,17 +104,14 @@ const buildUnitCounts = (killteam, operatives) => {
     if (groupMatch) {
       applyGroup()
       currentGroupCount = Number.parseInt(groupMatch[1], 10)
-      currentGroupUnits = new Set()
+      currentGroupUnits = new Map()
       return
     }
 
     if (currentGroupCount && line.startsWith('-')) {
-      const normalizedLine = normalizeText(line)
-      const matched = opTypeLookup.find((opType) =>
-        normalizedLine.includes(opType.normalized),
-      )
+      const matched = entryOperative(line.replace(/^-\s*/, '').replace(/\*+$/, ''), opTypeLookup)
       if (matched) {
-        currentGroupUnits.add(matched.name)
+        currentGroupUnits.set(matched, (currentGroupUnits.get(matched) ?? 0) + 1)
       }
     }
   })
