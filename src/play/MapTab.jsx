@@ -65,7 +65,7 @@ const TAP_SLOP_PX = 8
 // (keeping its length), a little every tick.
 const BEND_AFTER_MS = 1000
 const BEND_TICK_MS = 50
-const BEND_PULL = 0.15
+const BEND_PULL = 0.015
 // The action ring around a tapped operative: its smallest radius (it widens so its
 // buttons never overlap), and its buttons (own: only for your own operatives).
 const RADIAL_PX = 78
