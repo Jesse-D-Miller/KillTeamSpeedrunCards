@@ -568,5 +568,67 @@
       "short": "HB",
       "kind": "marker"
     }
+  ],
+  "IMP-SPC": [
+    {
+      "id": "imp-spc-advanced-camouflage",
+      "name": "Advanced Camouflage",
+      "short": "ACAM",
+      "kind": "token"
+    },
+    {
+      "id": "imp-spc-medic",
+      "name": "Medic",
+      "short": "MED",
+      "kind": "token"
+    },
+    {
+      "id": "imp-spc-cool-headed",
+      "name": "Cool-Headed",
+      "short": "COOL",
+      "kind": "token"
+    },
+    {
+      "id": "imp-spc-issue-mission",
+      "name": "Issue Mission",
+      "short": "MISS",
+      "kind": "token"
+    },
+    {
+      "id": "imp-spc-melta-mine",
+      "name": "Melta Mine",
+      "short": "MM",
+      "kind": "marker"
+    },
+    {
+      "id": "imp-spc-fieldcraft",
+      "name": "Fieldcraft",
+      "short": "FC",
+      "kind": "token"
+    },
+    {
+      "id": "imp-spc-patience",
+      "name": "Patience",
+      "short": "PAT",
+      "kind": "token"
+    },
+    {
+      "id": "imp-spc-starshell-flare",
+      "name": "Starshell Flare",
+      "short": "FLAR",
+      "kind": "token"
+    },
+    {
+      "id": "imp-spc-tvid-feed-triangulation",
+      "name": "Tvid-Feed Triangulation",
+      "short": "TVID",
+      "kind": "token"
+    },
+    {
+      "id": "imp-spc-sniper-overwatch",
+      "name": "Sniper Overwatch",
+      "short": "SNPR",
+      "kind": "token"
+    }
   ]
 }

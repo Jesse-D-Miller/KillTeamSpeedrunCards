@@ -697,7 +697,7 @@ All of these were replaced in Approved Ops 2025.
 
 ## 13. Data caveats in this repo
 
-- **Kill team data:** `src/data/kt24_v4.json` (from vjosset/killteamjson) can lag behind balance dataslates, so check a team against Wahapedia before relying on it. **Spectre Squad** (released May 2026 with Terror on Devlan) is missing.
+- **Kill team data:** `src/data/kt24_v4.json` (from vjosset/killteamjson) can lag behind balance dataslates, so check a team against Wahapedia before relying on it.
 - **Corrected against the current rules (25 Oct 2026):** every weapon profile of the three hand-checked teams was compared with Wahapedia's team pages. Fixed:
   - Hernkyn Yaegir bolt shotgun (long range) is 4 / 5+ / **2/3**, not 2/2 (Theyn and Warrior).
   - Stabilised Bolt Shells also give **Accurate 1**.
@@ -713,4 +713,6 @@ All of these were replaced in Approved Ops 2025.
     - **Dimensional Banishment:** no effect on NEMESIS operatives or the Red Terror NPO.
     - **Obelisk Node Control:** Pick Up Marker is now excluded, as well as Retrieve.
     - **Dominate** (tac op): only tokens on operatives in the killzone score. The app's tac op text already said this.
+- **Spectre Squad added (31 Oct 2026)** as `IMP-SPC`, typed in from Wahapedia's team page (Aug 2026 version): 12 datacards, faction rules (Elite Fieldcraft, Camo Cloaks), 4 strategy and 4 firefight ploys, 4 faction equipment items (Sniper Overwatch adds its weapon), the composition, archetypes Infiltration/Recon, and its tokens in `factionTokens.json`. The Gunner's melee weapon is "fists" as the composition says; the datacard calls it gun butt, with the same profile.
+- **Roster counts:** the muster reads each team's composition for how many of each operative to offer. List entries name operatives without their team ("TROOPER" for Kasrkin Trooper), the "only once" sentence is worded several ways, and "up to two PURGATUS operatives" caps a count. Fixed 31 Oct 2026: Kasrkin, Death Korps and Spectre Troopers, Raveners and Phobos Warriors and others can now be taken as often as the rules allow. Nemesis Claw's data has no "only once" sentence, so every operative there can be picked up to 5 times.
 - **Kill team archetypes:** each team's tac op archetypes are in the `archetypes` field (e.g. "Seek & Destroy/Security").
