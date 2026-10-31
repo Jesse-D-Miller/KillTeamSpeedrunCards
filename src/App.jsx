@@ -4,6 +4,7 @@ import { GameProvider } from './net/GameProvider.jsx'
 import { seatColor } from './board/colors.js'
 import HomeLogo from './HomeLogo.jsx'
 import PlayPage from './play/PlayPage.jsx'
+import StatsPage from './stats/StatsPage.jsx'
 import TablePage from './table/TablePage.jsx'
 
 function Home() {
@@ -42,6 +43,7 @@ function App() {
         <Route path="calibrate" element={<TablePage calibrating />} />
       </Route>
       <Route path="/play" element={<PlayPage />} />
+      <Route path="/stats" element={<StatsPage />} />
     </Routes>
   )
 }

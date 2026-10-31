@@ -4,11 +4,13 @@ import { networkInterfaces } from 'os'
 import { dirname, extname, join, normalize, resolve, sep } from 'path'
 import { fileURLToPath } from 'url'
 import { createGameServer } from './gameServer.js'
+import { readHistory } from './history.js'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = join(ROOT, 'dist')
 const PORT = Number(process.env.PORT || 3000)
 const PERSIST_PATH = process.env.KT_STATE_FILE || join(ROOT, 'server', 'data', 'game.json')
+const HISTORY_PATH = process.env.KT_HISTORY_FILE || join(ROOT, 'server', 'data', 'history.json')
 const SERVE_STATIC = process.env.KT_SERVE_STATIC !== '0' && existsSync(DIST)
 
 const MIME = {
@@ -63,6 +65,13 @@ const server = createServer((req, res) => {
     return
   }
 
+  // The stats page's games (see server/history.js).
+  if (url.pathname === '/api/stats') {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
+    res.end(JSON.stringify(readHistory(HISTORY_PATH) ?? []))
+    return
+  }
+
   if (!SERVE_STATIC) {
     res.writeHead(404)
     res.end('Not found. In development, open the Vite dev server instead.')
@@ -79,7 +88,7 @@ const server = createServer((req, res) => {
   sendFile(res, join(DIST, 'index.html'))
 })
 
-createGameServer({ server, persistPath: PERSIST_PATH })
+createGameServer({ server, persistPath: PERSIST_PATH, historyPath: HISTORY_PATH })
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\nKill Team table server on port ${PORT}`)

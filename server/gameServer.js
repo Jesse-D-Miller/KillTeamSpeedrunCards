@@ -5,6 +5,7 @@ import { WebSocket, WebSocketServer } from 'ws'
 import { SEATS, createGame, createPlayer, isSeat } from '../shared/game.js'
 import { ActionError, applyAction } from '../shared/reducer.js'
 import { viewFor } from '../shared/views.js'
+import { gameRecord, recordGame } from './history.js'
 
 // One table, one game. The server owns the state; devices send actions and receive
 // role-filtered snapshots. Tool previews (rulers, sightlines, drags) are relayed as
@@ -40,7 +41,7 @@ const loadSnapshot = (path) => {
   }
 }
 
-export const createGameServer = ({ server, persistPath = null, log = console.log }) => {
+export const createGameServer = ({ server, persistPath = null, historyPath = null, log = console.log }) => {
   const snapshot = persistPath ? loadSnapshot(persistPath) : null
   let state = snapshot?.state ?? createGame()
   const seatTokens = snapshot?.seatTokens ?? { A: null, B: null }
@@ -107,6 +108,17 @@ export const createGameServer = ({ server, persistPath = null, log = console.log
     if (!action) return
     state = applyAction(state, action, 'server')
     save()
+  }
+
+  // Every game that reaches the results goes into the stats history.
+  const saveToHistory = () => {
+    if (!historyPath) return
+    try {
+      recordGame(historyPath, gameRecord(state))
+      log('Game saved to the stats history')
+    } catch (error) {
+      log('Failed to save the game to the stats history:', error.message)
+    }
   }
 
   const releaseSeat = (seat) => {
@@ -181,9 +193,11 @@ export const createGameServer = ({ server, persistPath = null, log = console.log
       return
     }
     try {
+      const before = state.phase
       state = applyAction(state, message.action ?? {}, socket.seat || 'table')
       remember(message.id, { ok: true })
       updateClock()
+      if (before !== 'results' && state.phase === 'results') saveToHistory()
       save()
       broadcastState(socket, message.id)
       if (message.id != null) send(socket, { type: 'ack', id: message.id })

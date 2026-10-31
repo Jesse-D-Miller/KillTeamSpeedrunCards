@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 // The opening screen's logo, burning:
 // - a fire halo right behind it that follows the logo's own outline (shield and
 //   wings), grown out and warped into a wavy, flickering edge;
@@ -6,6 +8,7 @@
 // - sparks drifting up all over the page, fainter and smaller the further they are
 //   from the logo.
 // Still, with no sparks, under Reduce Motion.
+// The logo itself is the secret way into the stats page: nothing marks it as a link.
 
 const LOGO = '/killteamSpeedrunLogo.png'
 // The logo image's own size, so the halo lines up with it exactly.
@@ -76,7 +79,9 @@ function HomeLogo() {
         </defs>
         <image href={LOGO} width={LOGO_W} height={LOGO_H} filter="url(#home-halo-fire)" />
       </svg>
-      <img src={LOGO} alt="Kill Team Speedrun" />
+      <Link to="/stats" className="home-logo-link" aria-label="Stats">
+        <img src={LOGO} alt="Kill Team Speedrun" />
+      </Link>
       <div className="home-sparks" aria-hidden="true">
         {SPARKS.map((spark, index) => (
           <span

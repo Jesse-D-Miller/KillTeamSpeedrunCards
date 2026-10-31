@@ -1213,6 +1213,22 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await shot(a, '13-results-ipad')
   await shot(table, '14-results-table')
 
+  // The finished game is saved for the stats page, opened by tapping the logo on the
+  // opening screen: Alice tops the leaderboard and takes most VP in a game.
+  const statsPage = await (await browser.newContext({ viewport: IPAD, hasTouch: true })).newPage()
+  await statsPage.goto('/')
+  await statsPage.getByRole('link', { name: 'Stats' }).click()
+  await expect(statsPage.getByRole('heading', { name: 'Hall of fame' })).toBeVisible()
+  await expect(statsPage.locator('.stats-count')).toHaveText('1 game')
+  const leader = statsPage.locator('.stats-row[data-rank="1"]')
+  await expect(leader.locator('.stats-name')).toHaveText('Alice')
+  await expect(leader.locator('.stats-rate strong')).toHaveText('100%')
+  const mostVp = statsPage.locator('[data-prize="mostVpGame"] li[data-place="1"]')
+  await expect(mostVp).toContainText('Alice')
+  await expect(mostVp.locator('.stats-prize-value')).toHaveText('3 VP')
+  await shot(statsPage, '14b-stats')
+  await statsPage.context().close()
+
   // Map 1 puts players on the long edges, so the boards turn portrait (0deg / 180deg).
   await table.evaluate(
     () =>

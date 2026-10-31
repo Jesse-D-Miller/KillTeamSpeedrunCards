@@ -1453,6 +1453,13 @@
   aspect-ratio: 3 / 2;
 }
 
+.home-logo-link {
+  position: relative;
+  z-index: 1;
+  display: block;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .home-logo img {
   position: relative;
   z-index: 1;
