@@ -196,7 +196,6 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 .play-main.is-map {
@@ -1789,7 +1788,6 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   color: var(--text);
-  -webkit-overflow-scrolling: touch;
 }
 
 .attack-handle {
