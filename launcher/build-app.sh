@@ -1,11 +1,11 @@
 #!/bin/zsh
-# Makes "Kill Team Table.app" on the Desktop: double-click it to start the table (see
+# Makes "KTSpeed.app" on the Desktop: double-click it to start the table (see
 # start-table.sh), with the logo as its icon. Run it again if the repo moves.
 #   zsh launcher/build-app.sh
 
 set -e
 REPO="${0:A:h:h}"
-APP="${1:-$HOME/Desktop/Kill Team Table.app}"
+APP="${1:-$HOME/Desktop/KTSpeed.app}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -28,8 +28,8 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>Kill Team Table</string>
-  <key>CFBundleDisplayName</key><string>Kill Team Table</string>
+  <key>CFBundleName</key><string>KTSpeed</string>
+  <key>CFBundleDisplayName</key><string>KTSpeed</string>
   <key>CFBundleIdentifier</key><string>com.ktspeedrun.table</string>
   <key>CFBundleExecutable</key><string>KillTeamTable</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
