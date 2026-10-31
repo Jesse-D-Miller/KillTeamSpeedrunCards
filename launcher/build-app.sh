@@ -1,0 +1,54 @@
+#!/bin/zsh
+# Makes "Kill Team Table.app" on the Desktop: double-click it to start the table (see
+# start-table.sh), with the logo as its icon. Run it again if the repo moves.
+#   zsh launcher/build-app.sh
+
+set -e
+REPO="${0:A:h:h}"
+APP="${1:-$HOME/Desktop/Kill Team Table.app}"
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+
+# The app opens a Terminal window running the start script, so the server's log shows
+# and closing the window stops the table.
+cat > "$APP/Contents/MacOS/KillTeamTable" <<EOF
+#!/bin/zsh
+osascript -e 'tell application "Terminal"' \\
+  -e 'activate' \\
+  -e 'do script "exec zsh \\"$REPO/launcher/start-table.sh\\""' \\
+  -e 'end tell' >/dev/null
+EOF
+chmod +x "$APP/Contents/MacOS/KillTeamTable" "$REPO/launcher/start-table.sh"
+
+cat > "$APP/Contents/Info.plist" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>Kill Team Table</string>
+  <key>CFBundleDisplayName</key><string>Kill Team Table</string>
+  <key>CFBundleIdentifier</key><string>com.ktspeedrun.table</string>
+  <key>CFBundleExecutable</key><string>KillTeamTable</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleVersion</key><string>1</string>
+</dict>
+</plist>
+EOF
+
+# The icon: the logo's emblem cropped to a square, at every size macOS asks for.
+LOGO="$REPO/public/killteamSpeedrunLogo.png"
+sips -c 1100 1100 "$LOGO" --out "$WORK/square.png" >/dev/null 2>&1
+mkdir "$WORK/AppIcon.iconset"
+for size in 16 32 128 256 512; do
+  sips -z $size $size "$WORK/square.png" --out "$WORK/AppIcon.iconset/icon_${size}x${size}.png" >/dev/null
+  sips -z $((size * 2)) $((size * 2)) "$WORK/square.png" --out "$WORK/AppIcon.iconset/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$WORK/AppIcon.iconset" -o "$APP/Contents/Resources/AppIcon.icns"
+# Finder caches icons; touching the app makes it pick up the new one.
+touch "$APP"
+
+echo "Made $APP"

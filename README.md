@@ -87,6 +87,17 @@ The server owns the single game state. Devices send small **actions** (`muster/t
 4. Each player scans their QR code with an iPad on the same Wi-Fi. Use Safari's "Add to Home Screen" for a full-screen app.
 5. To start the server automatically, run `npm start` (after one `npm run build`) as a login item or service. The game state lives in `server/data/game.json`.
 
+### Desktop icon (macOS)
+
+Run `zsh launcher/build-app.sh` once to make **Kill Team Table.app** on the Desktop (again if the repo moves). Double-clicking it:
+
+- opens a Terminal window and runs `npm run table` (build, then the server on port 3000), keeping the Mac awake with `caffeinate`;
+- copies the server's log to `server/data/table.log`;
+- opens `/table` in Chrome kiosk mode on the projector: the first screen that isn't the main one or a Sidecar/AirPlay iPad. To pick another screen, put part of its name (printed in the Terminal) in `launcher/projector-screen.local`;
+- only reopens the projector page if the table is already running. Stop `npm run dev` first, since it uses the same port.
+
+Close the Terminal window (or press Ctrl+C) to stop the table. Press Cmd+Q to leave the kiosk window.
+
 ## Local development
 
 ```bash
