@@ -153,10 +153,11 @@ export const isObscured = (hits) => hits.some((hit) => hit.type === 'heavy' && h
 
 // Grow a movement path toward `point` in fixed steps (1" for Kill Team moves).
 // The path's last vertex is where the operative stands. Moving back near the
-// previous vertex removes steps, so a route can be corrected mid-drag.
-export const stepPath = (path, point, step = 1) => {
+// previous vertex removes steps, so a route can be corrected mid-drag, but never the
+// first `keep` points (a move already made this activation).
+export const stepPath = (path, point, step = 1, keep = 1) => {
   const next = path.slice()
-  while (next.length > 1 && distance(next[next.length - 2], point) < step / 2) next.pop()
+  while (next.length > Math.max(1, keep) && distance(next[next.length - 2], point) < step / 2) next.pop()
   let last = next[next.length - 1]
   let gap = distance(last, point)
   while (gap >= step) {

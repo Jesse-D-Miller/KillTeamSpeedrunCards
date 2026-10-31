@@ -2441,3 +2441,45 @@
   background: color-mix(in srgb, var(--seat-color) 12%, transparent);
   cursor: grabbing;
 }
+
+/* ---- moving an operative: which move, how far, and any rule it breaks ---- */
+
+.move-status {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.25rem 0.75rem;
+  max-width: min(560px, 80%);
+  padding: 0.45rem 1rem;
+  border-radius: 14px;
+  pointer-events: none;
+}
+
+.move-status-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--seat-color);
+}
+
+.move-status-inches {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.move-status.is-warning {
+  border-color: var(--error);
+}
+
+.move-status-warning {
+  flex-basis: 100%;
+  text-align: center;
+  color: var(--error);
+  font-weight: 600;
+}

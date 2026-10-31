@@ -651,19 +651,22 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // Tapping the empty map pings it on the projector.
   await a.mouse.click(...emptySpot)
   await expect(table.locator('.overlay-ping')).toHaveCount(1)
-  // Dragging from an operative measures from its base edge, and the operative stays put.
+  // With no tool, dragging your own operative moves it, unrestricted (no move action
+  // picked); Undo move (in its Edit ring) puts it back, ready again.
   const mineCx = await table.locator(`[data-token-id="${mineId}"] .board-token-base`).getAttribute('cx')
   const mineBox = await tokenOf(mineId).boundingBox()
   const mineAt = { x: mineBox.x + mineBox.width / 2, y: mineBox.y + mineBox.height / 2 }
   await a.mouse.move(mineAt.x, mineAt.y)
   await a.mouse.down()
   for (let i = 1; i <= 10; i += 1) await a.mouse.move(mineAt.x + (3 * pxPerInch * i) / 10, mineAt.y)
+  await expect(a.locator('[data-move-status]')).toContainText('Free move')
   await a.mouse.up()
-  const fromBase = 3 - Number(await table.locator(`[data-token-id="${mineId}"] .board-token-base`).getAttribute('r'))
-  await expect
-    .poll(async () => Number.parseFloat(await table.locator('.overlay-measure .overlay-label').textContent()))
-    .toBeCloseTo(fromBase, 0)
-  expect(await table.locator(`[data-token-id="${mineId}"] .board-token-base`).getAttribute('cx')).toBe(mineCx)
+  await expect(table.locator(`.move-count[data-count-for="${mineId}"]`)).toHaveText('3.0"')
+  await expect(table.locator(`[data-token-id="${mineId}"] .board-token-base`)).not.toHaveAttribute('cx', mineCx)
+  await ringAction(a, mineId, 'Edit')
+  await ring.getByRole('menuitem', { name: 'Undo move', exact: true }).click()
+  await expect(table.locator(`[data-token-id="${mineId}"] .board-token-base`)).toHaveAttribute('cx', mineCx)
+  await expect(table.locator(`[data-token-id="${mineId}"]`)).not.toHaveClass(/is-active/)
   // Shoot from the ring: the Shoot/Fight tool comes on with the weapon chooser open.
   await tokenOf(mineId).click()
   await ring.getByRole('menuitem', { name: 'Shoot' }).click()
@@ -682,8 +685,17 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await cardSheet.getByRole('button', { name: 'Close' }).click()
   await expect(cardSheet).toHaveCount(0)
 
-  // In battle, drag an operative in an L: it moves in whole-inch steps, the path stays, and undo puts it back.
+  // In battle, Move opens a ring of move actions, each with its distance (Yaegirs have
+  // a 5" Move): Move, Dash 3", Charge Move + 2", Fall Back (Adjust once it has moved).
   await ringAction(a, 't1', 'Move')
+  await expect(ring).toHaveAttribute('data-menu', 'move')
+  await expect(ring.getByRole('menuitem')).toHaveText(['5"Move', '3"Dash', '7"Charge', '5"Fall Back', 'Back'])
+  await a.waitForTimeout(250)
+  await shot(a, '06m-move-ring-ipad')
+  // Pick Move, then drag the operative in an L: it moves in whole-inch steps up to 5",
+  // the path stays, and undo puts it back.
+  await ring.getByRole('menuitem', { name: 'Move', exact: true }).click()
+  await expect(a.locator('[data-move-status]')).toContainText('0 / 5"')
   const tableToken = table.locator('.board-token-base').first()
   const startCx = await tableToken.getAttribute('cx')
   const tokenBox = await a.locator('.map-stage .board-token-base').first().boundingBox()
@@ -696,11 +708,20 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator('.overlay-move .move-count')).toHaveText(/^4\.\d"$/)
   await shot(a, '06a-move-count-ipad')
   for (let i = 1; i <= 20; i += 1) await a.mouse.move(sx + 4.3 * pxPerInch, sy + (3.3 * pxPerInch * i) / 20)
+  // Held past the 5" limit, after a moment the path bends toward the finger without
+  // getting longer: the operative swings round toward it.
+  const t1Base = table.locator('[data-token-id="t1"] .board-token-base')
+  const heldAt = { cx: Number(await t1Base.getAttribute('cx')), cy: Number(await t1Base.getAttribute('cy')) }
+  await a.waitForTimeout(1600)
+  await expect(a.locator('[data-move-status]')).toContainText('5 / 5"')
+  const swungTo = { cx: Number(await t1Base.getAttribute('cx')), cy: Number(await t1Base.getAttribute('cy')) }
+  expect(Math.hypot(swungTo.cx - heldAt.cx, swungTo.cy - heldAt.cy)).toBeGreaterThan(0.3)
   await a.mouse.up()
-  // Released, it snaps to the last whole inch and the count stays on the token.
+  // Released, it snaps to the last whole inch and the count stays on the token: pulled
+  // 7.6" along the L, a Move stops at 5".
   const moveLabel = table.locator('.move-count[data-count-for="t1"]')
-  await expect(moveLabel).toHaveText(/^\d+\.0"$/)
-  expect(Number.parseFloat(await moveLabel.textContent())).toBeGreaterThanOrEqual(6)
+  await expect(moveLabel).toHaveText('5.0"')
+  await expect(a.locator('[data-move-status]')).toContainText('5 / 5"')
   await expect(tableToken).not.toHaveAttribute('cx', startCx)
   await shot(table, '06b-move-path-table')
   // Moving a ready operative in the Firefight phase activates it.
@@ -727,8 +748,11 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await shot(a, '06c-map-after-move')
   const firstLeg = Number.parseFloat(await moveLabel.textContent())
 
-  // Dragging the same operative again only nudges where it ended: up to 1" away, with
-  // the start locked and the move's length unchanged (its path scrunches to fit).
+  // Adjust (from its Move ring) nudges where it ended: up to 1" away, with the start
+  // locked and the move's length unchanged (its path scrunches to fit).
+  await ringAction(a, 't1', 'Move')
+  await expect(ring.getByRole('menuitem', { name: 'Adjust', exact: true })).toBeVisible()
+  await ring.getByRole('menuitem', { name: 'Adjust', exact: true }).click()
   const movedBox = await a.locator('.map-stage .board-token-base').first().boundingBox()
   const mx = movedBox.x + movedBox.width / 2
   const my = movedBox.y + movedBox.height / 2
@@ -789,12 +813,18 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await tokenOf('t2').click()
   await expect(ring.getByRole('menuitem')).toHaveCount(10)
   await ring.getByRole('menuitem', { name: 'Move', exact: true }).click()
+  await ring.getByRole('menuitem', { name: 'Dash', exact: true }).click()
   await expect(ring).toHaveCount(0)
+  await expect(a.locator('[data-move-status]')).toContainText('Dash')
   await a.mouse.click(...emptySpot)
   await expect(table.locator('.overlay-ping')).toHaveCount(0)
   // (Now there's no tool, so the next tap pings.)
   await a.mouse.click(...emptySpot)
   await expect(table.locator('.overlay-ping')).toHaveCount(1)
+  // With no tool, dragging your own operative moves it freely; one that already moved
+  // this activation carries on from where it got to.
+  await dragDown(1, 1.4)
+  await expect(table.locator('.move-count[data-count-for="t2"]')).toHaveText('3.0"')
 
   // Token pops out categories, then that category's tokens; picking one closes the list.
   const tokenButton = a.getByRole('button', { name: 'Token', exact: true })

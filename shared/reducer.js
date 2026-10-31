@@ -1,4 +1,5 @@
 import { boardLayoutFor, isBoardPiece, isBoardShape, placePiece } from './boardLayout.js'
+import { isMoveKind } from './movement.js'
 import {
   DEFAULT_BASE_MM,
   MAX_CATEGORY_VP,
@@ -845,7 +846,9 @@ const handlers = {
     const from = token.lastMove?.from ?? { x: token.x, y: token.y }
     const steps = (Array.isArray(action.path) ? action.path : []).slice(1, MAX_PATH_POINTS).map(sanitizePoint)
     const prevMovedTp = token.lastMove ? token.lastMove.prevMovedTp ?? null : operativeUnit(state, token)?.movedTp ?? null
-    const moved = setMovePath(state, id, from, [from, ...steps], { prevMovedTp })
+    // Which move action it was (Move, Dash, Charge, Fall Back), if one was picked.
+    const kind = isMoveKind(action.kind) ? action.kind : null
+    const moved = setMovePath(state, id, from, [from, ...steps], { prevMovedTp, kind })
     // Back-tracking all the way to where it started undoes the move and its activation.
     if (!steps.length) return returnToStart(restoreMovedTp(moved, token), token)
     const maxWounds = token.maxWounds ?? action.maxWounds

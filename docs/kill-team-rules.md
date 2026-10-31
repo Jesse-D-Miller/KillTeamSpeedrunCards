@@ -688,6 +688,14 @@ All of these were replaced in Approved Ops 2025.
 
 **Order tags:** the red/black swap is the user's table convention. The rules flip every token to its light (ready) side in each Ready step; tracking ready/expended by alternating colours each TP gives the same information.
 
+### Moving operatives on the iPad map (31 Oct 2026)
+
+- **Move ring:** an operative's Move button opens a second ring of move actions, each showing its distance: **Move** (Reposition, its Move stat), **Dash** (3"), **Charge** (Move + 2"), **Fall Back** (Move stat, 2AP), and **Adjust** (nudge a finished move up to 1") once it has moved. Injured operatives (below half their wounds) have 2" less Move; Dash isn't based on Move, so it stays 3".
+- **Distance:** a move is laid in 1" steps along the finger's route and stops at its action's limit. Held past the limit for a second, the route bends toward the finger without getting longer: each 1" step keeps its length and the start stays put. A second move in the same activation carries on from the first one's route.
+- **End-of-move rules are warnings**, shown in red on the move banner: a Charge must end within 1" of an enemy; a Move or Dash can't end within an enemy's control range; a Fall Back must start within one and not end in one. Control range also needs visibility, and terrain (climbing, walls) isn't checked, so the app warns rather than refusing the move.
+- **Free move:** dragging your own operative with no tool picked moves it with no limit (no move action). Dragging an enemy operative or the empty map still measures.
+- The move action is saved with the move (`lastMove.kind`). Rules that depend on it (Kunnin' But Brutal, Heavy (Dash only), Ocelli) don't read it yet.
+
 ### Arranging the side bars (app feature, not a rule)
 
 - **My board** (iPad map drawer): each player drags the pieces of their own in-game side bar (name, score, turning points, kill op, ploys, tac op, crit op). Drops snap to 1% of the bar and move to the nearest free spot if they'd cover another piece. The projector follows. **Reset** restores the defaults.

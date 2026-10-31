@@ -365,7 +365,14 @@ describe('token movement', () => {
   it('moves along the path and remembers it', () => {
     const state = moved()
     expect(state.tokens[0]).toMatchObject({ x: 4, y: 3 })
-    expect(state.tokens[0].lastMove).toEqual({ from: { x: 2, y: 2 }, path, inches: 3, prevMovedTp: null })
+    expect(state.tokens[0].lastMove).toEqual({ from: { x: 2, y: 2 }, path, inches: 3, prevMovedTp: null, kind: null })
+  })
+
+  it('remembers which move action it was (Move, Dash, Charge, Fall Back), if any', () => {
+    const charged = applyAction(moved(), { type: 'token/move', id: 't1', path: [...path, { x: 4, y: 4 }], kind: 'charge' }, 'A')
+    expect(charged.tokens[0].lastMove.kind).toBe('charge')
+    const junk = applyAction(moved(), { type: 'token/move', id: 't1', path: [...path, { x: 4, y: 4 }], kind: 'teleport' }, 'A')
+    expect(junk.tokens[0].lastMove.kind).toBeNull()
   })
 
   it('a second drag continues the same movement from its original start', () => {

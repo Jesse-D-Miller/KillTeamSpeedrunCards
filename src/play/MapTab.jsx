@@ -8,7 +8,9 @@ import {
   tokenRadiusIn,
   turnState,
 } from '../../shared/game.js'
-import { clampToBase, defaultShooterPoint } from '../../shared/targeting.js'
+import { MOVE_KINDS, bendToward, capPath, moveLimit, moveStat, moveWarning } from '../../shared/movement.js'
+import { clampToBase, defaultShooterPoint, statusOf } from '../../shared/targeting.js'
+import { isInjured } from '../board/health.js'
 import BoardSvg from '../board/BoardSvg.jsx'
 import { dragOverlays } from '../board/dragOverlays.js'
 import { baseSizeMm } from '../data/baseSizes.js'
@@ -59,6 +61,11 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 const GRAB_PX = 24
 // A finger that moves less than this (screen pixels) is a tap, not a drag.
 const TAP_SLOP_PX = 8
+// Pulled past a move's limit this long, the path starts bending toward the finger
+// (keeping its length), a little every tick.
+const BEND_AFTER_MS = 1000
+const BEND_TICK_MS = 50
+const BEND_PULL = 0.15
 // The action ring around a tapped operative: its smallest radius (it widens so its
 // buttons never overlap), and its buttons (own: only for your own operatives).
 const RADIAL_PX = 78
@@ -175,6 +182,11 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const [tool, setTool] = useState(null)
   const [tabsOpen, setTabsOpen] = useState(false)
   const [arranging, setArranging] = useState(false)
+  // The move action picked from an operative's Move ring (MOVE_KINDS or 'adjust'); null
+  // is a free move. moveStatus: the banner while moving { label, used, limit, warning }.
+  const [moveKind, setMoveKind] = useState(null)
+  const [moveStatus, setMoveStatus] = useState(null)
+  const moveStatusTimer = useRef(null)
   // The team section open beside the tool drawer (an id from TEAM_SECTIONS), or null.
   const [teamSection, setTeamSection] = useState(null)
   const [overlay, setOverlay] = useState(null)
@@ -251,6 +263,73 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   }
 
   // The living operative whose base is under this point, if any.
+  // How far one of my operatives can go with a move action (Infinity for a free move).
+  const moveLimitFor = (token, kind) => {
+    const unit = roster.find((candidate) => candidate.key === token.unitKey)
+    if (!MOVE_KINDS[kind] || !unit) return Infinity
+    const max = maxWoundsFor(unit.opType)
+    const wounds = game.players[token.seat]?.unitState?.[token.unitKey]?.wounds ?? max
+    return moveLimit(kind, moveStat(unit.opType.MOVE), isInjured(max, wounds))
+  }
+  const enemiesOf = (token) =>
+    tokens.filter((other) => other.unitKey && other.seat && other.seat !== token.seat && !statusOf(game.players, other).dead)
+
+  // A drag that moves an operative along a 1" stepped path. A second move in the same
+  // activation carries on from the first one's route (keep: points already moved).
+  const dragTokenGesture = (token, kind, screen, ring) => {
+    const path = token.lastMove ? token.lastMove.path : [{ x: token.x, y: token.y }]
+    return {
+      type: 'drag-token',
+      id: token.id,
+      token,
+      kind,
+      path,
+      start: path,
+      keep: path.length,
+      limit: moveLimitFor(token, kind),
+      moved: false,
+      screen,
+      // With Move on, a tap (no drag) goes back to the operative's action ring.
+      ring,
+    }
+  }
+
+  // Show where a stepped drag has got to: the preview on both screens and the banner.
+  // Past its limit the operative stays at the end of its path instead of the finger.
+  const showDrag = (gesture) => {
+    const end = gesture.path.at(-1)
+    const at = gesture.beyond ? end : gesture.finger
+    const preview = { id: gesture.id, path: gesture.path, x: at.x, y: at.y }
+    setDragPreview(preview)
+    sendEphemeral({ tool: 'drag', ...preview })
+    const warning = moveWarning({
+      kind: gesture.kind,
+      mover: { ...gesture.token, ...end },
+      start: gesture.path[gesture.keep - 1],
+      enemies: enemiesOf(gesture.token),
+      radius: tokenRadiusIn,
+    })
+    setMoveStatus({
+      label: MOVE_KINDS[gesture.kind]?.label ?? 'Free move',
+      used: gesture.path.length - gesture.keep,
+      limit: gesture.limit,
+      warning,
+    })
+  }
+
+  // Bends a path that's been pulled past its limit for a moment toward the finger.
+  const bendTick = (gesture) => {
+    if (gestureRef.current !== gesture) {
+      window.clearInterval(gesture.timer)
+      return
+    }
+    if (!gesture.overSince || Date.now() - gesture.overSince < BEND_AFTER_MS) return
+    const end = gesture.path.at(-1)
+    const target = { x: end.x + (gesture.finger.x - end.x) * BEND_PULL, y: end.y + (gesture.finger.y - end.y) * BEND_PULL }
+    gesture.path = bendToward(gesture.path, target, gesture.keep)
+    showDrag(gesture)
+  }
+
   const operativeAt = (point) =>
     tokens.find(
       (token) =>
@@ -380,9 +459,10 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         }
         return
       }
-      // Dragging an operative that already moved this turning point nudges where that
-      // move ended (up to 1"), keeping its start and its length.
-      if (target.token.lastMove) {
+      // Adjust (from the Move ring) nudges where the operative's move ended (up to 1"),
+      // keeping its start and its length; so does a drag with Token on.
+      const kind = tool === 'move' ? moveKind : null
+      if (target.token.lastMove && (kind === 'adjust' || tool !== 'move')) {
         gestureRef.current = {
           type: 'adjust-token',
           id: target.token.id,
@@ -394,18 +474,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         }
         return
       }
-      // Operative tokens follow the finger smoothly; their path locks in at each full inch.
-      const path = [{ x: target.token.x, y: target.token.y }]
-      gestureRef.current = {
-        type: 'drag-token',
-        id: target.token.id,
-        path,
-        start: path,
-        moved: false,
-        screen: { x: event.clientX, y: event.clientY },
-        // With Move on, a tap (no drag) goes back to the operative's action ring.
-        ring: tool === 'move',
-      }
+      // Operative tokens follow the finger smoothly; their path locks in at each full
+      // inch, up to the move action's limit.
+      gestureRef.current = dragTokenGesture(target.token, kind === 'adjust' ? null : kind, { x: event.clientX, y: event.clientY }, tool === 'move')
       return
     }
     if (target?.marker && DRAG_TOOLS.includes(tool)) {
@@ -528,8 +599,16 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       return
     }
     if (gesture.type === 'press') {
-      // A drag: measure. From an operative it starts at the edge of its base (distances
-      // are measured from bases), and the operative doesn't move.
+      // Dragging your own operative in the battle moves it, with no move action picked
+      // (unrestricted).
+      if (gesture.token && gesture.token.seat === seat && steppedMoves) {
+        setSelectedId(gesture.token.id)
+        gestureRef.current = dragTokenGesture(gesture.token, null, gesture.screen, false)
+        moveTool(event)
+        return
+      }
+      // Otherwise a drag measures. From an operative it starts at the edge of its base
+      // (distances are measured from bases), and the operative doesn't move.
       const anchor = gesture.token
       gestureRef.current = { type: 'measure-end', index: 1, anchor }
       publish({ tool: 'measure', points: [anchor ? defaultShooterPoint(anchor, point) : gesture.from, point] })
@@ -549,10 +628,18 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       }))
     } else if (gesture.type === 'drag-token') {
       gesture.moved = true
-      gesture.path = stepPath(gesture.path, point)
-      const preview = { id: gesture.id, path: gesture.path, x: point.x, y: point.y }
-      setDragPreview(preview)
-      sendEphemeral({ tool: 'drag', ...preview })
+      gesture.finger = point
+      gesture.path = capPath(stepPath(gesture.path, point, 1, gesture.keep), gesture.keep, gesture.limit)
+      // At the limit with the finger well past the end: after a moment the path bends.
+      const atLimit = gesture.path.length - gesture.keep >= gesture.limit
+      gesture.beyond = atLimit && distance(gesture.path.at(-1), point) > 0.75
+      if (gesture.beyond) {
+        gesture.overSince ??= Date.now()
+        gesture.timer ??= window.setInterval(() => bendTick(gesture), BEND_TICK_MS)
+      } else {
+        gesture.overSince = null
+      }
+      showDrag(gesture)
     } else if (gesture.type === 'adjust-token') {
       gesture.moved = true
       gesture.point = clampWithin(gesture.end, point, MOVE_ADJUST_REACH)
@@ -628,10 +715,15 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       return
     }
     if (gesture.type === 'drag-token') {
+      window.clearInterval(gesture.timer)
       const changed =
         gesture.path.length !== gesture.start.length || gesture.path.at(-1) !== gesture.start.at(-1)
+      // The finished move (and any rule it broke) stays on the banner for a few seconds.
+      setMoveStatus((current) => (changed ? current : null))
+      if (moveStatusTimer.current) window.clearTimeout(moveStatusTimer.current)
+      moveStatusTimer.current = window.setTimeout(() => setMoveStatus(null), 4000)
       if (gesture.moved && changed) {
-        act({ type: 'token/move', id: gesture.id, path: gesture.path, maxWounds: maxWoundsOf(gesture.id) })
+        act({ type: 'token/move', id: gesture.id, path: gesture.path, kind: gesture.kind, maxWounds: maxWoundsOf(gesture.id) })
         // Snap to the last locked inch, and hold that until the server echoes it.
         setDragPreview({ id: gesture.id, path: gesture.path })
         window.setTimeout(() => setDragPreview(null), 400)
@@ -682,6 +774,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     if (pointersRef.current.size === 2) {
       // Second finger: abandon the tool gesture and zoom instead.
       if (['drag-token', 'adjust-token', 'drag-free'].includes(gestureRef.current?.type)) {
+        window.clearInterval(gestureRef.current.timer)
+        setMoveStatus(null)
         setDragPreview(null)
         sendEphemeral(overlay ?? null)
       }
@@ -724,6 +818,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     endPlacing()
     setWeaponMenuOpen(false)
     setTool(next === tool ? null : next)
+    setMoveKind(null)
+    setMoveStatus(null)
   }
 
   // Back to no tool (from one opened by the action ring).
@@ -733,6 +829,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     endPlacing()
     setWeaponMenuOpen(false)
     setTool(null)
+    setMoveKind(null)
+    setMoveStatus(null)
   }
 
   // An operative, token or marker by id.
@@ -750,8 +848,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // Moving, shooting or fighting with your own ready operative in the Firefight phase
   // activates it.
   const runAction = (id, token) => {
-    // Some open a second ring of choices instead.
-    if (id === 'range' || id === 'vantage' || id === 'edit') {
+    // Some open a second ring of choices instead (an operative's move in the battle:
+    // which move action).
+    if (id === 'range' || id === 'vantage' || id === 'edit' || (id === 'move' && token.unitKey && steppedMoves)) {
       setRadial((current) => current && { ...current, menu: id })
       return
     }
@@ -774,6 +873,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     setSelectedId(id === 'move' ? token.id : null)
     if (id === 'move') {
       setTool(id)
+      setMoveKind(null)
     } else if (id === 'measure') {
       setTool('measure')
       publish({ tool: 'measure', points: [{ x: token.x, y: token.y }, { x: token.x, y: token.y }], anchorId: token.id })
@@ -785,6 +885,21 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       publish({ tool: 'attack', mode: id, shooterId: token.id, targetId: null, point: null, weaponId: null })
       setWeaponMenuOpen(true)
     }
+  }
+
+  // A move action picked from the operative's Move ring: Move on, aimed at it, with
+  // that action's limit (Adjust only nudges a finished move).
+  const startMove = (kind, token) => {
+    if (kind !== 'adjust') activateByTap(token.id)
+    setRadial(null)
+    clearTool()
+    endPlacing()
+    setWeaponMenuOpen(false)
+    setSelectedId(token.id)
+    setTool('move')
+    setMoveKind(kind)
+    const limit = kind === 'adjust' ? MOVE_ADJUST_REACH : moveLimitFor(token, kind)
+    setMoveStatus({ label: MOVE_KINDS[kind]?.label ?? 'Adjust', used: 0, limit, warning: null })
   }
 
   // Fix the base size of the unit just placed; from now on it can only be moved.
@@ -1016,6 +1131,21 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const back = { key: 'back', label: 'Back', icon: 'back', run: () => setRadial((current) => ({ ...current, menu: 'main' })) }
   const ringItems = () => {
     if (!radialToken) return []
+    if (radial.menu === 'move') {
+      return [
+        ...Object.entries(MOVE_KINDS).map(([kind, { label }]) => ({
+          key: `move-${kind}`,
+          label,
+          text: `${moveLimitFor(radialToken, kind)}"`,
+          caption: label,
+          run: () => startMove(kind, radialToken),
+        })),
+        ...(radialToken.lastMove
+          ? [{ key: 'move-adjust', label: 'Adjust', text: `${MOVE_ADJUST_REACH}"`, caption: 'Adjust', run: () => startMove('adjust', radialToken) }]
+          : []),
+        back,
+      ]
+    }
     if (radial.menu === 'range') {
       return [
         ...RANGES.map((inches) => ({
@@ -1184,6 +1314,15 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             <BaseSizer token={editing} onStep={(direction) => stepBase(editing, direction)} />
           ) : null}
         </BoardSvg>
+        {moveStatus ? (
+          <div className={`move-status glass${moveStatus.warning ? ' is-warning' : ''}`} role="status" data-move-status>
+            <span className="move-status-label">{moveStatus.label}</span>
+            <span className="move-status-inches">
+              {Number.isFinite(moveStatus.limit) ? `${moveStatus.used} / ${moveStatus.limit}"` : `${moveStatus.used}"`}
+            </span>
+            {moveStatus.warning ? <span className="move-status-warning">⚠ {moveStatus.warning}</span> : null}
+          </div>
+        ) : null}
         {radialToken ? (
           <div
             className="unit-radial"
@@ -1225,7 +1364,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
                 aria-pressed={item.selected ?? undefined}
               >
                 {item.mark ?? (item.text ? <span className="unit-radial-text">{item.text}</span> : <ToolIcon tool={item.icon} />)}
-                {item.text ? null : <span>{item.caption ?? item.label}</span>}
+                {item.text && !item.caption ? null : <span>{item.caption ?? item.label}</span>}
               </button>
             ))}
           </div>
