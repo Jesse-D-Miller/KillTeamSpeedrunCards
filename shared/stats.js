@@ -61,10 +61,17 @@ export const leaderboard = (games) => {
 }
 
 // The top three places, best first. Ties share a place (two firsts, then a third).
+// Each name only takes its best result, so one player can't fill the podium alone.
 const podium = (rows, { lowest = false } = {}) => {
   const better = (x, y) => (lowest ? x.value < y.value : x.value > y.value)
-  return rows
-    .map((row) => ({ ...row, place: 1 + rows.filter((other) => better(other, row)).length }))
+  const best = new Map()
+  rows.forEach((row) => {
+    const key = playerKey(row.name)
+    if (!best.has(key) || better(row, best.get(key))) best.set(key, row)
+  })
+  const ranked = [...best.values()]
+  return ranked
+    .map((row) => ({ ...row, place: 1 + ranked.filter((other) => better(other, row)).length }))
     .filter((row) => row.place <= 3)
     .sort((x, y) => x.place - y.place || x.name.localeCompare(y.name))
 }

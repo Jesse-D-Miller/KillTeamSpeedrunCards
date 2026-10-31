@@ -13,7 +13,9 @@
     "lint": "eslint .",
     "test": "vitest",
     "test:unit": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "seed:stats": "node scripts/seedHistory.mjs",
+    "dev:stats-sample": "npm run seed:stats && KT_HISTORY_FILE=server/data/history.sample.json npm run dev"
   },
   "dependencies": {
     "qrcode": "^1.5.4",

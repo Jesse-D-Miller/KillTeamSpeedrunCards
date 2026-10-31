@@ -693,7 +693,8 @@ All of these were replaced in Approved Ops 2025.
 - **What is saved:** every game that reaches the results is added to `server/data/history.json` on the table's Mac (gitignored, never pushed). Going back to the battle and on to the results again replaces that game's record instead of adding a second one.
 - **Each record:** names, kill teams, VP with the primary op (as on the results screen), the op breakdown, kills (enemy operatives dead at the end) and losses, the winner (null for a draw) and the length. `durationMs` is the projector's game clock; `battleMs` runs from turning point 1 to the results.
 - **Fixing it:** edit the file by hand. Players are matched by name, ignoring case and spacing, so correcting a typo merges them. Delete a record to drop a game. A file that doesn't parse is renamed `history.json.broken-<time>` when the next game is saved, so nothing is lost.
-- **Stats page:** tap the logo on the opening screen. The leaderboard ranks by win rate (a draw counts as half a win), then games played, then average VP. Prizes go to the top three places, and ties share a place: most VP in a game, total VP, total kills, most wins, games played, fastest and longest game, best average VP (3+ games) and biggest win (VP margin).
+- **Stats page:** tap the logo on the opening screen. The leaderboard ranks by win rate (a draw counts as half a win), then games played, then average VP. Prizes go to the top three places, ties share a place, and each player (or pairing) takes only their best result: most VP in a game, total VP, total kills, most wins, games played, fastest and longest game, best average VP (3+ games) and biggest win (VP margin).
+- **Sample data:** `npm run dev:stats-sample` writes 100 made-up games for 10 players (`scripts/seedHistory.mjs`, into `server/data/history.sample.json`) and runs the app reading them. The real `history.json` is never touched.
 
 ## 13. Data caveats in this repo
 

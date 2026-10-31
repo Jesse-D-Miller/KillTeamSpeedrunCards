@@ -68,6 +68,11 @@ describe('stats prizes', () => {
     ])
   })
 
+  it('gives each player only their best game on a podium', () => {
+    const repeat = [...games, game(5, ['Alice', 13], ['Eve', 2]), game(6, ['Alice', 13], ['Eve', 3])]
+    expect(prize(repeat, 'mostVpGame').filter((row) => row.name === 'Alice')).toHaveLength(1)
+  })
+
   it('totals kills and games per player', () => {
     expect(prize(games, 'kills')[0]).toMatchObject({ place: 1, name: 'Alice', value: 11 })
     expect(prize(games, 'games')[0]).toMatchObject({ place: 1, name: 'Bob', value: 3 })
