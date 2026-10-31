@@ -39,9 +39,10 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
 </plist>
 EOF
 
-# The icon: the logo's emblem cropped to a square, at every size macOS asks for.
+# The icon: a square cut tight around the logo's emblem (only the tips of the wings and
+# speed streaks are trimmed), so it fills the icon, at every size macOS asks for.
 LOGO="$REPO/public/killteamSpeedrunLogo.png"
-sips -c 1100 1100 "$LOGO" --out "$WORK/square.png" >/dev/null 2>&1
+sips -c 960 960 --cropOffset 7 274 "$LOGO" --out "$WORK/square.png" >/dev/null 2>&1
 mkdir "$WORK/AppIcon.iconset"
 for size in 16 32 128 256 512; do
   sips -z $size $size "$WORK/square.png" --out "$WORK/AppIcon.iconset/icon_${size}x${size}.png" >/dev/null
