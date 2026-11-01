@@ -1,4 +1,5 @@
-import { createReadStream, existsSync, statSync } from 'fs'
+import { createReadStream, existsSync, readFileSync, statSync } from 'fs'
+import { gzipSync } from 'zlib'
 import { createServer } from 'http'
 import { networkInterfaces } from 'os'
 import { dirname, extname, join, normalize, resolve, sep } from 'path'
@@ -34,11 +35,31 @@ const lanAddresses = () =>
     .filter((entry) => entry && entry.family === 'IPv4' && !entry.internal)
     .map((entry) => entry.address)
 
-const sendFile = (res, path) => {
-  res.writeHead(200, {
-    'Content-Type': MIME[extname(path).toLowerCase()] || 'application/octet-stream',
-    'Cache-Control': path.includes(`${join('dist', 'assets')}`) ? 'public, max-age=31536000, immutable' : 'no-cache',
-  })
+// Text files go out gzipped (the app's data file is ~7MB raw, ~1MB gzipped) to devices
+// that accept it. Built assets never change (their names carry a hash), so each is
+// compressed once and kept.
+const COMPRESSIBLE = new Set(['.html', '.js', '.css', '.json', '.svg'])
+const gzipped = new Map()
+
+const sendFile = (req, res, path) => {
+  const type = MIME[extname(path).toLowerCase()] || 'application/octet-stream'
+  const asset = path.includes(`${join('dist', 'assets')}`)
+  const headers = {
+    'Content-Type': type,
+    'Cache-Control': asset ? 'public, max-age=31536000, immutable' : 'no-cache',
+    Vary: 'Accept-Encoding',
+  }
+  if (COMPRESSIBLE.has(extname(path).toLowerCase()) && /\bgzip\b/.test(req.headers['accept-encoding'] ?? '')) {
+    let body = asset ? gzipped.get(path) : null
+    if (!body) {
+      body = gzipSync(readFileSync(path))
+      if (asset) gzipped.set(path, body)
+    }
+    res.writeHead(200, { ...headers, 'Content-Encoding': 'gzip', 'Content-Length': body.length })
+    res.end(body)
+    return
+  }
+  res.writeHead(200, headers)
   createReadStream(path).pipe(res)
 }
 
@@ -81,11 +102,11 @@ const server = createServer((req, res) => {
   const requested = normalize(join(DIST, pathname))
   // Trailing separator so sibling folders like "dist-ssr" don't pass the check.
   if (requested.startsWith(DIST + sep) && existsSync(requested) && statSync(requested).isFile()) {
-    sendFile(res, requested)
+    sendFile(req, res, requested)
     return
   }
   // SPA fallback for /table, /play, etc.
-  sendFile(res, join(DIST, 'index.html'))
+  sendFile(req, res, join(DIST, 'index.html'))
 })
 
 createGameServer({ server, persistPath: PERSIST_PATH, historyPath: HISTORY_PATH })

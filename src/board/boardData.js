@@ -1,7 +1,7 @@
 import mapsData from '../data/killzoneMaps.json'
-import terrainData from '../data/terrain.json'
+import terrainData from '../data/terrain.json' with { type: 'json' }
 import terrainPiecesData from '../data/terrainPieces.json'
-import critOpsData from '../data/critOpsCards.json'
+import critOpsData from '../data/critOpsCards.json' with { type: 'json' }
 import { buildTerrain, resolveZoneRect, zoneEdge } from '../../shared/geometry.js'
 
 export const BOARD = mapsData?.meta?.board ?? { width: 30, height: 22 }
