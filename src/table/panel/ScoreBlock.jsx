@@ -1,12 +1,13 @@
-import { MAX_CATEGORY_VP, SCORE_CATEGORIES, primaryBonus, totalVp } from '../../../shared/game.js'
+import { MAX_CATEGORY_VP, SCORE_CATEGORIES, primaryBonus, totalVp, tracksSp } from '../../../shared/game.js'
 
-// Two stats with one focal point (VP), then each op's VP as a bar out of its
-// maximum, so progress reads by length from across the table. The primary op stays
-// hidden until results.
+// Two stats with one focal point (VP), plus special points for teams that keep them,
+// then each op's VP as a bar out of its maximum, so progress reads by length from
+// across the table. The primary op stays hidden until results.
 function ScoreBlock({ player, final }) {
+  const sp = tracksSp(player.killteamId)
   return (
     <section className="pb-section pb-score">
-      <div className="pb-stats">
+      <div className={`pb-stats${sp ? ' has-sp' : ''}`}>
         <div className="pb-stat is-vp">
           <span className="pb-eyebrow">Victory points</span>
           <span className="pb-big-value">{totalVp(player, { withPrimary: final })}</span>
@@ -15,6 +16,12 @@ function ScoreBlock({ player, final }) {
           <span className="pb-eyebrow">Command</span>
           <span className="pb-big-value">{player.cp}</span>
         </div>
+        {sp ? (
+          <div className="pb-stat is-sp">
+            <span className="pb-eyebrow">Special</span>
+            <span className="pb-big-value">{player.sp ?? 0}</span>
+          </div>
+        ) : null}
       </div>
       <ul className="pb-vp-bars">
         {SCORE_CATEGORIES.map(([key, label]) => {

@@ -1,15 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  MAX_TP,
-  SCORE_CATEGORIES,
-  SEATS,
-  musterBlocker,
-  primaryBonus,
-  primaryCategory,
-  readyUnitKeys,
-  totalVp,
-} from '../../shared/game.js'
 import { seatColor } from '../board/colors.js'
 import { GameProvider } from '../net/GameProvider.jsx'
 import { useGame } from '../net/gameContext.js'
@@ -23,15 +13,10 @@ import LobbyStep from './steps/LobbyStep.jsx'
 import MusterStep from './steps/MusterStep.jsx'
 import ResultsStep from './steps/ResultsStep.jsx'
 import SetupStep from './steps/SetupStep.jsx'
-import FullscreenButton from './FullscreenButton.jsx'
 import AttackDrawer from './AttackDrawer.jsx'
 import { useKeyboardOverlay } from './useKeyboardOverlay.js'
-import { EndTurnSheet } from './NextTp.jsx'
-import { usePlayer } from './usePlayer.js'
 import { useAttack } from './useAttack.js'
 import './play.css'
-
-const SP_KILLTEAMS = new Set(['VOT-HKY', 'TAU-VESP'])
 
 const PHASES = {
   lobby: { label: 'Lobby', main: 'Join', tabs: ['main'] },
@@ -44,150 +29,6 @@ const PHASES = {
 
 // Your team's ops, equipment, ploys and rules are in the map's tool drawer.
 const TAB_LABELS = { map: 'Map', opponent: 'Opponent' }
-
-function Counter({ label, value, onChange }) {
-  return (
-    <div className="counter">
-      <span className="counter-label">{label}</span>
-      <button type="button" onClick={() => onChange(-1)} aria-label={`Decrease ${label}`}>
-        −
-      </button>
-      <span className="counter-value">{value}</span>
-      <button type="button" onClick={() => onChange(1)} aria-label={`Increase ${label}`}>
-        +
-      </button>
-    </div>
-  )
-}
-
-function VpSheet({ onClose }) {
-  const { state: game, me, act } = usePlayer()
-  const bonusCategory = primaryCategory(me)
-  // The primary op is revealed, and its VP added, when the game ends.
-  const final = game.phase === 'results'
-  return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-        <div className="sheet-head">
-          <h3>Victory points · {totalVp(me, { withPrimary: final })}</h3>
-          <button type="button" className="btn is-primary" onClick={onClose}>
-            Done
-          </button>
-        </div>
-        <div className="sheet-body vp-sheet">
-          {SCORE_CATEGORIES.map(([key, label]) => (
-            <Counter
-              key={key}
-              label={label}
-              value={me.score[key]}
-              onChange={(delta) => act({ type: 'battle/vp', category: key, delta })}
-            />
-          ))}
-          <p className="muted">
-            {bonusCategory
-              ? `Primary op: +${primaryBonus(me)} VP from ${SCORE_CATEGORIES.find(([key]) => key === bonusCategory)[1]}${final ? ', included' : ' (secret until the end)'}.`
-              : 'No primary op chosen.'}
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function PhaseAction() {
-  const { state: game, seat, opponent, opponentSeat, act } = usePlayer()
-  // The turning point the confirm sheet was opened for: it closes if that one ends
-  // meanwhile, so it can never confirm the next one by mistake.
-  const [confirmingTp, setConfirmingTp] = useState(null)
-  const tp = game.battle.tp
-
-  if (game.phase === 'results') return null
-  if (game.phase === 'battle') {
-    const tpReady = game.battle.tpReady ?? {}
-    const label = tp >= MAX_TP ? 'End game' : 'Next TP'
-    // Both players confirm the end of the turning point; until the other does, mine can
-    // be taken back.
-    if (tpReady[seat]) {
-      return (
-        <button
-          type="button"
-          className="btn is-ready"
-          onClick={() => act({ type: 'battle/readyNextTp', fromTp: tp, ready: false })}
-          aria-label={`Waiting for ${opponent.name} (tap to take back)`}
-        >
-          Waiting for {opponent.name}
-        </button>
-      )
-    }
-    return (
-      <>
-        <button type="button" className="btn is-primary" onClick={() => setConfirmingTp(tp)}>
-          {tpReady[opponentSeat] ? `${label} · ${opponent.name} is ready` : label}
-        </button>
-        {confirmingTp === tp ? (
-          <EndTurnSheet
-            tp={tp}
-            unactivated={SEATS.reduce((sum, candidate) => sum + readyUnitKeys(game.players[candidate]).length, 0)}
-            waiting={tpReady[opponentSeat] ? opponent.name : null}
-            onCancel={() => setConfirmingTp(null)}
-            onConfirm={() => {
-              setConfirmingTp(null)
-              act({ type: 'battle/readyNextTp', fromTp: tp })
-            }}
-          />
-        ) : null}
-      </>
-    )
-  }
-  const ready = game.ready[seat]
-  // Mustering: Ready waits until operatives, equipment and a tac op are picked, and says
-  // what's still missing.
-  const blocked = game.phase === 'muster' && !ready ? musterBlocker(game.players[seat]) : null
-  return (
-    <button
-      type="button"
-      className={`btn ${ready ? 'is-ready' : 'is-primary'}`}
-      onClick={() => act({ type: 'phase/ready', ready: !ready })}
-      disabled={Boolean(blocked)}
-    >
-      {blocked ?? (ready ? (game.ready[opponentSeat] ? 'Ready ✓' : `Waiting for ${opponent.name}`) : 'Ready')}
-    </button>
-  )
-}
-
-function Header() {
-  const { state: game, seat, me, killteam, status, act } = usePlayer()
-  const [vpOpen, setVpOpen] = useState(false)
-  const inBattle = game.phase === 'battle'
-  const score = (field) => (delta) => act({ type: 'battle/score', field, delta })
-  return (
-    <header className="play-header" style={{ '--seat-color': seatColor(seat) }}>
-      <div className="play-identity">
-        <span className={`conn-dot is-${status}`} title={status} />
-        <div>
-          <div className="play-name">{me.name}</div>
-          <div className="play-phase">
-            {inBattle ? `Turning point ${game.battle.tp}` : PHASES[game.phase]?.label}
-            {killteam ? ` · ${killteam.killteamName}` : ''}
-          </div>
-        </div>
-      </div>
-      {inBattle || game.phase === 'results' ? (
-        <div className="play-counters">
-          <Counter label="CP" value={me.cp} onChange={score('cp')} />
-          <button type="button" className="counter is-button" onClick={() => setVpOpen(true)} aria-label="Score VP">
-            <span className="counter-label">VP</span>
-            <span className="counter-value">{totalVp(me, { withPrimary: game.phase === 'results' })}</span>
-          </button>
-          {SP_KILLTEAMS.has(me.killteamId) ? <Counter label="SP" value={me.sp} onChange={score('sp')} /> : null}
-        </div>
-      ) : null}
-      <PhaseAction />
-      <FullscreenButton />
-      {vpOpen ? <VpSheet onClose={() => setVpOpen(false)} /> : null}
-    </header>
-  )
-}
 
 function MainStep({ onOpenMap }) {
   const { state: game } = useGame()
@@ -284,10 +125,9 @@ function SeatScreen() {
     <RuleProvider>
       <div
         ref={rootRef}
-        className={`play-root${immersive ? ' is-immersive' : ''}${!immersive && phase.tabs.length > 1 ? ' has-rail' : ''}`}
+        className={`play-root${immersive ? ' is-immersive' : ''}${!immersive ? ' has-rail' : ''}`}
         style={{ '--seat-color': seatColor(seat) }}
       >
-        {immersive ? null : <Header />}
         {status !== 'online' ? (
           <div className="play-offline" role="status">
             Reconnecting to the table…
@@ -298,8 +138,9 @@ function SeatScreen() {
           {activeTab === 'map' ? <MapTab tabs={phase.tabs} tabLabel={tabLabel} onSelectTab={setTab} /> : null}
           {activeTab === 'opponent' ? <OpponentTab /> : null}
         </main>
-        {/* Off the map the left drawer switches views (no bottom tabs); its map tools are greyed. */}
-        {!immersive && phase.tabs.length > 1 ? (
+        {/* Off the map the left drawer is there too (no top bar, no bottom tabs); its map
+            tools are greyed. */}
+        {!immersive ? (
           <ViewRail
             tabs={phase.tabs}
             activeTab={activeTab}

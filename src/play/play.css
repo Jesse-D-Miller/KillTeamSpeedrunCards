@@ -204,7 +204,7 @@
 
 /* Off the map the left drawer sits over the page: keep the content clear of it. */
 .play-root.has-rail .play-main {
-  padding-left: calc(max(10px, env(safe-area-inset-left, 0px)) + 96px);
+  padding-left: calc(max(10px, env(safe-area-inset-left, 0px)) + 168px);
 }
 
 
@@ -1108,12 +1108,111 @@
   }
 }
 
-/* Compact enough that every button fits a landscape iPad (each still 44px or more). */
+/* Two columns of buttons under your status, so it all fits a landscape iPad (each
+   button still 44px or more). */
 .tool-rail {
+  display: grid;
+  grid-template-columns: repeat(2, 64px);
+  gap: 0.1rem 0.15rem;
+  padding: 0.35rem;
+}
+
+.tool-rail > .rail-divider,
+.tool-rail > .rail-status,
+.tool-rail > .rail-phase {
+  grid-column: 1 / -1;
+}
+
+/* You, the phase and your CP / VP / SP. */
+.rail-status {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.2rem 0.15rem 0.1rem;
+}
+
+.rail-who {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.rail-who > div {
+  min-width: 0;
+}
+
+.rail-who .conn-dot {
+  margin-top: 0.4rem;
+}
+
+.rail-who .play-name {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--seat-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-who .play-phase,
+.rail-team {
+  font-size: 0.68rem;
+  line-height: 1.2;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-scores {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.25rem;
+}
+
+.rail-score {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
-  padding: 0.35rem;
+  align-items: center;
+  min-height: 48px;
+  padding: 0.2rem 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font: inherit;
+}
+
+.rail-score-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.rail-score-value {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* Ready / Next TP: the full width of the drawer. */
+.rail-phase .rail-phase-button {
+  width: 100%;
+  font-size: 0.78rem;
+}
+
+.rail-phase-button.is-primary {
+  background: var(--seat-color);
+  color: #0b0b0b;
+}
+
+.rail-phase-button:disabled {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  opacity: 1;
 }
 
 .rail-tool {

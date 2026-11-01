@@ -60,25 +60,26 @@ export function EndTurnSheet({ tp, unactivated = 0, waiting = null, double = fal
   )
 }
 
-// Next TP in the map's tool drawer: only once every operative has activated, and it
-// asks twice before confirming. Until the opponent confirms too, tapping it again
-// takes mine back.
+// Next TP (End game in turning point 4) at the top of the drawer. It shows how many
+// operatives still haven't activated; ending the turning point with some left asks for
+// a second tap. Until the opponent confirms too, tapping it again takes mine back.
 export function NextTpRailButton() {
   const { state: game, seat, opponent, opponentSeat, act } = usePlayer()
   const [confirmingTp, setConfirmingTp] = useState(null)
   const tp = game.battle.tp
   const tpReady = game.battle.tpReady ?? {}
   const unactivated = SEATS.reduce((sum, candidate) => sum + readyUnitKeys(game.players[candidate]).length, 0)
+  const label = tp >= MAX_TP ? 'End game' : 'Next TP'
   if (tpReady[seat]) {
     return (
       <button
         type="button"
-        className="rail-tool is-selected"
+        className="rail-tool rail-phase-button is-selected"
         onClick={() => act({ type: 'battle/readyNextTp', fromTp: tp, ready: false })}
         aria-label={`Waiting for ${opponent.name} (tap to take back)`}
       >
         <ToolIcon tool="nextTp" />
-        <span>Waiting</span>
+        <span>Waiting for {opponent.name}</span>
       </button>
     )
   }
@@ -86,21 +87,20 @@ export function NextTpRailButton() {
     <>
       <button
         type="button"
-        className="rail-tool"
+        className="rail-tool rail-phase-button is-primary"
         onClick={() => setConfirmingTp(tp)}
-        disabled={unactivated > 0}
-        aria-label={unactivated ? `Next TP (${unactivated} operatives still to activate)` : 'Next TP'}
+        aria-label={tpReady[opponentSeat] ? `${label} · ${opponent.name} is ready` : label}
       >
         <ToolIcon tool="nextTp" />
-        <span>{tp >= MAX_TP ? 'End game' : 'Next TP'}</span>
-        {/* Greyed out until every operative on both sides has activated. */}
+        <span>{tpReady[opponentSeat] ? `${label} · ${opponent.name} is ready` : label}</span>
         {unactivated ? <small className="rail-tool-note">{unactivated} left to activate</small> : null}
       </button>
       {confirmingTp === tp ? (
         <EndTurnSheet
           tp={tp}
+          unactivated={unactivated}
           waiting={tpReady[opponentSeat] ? opponent.name : null}
-          double
+          double={unactivated > 0}
           onCancel={() => setConfirmingTp(null)}
           onConfirm={() => {
             setConfirmingTp(null)

@@ -35,8 +35,16 @@ const boardOverflows = (page) =>
 
 const readyUp = async (...pages) => {
   for (const page of pages) {
-    await page.locator('.play-header').getByRole('button', { name: /^(Ready|Waiting for)/ }).click()
+    await page.locator('.rail-phase').getByRole('button', { name: /^(Ready|Waiting for)/ }).click()
   }
+}
+
+// Confirm the end of a turning point; with operatives still to activate it asks for a
+// second tap.
+const confirmTp = async (page, label) => {
+  await page.getByRole('button', { name: label }).click()
+  const again = page.getByRole('button', { name: 'Tap again to confirm' })
+  if (await again.isVisible()) await again.click()
 }
 
 // Send actions straight to the table server as the projector (test setup).
@@ -195,7 +203,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(a.getByText('0 of 4 equipment options chosen.', { exact: false })).toBeVisible()
   // Ready waits until operatives, equipment and a tac op are all picked, and says what's
   // still missing.
-  const aliceHeader = a.locator('.play-header')
+  const aliceHeader = a.locator('.rail-phase')
   await expect(aliceHeader.getByRole('button', { name: 'Pick your equipment' })).toBeDisabled()
   await a.locator('.equipment-toggle', { hasText: 'Ladders' }).click()
   await expect(aliceHeader.getByRole('button', { name: 'Pick a tac op' })).toBeDisabled()
@@ -606,7 +614,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await openTab(a, 'Map')
   await expect(a.getByRole('button', { name: 'Units', exact: true })).toHaveCount(0)
   // Everything else on the operatives comes from their action ring; the rail keeps the rest.
-  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', 'Ops', 'Equipment', 'Firefight', 'Strat ploys', 'Faction', 'Next TP', 'My board', 'Fit', 'Full screen', 'Operatives', 'Map', 'Opponent'])
+  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Next TP', 'Token', 'Ops', 'Equipment', 'Firefight', 'Strat ploys', 'Faction', 'My board', 'Fit', 'Full screen', 'Operatives', 'Map', 'Opponent'])
   // My board: Alice drags a piece of her side bar on her iPad and the projector follows;
   // Reset puts it back. (Map 2: landscape bars.)
   const aliceScore = aliceBoard.locator('[data-piece="score"]')
@@ -630,9 +638,10 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(aliceScore).toHaveAttribute('style', /left: 3%/)
   await arranger.getByRole('button', { name: 'Done' }).click()
   await expect(arranger).toHaveCount(0)
-  // Next TP in the drawer waits until every operative has activated, saying how many are left.
+  // Next TP sits at the top of the drawer, saying how many operatives are left to activate
+  // (ending the turning point before then asks for a second tap).
   await expect(a.locator('.tool-rail .rail-tool-note')).toHaveText(/^\d+ left to activate$/)
-  await expect(a.getByRole('button', { name: /^Next TP \(\d+ operatives still to activate\)$/ })).toBeDisabled()
+  await expect(a.locator('.rail-phase').getByRole('button', { name: 'Next TP' })).toBeEnabled()
   // With no tool on, tapping an operative opens a ring of its actions; a touch
   // elsewhere closes it.
   const ring = a.locator('.unit-radial')
@@ -1229,14 +1238,14 @@ test('projector + two iPads play through setup into battle', async ({ browser })
 
   // Next TP asks for confirmation and explains what happens; the turning point moves on
   // once both players have confirmed (and only once).
-  await a.locator('.play-header').getByRole('button', { name: 'Next TP' }).click()
+  await a.locator('.rail-phase').getByRole('button', { name: 'Next TP' }).click()
   await expect(a.getByRole('heading', { name: 'End turning point 1?' })).toBeVisible()
   await shot(a, '11-end-turn-ipad')
-  await a.getByRole('button', { name: 'Ready for TP 2' }).click()
-  await expect(a.locator('.play-header').getByRole('button', { name: /Waiting for Bob/ })).toBeVisible()
+  await confirmTp(a, 'Ready for TP 2')
+  await expect(a.locator('.rail-phase').getByRole('button', { name: /Waiting for Bob/ })).toBeVisible()
   await expect(b.locator('.play-phase')).toContainText('Turning point 1')
-  await b.locator('.play-header').getByRole('button', { name: 'Next TP · Alice is ready' }).click()
-  await b.getByRole('button', { name: 'Ready for TP 2' }).click()
+  await b.locator('.rail-phase').getByRole('button', { name: 'Next TP · Alice is ready' }).click()
+  await confirmTp(b, 'Ready for TP 2')
   await expect(b.locator('.play-phase')).toContainText('Turning point 2')
   await expect(a.locator('.play-phase')).toContainText('Turning point 2')
 
@@ -1285,14 +1294,14 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     }
     await expect(a.locator('.play-phase')).toContainText(`Turning point ${tp}`)
     for (const page of [a, b]) {
-      await page.locator('.play-header').getByRole('button', { name: tp === 4 ? /^End game/ : /^Next TP/ }).click()
-      await page.getByRole('button', { name: tp === 4 ? 'Ready to end' : `Ready for TP ${tp + 1}` }).click()
+      await page.locator('.rail-phase').getByRole('button', { name: tp === 4 ? /^End game/ : /^Next TP/ }).click()
+      await confirmTp(page, tp === 4 ? 'Ready to end' : `Ready for TP ${tp + 1}`)
     }
   }
   await expect(a.getByRole('heading', { name: 'Alice wins' })).toBeVisible()
   // Each iPad's VP counter now includes its primary op, matching the projector:
   // Alice's primary is Crit op, where she scored 2, so 2 + 1.
-  await expect(a.locator('.play-counters .counter.is-button .counter-value')).toHaveText('3')
+  await expect(a.locator('.rail-score[aria-label="Score VP"] .rail-score-value')).toHaveText('3')
   await expect(aliceBoard.locator('.pb-stat.is-vp .pb-big-value')).toHaveText('3')
   // The clock stops on the final time.
   await expect(table.locator('.table-clock')).toHaveAttribute('data-clock', 'final')

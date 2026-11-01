@@ -33,6 +33,11 @@ export const equipmentOptionCount = (eqIds) => new Set((eqIds ?? []).map(equipme
 
 export const otherSeat = (seat) => (seat === 'A' ? 'B' : 'A')
 
+// Kill teams that keep a tally of special points (Yaegirs' Resourceful points, the
+// Vespids' points) shown beside CP and VP.
+const SP_KILLTEAMS = new Set(['VOT-HKY', 'TAU-VESP'])
+export const tracksSp = (killteamId) => SP_KILLTEAMS.has(killteamId)
+
 export const isSeat = (value) => SEATS.includes(value)
 
 export const createPlayer = (seat) => ({

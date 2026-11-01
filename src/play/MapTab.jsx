@@ -23,8 +23,7 @@ import Drawer from './Drawer.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
 import { TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
 import VantageMark from './VantageMark.jsx'
-import { NextTpRailButton } from './NextTp.jsx'
-import { TeamSectionButtons, TeamSectionPanel, ViewButtons } from './RailParts.jsx'
+import { RailPhaseButton, RailStatus, TeamSectionButtons, TeamSectionPanel, ViewButtons } from './RailParts.jsx'
 import UnitCardModal from './UnitCardModal.jsx'
 import RulesPopover from './RulesPopover.jsx'
 import BoardArranger from './BoardArranger.jsx'
@@ -1398,6 +1397,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         className="tool-drawer"
       >
         <div className="tool-rail">
+          <RailStatus />
+          <RailPhaseButton />
+          <span className="rail-divider" />
           {tools.map(([id, label]) => {
             const button = (
               <button
@@ -1424,7 +1426,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           <span className="rail-divider" />
           <TeamSectionButtons open={teamSection} onToggle={setTeamSection} />
           <span className="rail-divider" />
-          {game.phase === 'battle' ? <NextTpRailButton /> : null}
           <button type="button" className="rail-tool" onClick={() => setArranging(true)} aria-label="My board">
             <ToolIcon tool="board" />
             <span>My board</span>

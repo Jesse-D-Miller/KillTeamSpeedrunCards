@@ -354,9 +354,14 @@
   font-size: calc(17.5cqmin * var(--fit, 1));
 }
 
-.pb-stat.is-cp .pb-big-value {
+.pb-stat.is-cp .pb-big-value,
+.pb-stat.is-sp .pb-big-value {
   font-size: calc(14cqmin * var(--fit, 1));
   color: var(--muted);
+}
+
+.pb-stats.has-sp {
+  grid-template-columns: 1.4fr 1fr 1fr;
 }
 
 .pb-vp-bars {
