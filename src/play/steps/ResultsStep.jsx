@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { SCORE_CATEGORIES, SEATS, primaryBonus, primaryCategory, totalVp } from '../../../shared/game.js'
 import { isHidden } from '../../../shared/views.js'
 import TacOpCard from '../../components/TacOpCard.jsx'
@@ -18,6 +19,13 @@ const formatDuration = (ms) => {
 function ResultsStep() {
   const { state: game, act } = usePlayer()
   const [confirm, setConfirm] = useState(false)
+  const navigate = useNavigate()
+  // A new game, then back to the opening screen (a moment later, so the reset is sent
+  // before this page closes its connection).
+  const newGame = () => {
+    act({ type: 'game/reset' })
+    window.setTimeout(() => navigate('/'), 300)
+  }
   const [a, b] = SEATS.map((seat) => totalVp(game.players[seat], { withPrimary: true }))
   const winner = a === b ? null : a > b ? 'A' : 'B'
 
@@ -62,7 +70,7 @@ function ResultsStep() {
           Back to battle
         </button>
         {confirm ? (
-          <button type="button" className="btn is-danger" onClick={() => act({ type: 'game/reset' })}>
+          <button type="button" className="btn is-danger" onClick={newGame}>
             Tap again to start a new game
           </button>
         ) : (
