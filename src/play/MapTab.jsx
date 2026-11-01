@@ -19,6 +19,7 @@ import { MARKER_SIZES_MM, categoriesFor, radiusFor } from '../data/tokenCatalog.
 import { maxWoundsFor, tokenLabelFor } from '../rules/roster.js'
 import { isLegionaryUnit } from '../rules/equipment.js'
 import { LEGIONARY_MARKS } from '../rules/legionary.js'
+import { engageOnlyInBattle } from '../rules/orders.js'
 import Drawer from './Drawer.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
 import { TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
@@ -977,12 +978,19 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     setTokenMenu(null)
   }
 
-  // Tapping your own operative's order tag switches Engage / Conceal.
+  // Tapping your own operative's order tag switches Engage / Conceal. A Bomb Squig
+  // (Stoopid) can't be put on Conceal during the battle; the banner says why.
   const toggleOrder = (event, token) => {
     event.stopPropagation()
     if (token.seat !== seat) return
     const unit = roster.find((candidate) => candidate.key === token.unitKey)
     const order = game.players[seat].unitState?.[token.unitKey]?.order ?? 'conceal'
+    if (order === 'engage' && game.phase === 'battle' && engageOnlyInBattle(unit?.opType)) {
+      setMoveStatus({ label: unit.opType.opTypeName, used: null, limit: null, warning: 'Stoopid: it can’t take a Conceal order in the battle.' })
+      if (moveStatusTimer.current) window.clearTimeout(moveStatusTimer.current)
+      moveStatusTimer.current = window.setTimeout(() => setMoveStatus(null), 3000)
+      return
+    }
     act({
       type: 'unit/update',
       unitKey: token.unitKey,
@@ -1329,9 +1337,11 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         {moveStatus ? (
           <div className={`move-status glass${moveStatus.warning ? ' is-warning' : ''}`} role="status" data-move-status>
             <span className="move-status-label">{moveStatus.label}</span>
-            <span className="move-status-inches">
-              {Number.isFinite(moveStatus.limit) ? `${moveStatus.used} / ${moveStatus.limit}"` : `${moveStatus.used}"`}
-            </span>
+            {moveStatus.used == null ? null : (
+              <span className="move-status-inches">
+                {Number.isFinite(moveStatus.limit) ? `${moveStatus.used} / ${moveStatus.limit}"` : `${moveStatus.used}"`}
+              </span>
+            )}
             {moveStatus.warning ? <span className="move-status-warning">⚠ {moveStatus.warning}</span> : null}
           </div>
         ) : null}
