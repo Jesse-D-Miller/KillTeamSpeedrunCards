@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { MAX_TP, SEATS, readyUnitKeys } from '../../shared/game.js'
 import ToolIcon from './ToolIcon.jsx'
 import { usePlayer } from './usePlayer.js'
@@ -12,7 +13,9 @@ import { usePlayer } from './usePlayer.js'
 export function EndTurnSheet({ tp, unactivated = 0, waiting = null, double = false, onCancel, onConfirm }) {
   const last = tp >= MAX_TP
   const [armed, setArmed] = useState(false)
-  return (
+  // Drawn on the page itself, so it's centred on the screen even when opened from the
+  // map's drawer (which would otherwise hold it).
+  return createPortal(
     <div className="sheet-backdrop" onClick={onCancel}>
       <div className="sheet" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
         <div className="sheet-head">
@@ -52,7 +55,8 @@ export function EndTurnSheet({ tp, unactivated = 0, waiting = null, double = fal
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

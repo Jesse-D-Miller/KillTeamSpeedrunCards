@@ -654,10 +654,16 @@ const handlers = {
   },
 
   // The Firefight phase has started: from now on moving an operative activates it.
-  'battle/startFirefight': (state) => {
+  // The strategy phase ends when both players have tapped Start firefight (either can
+  // take theirs back until then). The table can start it outright.
+  'battle/startFirefight': (state, action, actor) => {
     requirePhase(state, 'battle')
     if (state.battle.firefightTp === state.battle.tp) return state
-    return { ...state, battle: { ...state.battle, firefightTp: state.battle.tp } }
+    const start = (next) => ({ ...next, battle: { ...next.battle, firefightTp: next.battle.tp, firefightReady: { A: false, B: false } } })
+    if (!isSeat(actor)) return start(state)
+    const firefightReady = { ...(state.battle.firefightReady ?? { A: false, B: false }), [actor]: action.ready !== false }
+    const next = { ...state, battle: { ...state.battle, firefightReady } }
+    return SEATS.every((seat) => firefightReady[seat]) ? start(next) : next
   },
 
   // End the activation in progress (the active operative becomes expended).
@@ -695,7 +701,14 @@ const handlers = {
     if (state.battle.tp >= MAX_TP) return enterPhase(state, 'results', Math.random)
     let next = {
       ...state,
-      battle: { ...state.battle, tp: state.battle.tp + 1, lastAuto: null, shots: {}, tpReady: { A: false, B: false } },
+      battle: {
+        ...state.battle,
+        tp: state.battle.tp + 1,
+        lastAuto: null,
+        shots: {},
+        tpReady: { A: false, B: false },
+        firefightReady: { A: false, B: false },
+      },
       tokens: state.tokens.map((token) => (token.lastMove ? { ...token, lastMove: null } : token)),
     }
     SEATS.forEach((seat) => {

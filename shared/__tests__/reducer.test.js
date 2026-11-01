@@ -444,7 +444,7 @@ describe('semi-automatic activations', () => {
       [{ type: 'battle/rollOff', winner: 'A' }, 'table'],
       [{ type: 'battle/initiative', seat: 'A' }, 'table'],
     ])
-    if (firefight) state = applyAction(state, { type: 'battle/startFirefight' }, 'A')
+    if (firefight) state = applyAction(state, { type: 'battle/startFirefight' }, 'table')
     return state
   }
   const move = (state, id, actor, to = 3) =>
@@ -484,11 +484,24 @@ describe('semi-automatic activations', () => {
     expect(unit(state, 'A', 'a1').movedTp).toBeNull()
   })
 
+  it('starts the firefight once both players tap Start firefight', () => {
+    let state = battle({ firefight: false })
+    state = applyAction(state, { type: 'battle/startFirefight' }, 'A')
+    expect(state.battle.firefightTp).not.toBe(1)
+    expect(state.battle.firefightReady).toEqual({ A: true, B: false })
+    // Taken back, then both tap.
+    state = applyAction(state, { type: 'battle/startFirefight', ready: false }, 'A')
+    expect(state.battle.firefightReady.A).toBe(false)
+    state = applyAction(applyAction(state, { type: 'battle/startFirefight' }, 'B'), { type: 'battle/startFirefight' }, 'A')
+    expect(state.battle.firefightTp).toBe(1)
+    expect(state.battle.firefightReady).toEqual({ A: false, B: false })
+  })
+
   it('an earlier move this turning point still counts after a later one is undone', () => {
     let state = move(battle({ firefight: false }), 't1', 'A')
     // Another operative moves (so t1's path is cleared), then t1 moves again and undoes it.
     state = move(state, 't2', 'A')
-    state = applyAction(state, { type: 'battle/startFirefight' }, 'A')
+    state = applyAction(state, { type: 'battle/startFirefight' }, 'table')
     state = move(state, 't1', 'A', 5)
     state = applyAction(state, { type: 'token/undoMove', id: 't1' }, 'A')
     expect(unit(state, 'A', 'a1').movedTp).toBe(1)

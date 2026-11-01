@@ -15,9 +15,10 @@ const rank = (unitState) => (unitState.dead ? 2 : unitState.activation === 'expe
 
 // The strategy phase as numbered steps (Approved Ops 2025): the initiative roll-off
 // with initiative cards, the winner deciding who has initiative, the secret primary
-// op in turning point 1, then strategic ploys.
-export function StrategySheet({ onClose }) {
-  const { state: game, seat, opponentSeat, me, killteam, act } = usePlayer()
+// op in turning point 1, then strategic ploys. It covers whichever tab is open until
+// both players have tapped Start firefight.
+export function StrategySheet() {
+  const { state: game, seat, opponentSeat, opponent, me, killteam, act } = usePlayer()
   const { tp, initiativeByTp, rollOffByTp } = game.battle
   const stratPloys = (killteam?.ploys ?? []).filter((ploy) => ploy.ployType === 'S')
   const active = activePloyIds(me, tp)
@@ -172,60 +173,36 @@ export function StrategySheet({ onClose }) {
         </div>
         <div className="sheet-foot">
           {needsPrimary && initiative ? <span className="muted">Pick your primary op first.</span> : null}
-          <button type="button" className="btn is-primary" onClick={onClose} disabled={!initiative || needsPrimary}>
-            Start firefight
-          </button>
+          {game.battle.firefightReady?.[seat] ? (
+            <button
+              type="button"
+              className="btn is-ready"
+              onClick={() => act({ type: 'battle/startFirefight', ready: false })}
+              aria-label={`Waiting for ${opponent.name} (tap to take back)`}
+            >
+              Waiting for {opponent.name}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn is-primary"
+              onClick={() => act({ type: 'battle/startFirefight' })}
+              disabled={!initiative || needsPrimary}
+              aria-label="Start firefight"
+            >
+              {game.battle.firefightReady?.[opponentSeat] ? `Start firefight · ${opponent.name} is ready` : 'Start firefight'}
+            </button>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-// Remember which turning point this iPad already started, so switching tabs or
-// reloading doesn't reopen the strategy phase.
-const STRATEGY_KEY = 'kt-strategy-started'
-
-const readStarted = () => {
-  try {
-    return sessionStorage.getItem(STRATEGY_KEY)
-  } catch {
-    return null
-  }
-}
-
-const writeStarted = (value) => {
-  try {
-    sessionStorage.setItem(STRATEGY_KEY, value)
-  } catch {
-    // private mode: the sheet may reopen after a reload
-  }
-}
-
 function BattleStep() {
   const { state: game, me, roster, act } = usePlayer()
   const tp = game.battle.tp
   const [openByUnit, setOpenByUnit] = useState({})
-  const turnKey = `${game.battle.startedAt}:${tp}`
-  const [startedKey, setStartedKey] = useState(readStarted)
-  const [strategyOpen, setStrategyOpen] = useState(false)
-  // The strategy phase opens by itself at the start of every turning point.
-  const showStrategy = strategyOpen || startedKey !== turnKey
-
-  // Starting the Firefight phase also tells the server, so moves start activating.
-  const startTurn = () => {
-    act({ type: 'battle/startFirefight' })
-    setStartedKey(turnKey)
-    writeStarted(turnKey)
-    setStrategyOpen(false)
-  }
-
-  // If this iPad already closed the strategy sheet (e.g. before a reload or an app
-  // update), make sure the server knows the Firefight phase has started.
-  const firefightTp = game.battle.firefightTp
-  useEffect(() => {
-    if (!showStrategy && firefightTp !== tp) act({ type: 'battle/startFirefight' })
-  }, [showStrategy, firefightTp, tp, act])
-
   useEffect(() => {
     setOpenByUnit({})
   }, [tp])
@@ -244,7 +221,6 @@ function BattleStep() {
 
   return (
     <section className="step">
-      {showStrategy ? <StrategySheet onClose={startTurn} /> : null}
       <div className="unit-grid">
         {ordered.map((unit) => {
           const unitState = unitStateFor(unit)
@@ -276,9 +252,6 @@ function BattleStep() {
           )
         })}
       </div>
-      <button type="button" className="btn" onClick={() => setStrategyOpen(true)}>
-        Strategy phase / ploys
-      </button>
     </section>
   )
 }

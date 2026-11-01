@@ -1243,7 +1243,13 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // Order tag colours carry over the turning point: expended in TP1 (black) stays black,
   // and expending again in TP2 swaps it back to red.
   await expect(bladeTag).toHaveAttribute('data-order-color', 'black')
+  // The firefight starts once both players have tapped Start firefight; until then the
+  // first one waits.
   await a.getByRole('button', { name: 'Start firefight' }).click()
+  await expect(a.getByRole('button', { name: 'Waiting for Bob (tap to take back)' })).toBeVisible()
+  await expect(b.getByRole('button', { name: 'Start firefight' })).toContainText('Alice is ready')
+  await b.getByRole('button', { name: 'Start firefight' }).click()
+  await expect(a.locator('.strategy-sheet')).toHaveCount(0)
   await bladeCard.locator('button.state-pill').click()
   await bladeCard.locator('button.state-pill').click()
   await expect(bladeTag).toHaveAttribute('data-order-color', 'red')
@@ -1253,17 +1259,19 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(b.locator('.play-name')).toHaveText('Bob')
   await expect(b.locator('.play-phase')).toContainText('Turning point 2')
 
-  // Play out to the end: primary op is revealed and counted.
+  // Play out to the end: primary op is revealed and counted. Alice watches from the
+  // Opponent tab: each new turning point's strategy phase, and the results, still open
+  // over it.
+  await openTab(a, 'Opponent')
   for (const tp of [2, 3, 4]) {
     if (tp > 2) {
+      await expect(a.locator('.strategy-sheet')).toBeVisible()
       await b.locator('.rolloff-option', { hasText: 'Bob' }).click()
       await b.getByRole('button', { name: 'I take initiative' }).click()
+      await b.getByRole('button', { name: 'Start firefight' }).click()
+      await a.getByRole('button', { name: 'Start firefight' }).click()
     }
-    await b.getByRole('button', { name: 'Start firefight' }).click()
-    // Alice's strategy sheet covers her header until she starts the firefight too.
     await expect(a.locator('.play-phase')).toContainText(`Turning point ${tp}`)
-    const aliceFirefight = a.getByRole('button', { name: 'Start firefight' })
-    if (await aliceFirefight.isVisible()) await aliceFirefight.click()
     for (const page of [a, b]) {
       await page.locator('.play-header').getByRole('button', { name: tp === 4 ? /^End game/ : /^Next TP/ }).click()
       await page.getByRole('button', { name: tp === 4 ? 'Ready to end' : `Ready for TP ${tp + 1}` }).click()

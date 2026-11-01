@@ -16,7 +16,7 @@ import { useGame } from '../net/gameContext.js'
 import MapTab from './MapTab.jsx'
 import OpponentTab from './OpponentTab.jsx'
 import { RuleProvider } from './RuleText.jsx'
-import BattleStep from './steps/BattleStep.jsx'
+import BattleStep, { StrategySheet } from './steps/BattleStep.jsx'
 import DeployStep from './steps/DeployStep.jsx'
 import LobbyStep from './steps/LobbyStep.jsx'
 import MusterStep from './steps/MusterStep.jsx'
@@ -244,6 +244,13 @@ function SeatScreen() {
   const [tab, setTab] = useState('main')
   const rootRef = useRef(null)
   useKeyboardOverlay(rootRef)
+  // The game ending opens the results, whichever tab was showing.
+  const phaseNow = state?.phase
+  const [lastPhase, setLastPhase] = useState(phaseNow)
+  if (lastPhase !== phaseNow) {
+    setLastPhase(phaseNow)
+    if (phaseNow === 'results') setTab('main')
+  }
 
   if (status === 'seat_taken') {
     return (
@@ -302,6 +309,8 @@ function SeatScreen() {
           <TabBar tabs={phase.tabs} activeTab={activeTab} mainLabel={phase.main} onSelect={setTab} />
         ) : null}
         {activeTab !== 'map' ? <IncomingAttack /> : null}
+        {/* The strategy phase covers every tab until both players start the firefight. */}
+        {state.phase === 'battle' && state.battle.firefightTp !== state.battle.tp ? <StrategySheet /> : null}
         <ErrorToast />
       </div>
     </RuleProvider>

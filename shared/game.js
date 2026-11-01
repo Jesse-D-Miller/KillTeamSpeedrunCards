@@ -102,6 +102,8 @@ export const createGame = (settings = DEFAULT_SETTINGS) => ({
     shots: {},
     // Players who've confirmed the end of this turning point; it moves on when both have.
     tpReady: { A: false, B: false },
+    // Who has tapped Start firefight this turning point (it starts once both have).
+    firefightReady: { A: false, B: false },
     startedAt: null,
     endedAt: null,
   },
