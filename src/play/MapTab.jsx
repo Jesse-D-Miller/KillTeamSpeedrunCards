@@ -17,6 +17,8 @@ import { baseSizeMm } from '../data/baseSizes.js'
 import { BOARD, getLayout, toSvgY } from '../board/boardData.js'
 import { MARKER_SIZES_MM, categoriesFor, radiusFor } from '../data/tokenCatalog.js'
 import { maxWoundsFor, tokenLabelFor } from '../rules/roster.js'
+import { isLegionaryUnit } from '../rules/equipment.js'
+import { LEGIONARY_MARKS } from '../rules/legionary.js'
 import Drawer from './Drawer.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
 import { TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
@@ -92,6 +94,8 @@ const RADIAL_ACTIONS = [
   { id: 'range', label: 'Range', icon: 'range', own: true },
   { id: 'vantage', label: 'Vantage', icon: 'vantage', own: true },
   { id: 'edit', label: 'Edit', icon: 'edit', own: true },
+  // Legionaries only: their Mark of Chaos.
+  { id: 'mark', label: 'Mark', icon: 'mark', own: true, legionary: true },
   { id: 'ping', label: 'Ping', icon: 'ping' },
   { id: 'card', label: 'Unit card', icon: 'card' },
   { id: 'rules', label: 'Rules', icon: 'rules' },
@@ -844,7 +848,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const runAction = (id, token) => {
     // Some open a second ring of choices instead (an operative's move in the battle:
     // which move action).
-    if (id === 'range' || id === 'vantage' || id === 'edit' || (id === 'move' && token.unitKey && steppedMoves)) {
+    if (id === 'range' || id === 'vantage' || id === 'edit' || id === 'mark' || (id === 'move' && token.unitKey && steppedMoves)) {
       setRadial((current) => current && { ...current, menu: id })
       return
     }
@@ -1130,6 +1134,23 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const back = { key: 'back', label: 'Back', icon: 'back', run: () => setRadial((current) => ({ ...current, menu: 'main' })) }
   const ringItems = () => {
     if (!radialToken) return []
+    if (radial.menu === 'mark') {
+      const current = game.players[radialToken.seat]?.unitState?.[radialToken.unitKey]?.mark ?? null
+      return [
+        ...LEGIONARY_MARKS.map((mark) => ({
+          key: `mark-${mark.id}`,
+          label: mark.dataLabel,
+          text: mark.dataLabel.slice(0, 2),
+          caption: mark.dataLabel,
+          selected: current === mark.id,
+          run: () => {
+            act({ type: 'unit/update', unitKey: radialToken.unitKey, maxWounds: maxWoundsOf(radialToken.id), patch: { mark: mark.id } })
+            setRadial(null)
+          },
+        })),
+        back,
+      ]
+    }
     if (radial.menu === 'move') {
       return [
         ...Object.entries(MOVE_KINDS).map(([kind, { label }]) => ({
@@ -1268,7 +1289,10 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         { ...backToEdit, key: 'remove-no', label: 'Keep' },
       ]
     }
-    const actions = radialIsOperative ? RADIAL_ACTIONS.filter((action) => !action.own || radialToken.seat === seat) : ITEM_ACTIONS
+    const legionary = isLegionaryUnit(roster.find((unit) => unit.key === radialToken.unitKey)?.opType)
+    const actions = radialIsOperative
+      ? RADIAL_ACTIONS.filter((action) => (!action.own || radialToken.seat === seat) && (!action.legionary || legionary))
+      : ITEM_ACTIONS
     return actions.map((action) => ({
       key: action.id,
       label: action.label,

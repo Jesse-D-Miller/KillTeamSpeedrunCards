@@ -234,7 +234,6 @@ function BattleStep() {
               }}
               stance={unitState.order}
               selectedStatuses={unitState.statuses}
-              onStatusChange={(statuses) => update(unit, { statuses })}
               aplAdjustment={unitState.apl}
               onAplAdjustChange={(apl) => update(unit, { apl })}
               legionaryMark={isLegionaryUnit(unit.opType) ? unitState.mark : null}

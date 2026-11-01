@@ -330,21 +330,7 @@
   background: color-mix(in srgb, var(--warning) 18%, transparent);
 }
 
-.status-add-button {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--panel-2);
-  color: var(--text);
-  font-size: 1rem;
-  line-height: 1;
-  cursor: pointer;
-}
 
-.status-add-button:hover {
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-}
 
 .mark-modal {
   position: fixed;
@@ -393,13 +379,6 @@
   gap: 10px;
 }
 
-.status-modal {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  z-index: 60;
-}
 
 .apl-modal {
   position: fixed;
@@ -465,67 +444,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-.status-modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(7, 8, 10, 0.7);
-}
 
-.status-modal-content {
-  position: relative;
-  z-index: 1;
-  width: min(420px, 90vw);
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 18px;
-  box-shadow: var(--shadow-soft);
-}
 
-.status-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
 
-.status-modal-close {
-  border: 1px solid var(--border);
-  background: var(--panel-2);
-  color: var(--text);
-  padding: 6px 10px;
-  cursor: pointer;
-}
 
-.status-modal-body {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
 
-.status-option {
-  border: 1px solid var(--border);
-  background: var(--panel-2);
-  color: var(--text);
-  padding: 8px 10px;
-  border-radius: 8px;
-  text-align: left;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
 
-.status-option.selected {
-  border-color: color-mix(in srgb, var(--accent) 65%, transparent);
-  color: var(--accent);
-}
 
-.status-option-description {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: 4px;
-}
 
 .status-detail-body {
   color: var(--text-muted);

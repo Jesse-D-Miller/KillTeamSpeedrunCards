@@ -16,6 +16,8 @@ const PATHS = {
   remove: 'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13',
   card: 'M6 3h12v18H6zM9 7h6M9 11h6M9 15h4',
   // An open rulebook.
+  // The eight-pointed star of Chaos.
+  mark: 'M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
   rules: 'M12 6c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-13c-3-.5-6 0-8 1.5zM12 6v13',
   // A new round: an arrow coming back round on itself.
   nextTp: 'M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4v5h-5',

@@ -5,6 +5,7 @@ import {
   tokenizeWeaponRuleText,
 } from '../data/ktData'
 import statusEffectsData from '../data/statusEffects.json'
+import { LEGIONARY_MARKS } from '../rules/legionary.js'
 import './UnitCard.css'
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
@@ -91,38 +92,6 @@ const stripEquipmentTable = (description) => {
 }
 
 const STATUS_OPTIONS = statusEffectsData?.statusEffects ?? []
-const LEGIONARY_MARKS = [
-  {
-    id: 'KHORNE',
-    label: 'KHORNE',
-    dataLabel: 'Khorne',
-    className: 'mark-khorne',
-  },
-  {
-    id: 'NURGLE',
-    label: 'NURGLE',
-    dataLabel: 'Nurgle',
-    className: 'mark-nurgle',
-  },
-  {
-    id: 'SLAANESH',
-    label: 'SLAANESH',
-    dataLabel: 'Slaanesh',
-    className: 'mark-slaanesh',
-  },
-  {
-    id: 'TZEENTCH',
-    label: 'TZEENTCH',
-    dataLabel: 'Tzeentch',
-    className: 'mark-tzeentch',
-  },
-  {
-    id: 'UNDIVIDED',
-    label: 'UNDIVIDED',
-    dataLabel: 'Undivided',
-    className: 'mark-undivided',
-  },
-]
 const LEGIONARY_SELECT_MARK = {
   label: 'Select Mark',
   className: 'mark-unset',
@@ -141,7 +110,6 @@ function UnitCard({
   onWoundsChange,
   stance = 'conceal',
   selectedStatuses = [],
-  onStatusChange,
   aplAdjustment = 0,
   onAplAdjustChange,
   legionaryMark,
@@ -157,7 +125,6 @@ function UnitCard({
     return Number.isNaN(parsed) ? 0 : parsed
   }, [opType.WOUNDS])
   const [ruleModal, setRuleModal] = useState(null)
-  const [statusModalOpen, setStatusModalOpen] = useState(false)
   const [statusDetail, setStatusDetail] = useState(null)
   const [aplModalOpen, setAplModalOpen] = useState(false)
   const [markModalOpen, setMarkModalOpen] = useState(false)
@@ -211,7 +178,6 @@ function UnitCard({
   if (collapsedFor !== collapseSignal) {
     setCollapsedFor(collapseSignal)
     setRuleModal(null)
-    setStatusModalOpen(false)
     setStatusDetail(null)
     setAplModalOpen(false)
     setMarkModalOpen(false)
@@ -319,13 +285,6 @@ function UnitCard({
         ) || null
       : null
 
-  const toggleStatus = (status) => {
-    if (!onStatusChange) return
-    const next = selectedStatuses.includes(status)
-      ? selectedStatuses.filter((item) => item !== status)
-      : [...selectedStatuses, status]
-    onStatusChange(next)
-  }
   const isDetailsOpen = Boolean(detailsOpen)
   const canToggleDetails = Boolean(onToggleDetails)
   const weaponChecklistEnabled =
@@ -781,16 +740,6 @@ function UnitCard({
             )
           ))}
         </div>
-        {readOnly ? null : (
-          <button
-            type="button"
-            className="status-add-button"
-            aria-label="Add status effect"
-            onClick={() => setStatusModalOpen(true)}
-          >
-            +
-          </button>
-        )}
       </div>
       {ruleModal ? (
         <div className="rule-modal" role="dialog" aria-modal="true">
@@ -832,43 +781,6 @@ function UnitCard({
                   ) : null}
                 </>
               )}
-            </div>
-          </div>
-        </div>
-      ) : null}
-      {!readOnly && statusModalOpen ? (
-        <div className="status-modal" role="dialog" aria-modal="true">
-          <div
-            className="status-modal-backdrop"
-            onClick={() => setStatusModalOpen(false)}
-          />
-          <div className="status-modal-content">
-            <div className="status-modal-header">
-              <h3>Status Effects</h3>
-              <button
-                type="button"
-                className="status-modal-close"
-                onClick={() => setStatusModalOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-            <div className="status-modal-body">
-              {STATUS_OPTIONS.map((status) => (
-                <button
-                  key={status.id}
-                  type="button"
-                  className={`status-option${
-                    selectedStatuses.includes(status.id) ? ' selected' : ''
-                  }`}
-                  onClick={() => toggleStatus(status.id)}
-                >
-                  <span>{status.name}</span>
-                  <span className="status-option-description">
-                    {status.description}
-                  </span>
-                </button>
-              ))}
             </div>
           </div>
         </div>

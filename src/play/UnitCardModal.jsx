@@ -65,7 +65,6 @@ function UnitCardModal({ token, onClose }) {
                     onDeadChange: (dead) => {
                       if (dead !== unitState.dead) update({ dead })
                     },
-                    onStatusChange: (statuses) => update({ statuses }),
                     onAplAdjustChange: (apl) => update({ apl }),
                     legionaryMark: legionary ? unitState.mark : null,
                     onLegionaryMarkChange: legionary ? (mark) => update({ mark }) : undefined,
