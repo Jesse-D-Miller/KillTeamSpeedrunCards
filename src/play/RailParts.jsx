@@ -8,12 +8,10 @@ import { TeamEquipment, TeamFactionRules, TeamFirefightPloys, TeamOps, TeamStrat
 import ToolIcon from './ToolIcon.jsx'
 import { usePlayer } from './usePlayer.js'
 
-// The left drawer is on every view (no bottom tabs, no top bar): who you are and your
-// CP / VP / SP, the button that moves the game on (Ready, Next TP), the map's tools,
+// The left drawer is on every view (no bottom tabs, no top bar), in one column: the
+// button that moves the game on (Ready, Next TP), your CP / VP / SP, the map's tools,
 // your team's sections, My board and the views. Off the map, its map-only tools are
 // greyed out.
-
-const PHASE_LABELS = { lobby: 'Lobby', setup: 'Set up the battle', muster: 'Muster', deploy: 'Deploy', battle: 'Battle', results: 'Results' }
 
 function Counter({ label, value, onChange }) {
   return (
@@ -63,35 +61,27 @@ function ScoreSheet({ onClose }) {
   )
 }
 
-// Top of the drawer: you, the phase, and (in the battle) CP / VP / SP at a glance.
-// Tapping a score opens the sheet to adjust them.
+// Top of the drawer in the battle: CP / VP / SP at a glance, in one tile; tapping it
+// opens the sheet to adjust them.
 export function RailStatus() {
-  const { state: game, me, killteam, status } = usePlayer()
+  const { state: game, me } = usePlayer()
   const [adjusting, setAdjusting] = useState(false)
-  const scoring = game.phase === 'battle' || game.phase === 'results'
-  const tile = (label, value, ariaLabel) => (
-    <button type="button" className="rail-score" onClick={() => setAdjusting(true)} aria-label={ariaLabel}>
-      <span className="rail-score-label">{label}</span>
-      <span className="rail-score-value">{value}</span>
-    </button>
-  )
+  if (game.phase !== 'battle' && game.phase !== 'results') return null
+  const rows = [
+    ['cp', 'CP', me.cp],
+    ['vp', 'VP', totalVp(me, { withPrimary: game.phase === 'results' })],
+    ...(tracksSp(me.killteamId) ? [['sp', 'SP', me.sp]] : []),
+  ]
   return (
     <div className="rail-status">
-      <div className="rail-who">
-        <span className={`conn-dot is-${status}`} title={status} />
-        <div>
-          <div className="play-name">{me.name}</div>
-          <div className="play-phase">{game.phase === 'battle' ? `Turning point ${game.battle.tp}` : PHASE_LABELS[game.phase]}</div>
-          {killteam ? <div className="rail-team">{killteam.killteamName}</div> : null}
-        </div>
-      </div>
-      {scoring ? (
-        <div className="rail-scores">
-          {tile('CP', me.cp, 'Command points')}
-          {tile('VP', totalVp(me, { withPrimary: game.phase === 'results' }), 'Score VP')}
-          {tracksSp(me.killteamId) ? tile('SP', me.sp, 'Special points') : null}
-        </div>
-      ) : null}
+      <button type="button" className="rail-scores" onClick={() => setAdjusting(true)} aria-label="Score VP, CP and SP">
+        {rows.map(([id, label, value]) => (
+          <span key={id} className="rail-score-row" data-score={id}>
+            <span className="rail-score-label">{label}</span>
+            <span className="rail-score-value">{value}</span>
+          </span>
+        ))}
+      </button>
       {adjusting ? <ScoreSheet onClose={() => setAdjusting(false)} /> : null}
     </div>
   )
@@ -206,8 +196,8 @@ export function ViewRail({ tabs, activeTab, tabLabel, onSelect, mapTools }) {
         className="tool-drawer view-rail"
       >
         <div className="tool-rail">
-          <RailStatus />
           <RailPhaseButton />
+          <RailStatus />
           <span className="rail-divider" />
           {mapTools.map(([id, label]) => (
             <button key={id} type="button" className="rail-tool" disabled aria-label={`${label} (on the map)`}>

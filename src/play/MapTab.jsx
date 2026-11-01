@@ -1407,8 +1407,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         className="tool-drawer"
       >
         <div className="tool-rail">
-          <RailStatus />
           <RailPhaseButton />
+          <RailStatus />
           <span className="rail-divider" />
           {tools.map(([id, label]) => {
             const button = (

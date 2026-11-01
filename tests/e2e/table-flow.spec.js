@@ -573,7 +573,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await a.getByLabel('Increase Crit op').click()
   await a.getByLabel('Increase Crit op').click()
   await a.getByRole('button', { name: 'Done' }).click()
-  await expect(a.getByLabel('Score VP')).toContainText('2')
+  await expect(a.locator('[data-score="vp"] .rail-score-value')).toHaveText('2')
   // Alice's player board: VP/CP, turning point and one activation pip per operative.
   const aliceBoard = table.locator('.pb-board[data-seat="A"]')
   const bobBoard = table.locator('.pb-board[data-seat="B"]')
@@ -1260,11 +1260,13 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await shot(a, '11-end-turn-ipad')
   await confirmTp(a, 'Ready for TP 2')
   await expect(a.locator('.rail-phase').getByRole('button', { name: /Waiting for Bob/ })).toBeVisible()
-  await expect(b.locator('.play-phase')).toContainText('Turning point 1')
+  await expect(bobBoard.locator('.pb-tp')).toHaveText('TP 1 / 4')
   await b.locator('.rail-phase').getByRole('button', { name: 'Next TP · Alice is ready' }).click()
   await confirmTp(b, 'Ready for TP 2')
-  await expect(b.locator('.play-phase')).toContainText('Turning point 2')
-  await expect(a.locator('.play-phase')).toContainText('Turning point 2')
+  await expect(bobBoard.locator('.pb-tp')).toHaveText('TP 2 / 4')
+  await expect(aliceBoard.locator('.pb-tp')).toHaveText('TP 2 / 4')
+  // Both iPads are into turning point 2's strategy phase.
+  await expect(a.locator('.strategy-sheet')).toContainText('Turning point 2')
 
   // TP2: both gain 1 CP (3 -> 4); the player WITHOUT initiative gains 2 instead.
   await expect(b.getByRole('button', { name: 'Start firefight' })).toBeDisabled()
@@ -1294,8 +1296,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
 
   // Reloading an iPad reclaims the seat and the game.
   await b.reload()
-  await expect(b.locator('.play-name')).toHaveText('Bob')
-  await expect(b.locator('.play-phase')).toContainText('Turning point 2')
+  await expect(b.locator('.rail-phase')).toBeVisible()
+  await expect(bobBoard.locator('.pb-tp')).toHaveText('TP 2 / 4')
 
   // Play out to the end: primary op is revealed and counted. Alice watches from the
   // Opponent tab: each new turning point's strategy phase, and the results, still open
@@ -1309,7 +1311,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
       await b.getByRole('button', { name: 'Start firefight' }).click()
       await a.getByRole('button', { name: 'Start firefight' }).click()
     }
-    await expect(a.locator('.play-phase')).toContainText(`Turning point ${tp}`)
+    await expect(aliceBoard.locator('.pb-tp')).toHaveText(`TP ${tp} / 4`)
     for (const page of [a, b]) {
       await page.locator('.rail-phase').getByRole('button', { name: tp === 4 ? /^End game/ : /^Next TP/ }).click()
       await confirmTp(page, tp === 4 ? 'Ready to end' : `Ready for TP ${tp + 1}`)
@@ -1318,7 +1320,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(a.getByRole('heading', { name: 'Alice wins' })).toBeVisible()
   // Each iPad's VP counter now includes its primary op, matching the projector:
   // Alice's primary is Crit op, where she scored 2, so 2 + 1.
-  await expect(a.locator('.rail-score[aria-label="Score VP"] .rail-score-value')).toHaveText('3')
+  await expect(a.locator('[data-score="vp"] .rail-score-value')).toHaveText('3')
   await expect(aliceBoard.locator('.pb-stat.is-vp .pb-big-value')).toHaveText('3')
   // The clock stops on the final time.
   await expect(table.locator('.table-clock')).toHaveAttribute('data-clock', 'final')
