@@ -2,12 +2,11 @@
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 18px;
-  padding: 18px;
+  padding: 14px 16px 16px;
   box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  height: 100%;
+  gap: 12px;
 }
 
 .game-card.is-dimmed {
@@ -36,19 +35,33 @@
   flex: 1;
 }
 
+/* The name, big and on one line; tapping it opens the card (the arrow says so). */
 .game-card-name {
   background: none;
   border: none;
-  padding: 0;
+  padding: 6px 0;
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.15;
   color: var(--text);
+  text-align: left;
   cursor: pointer;
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+button.game-card-name::before {
+  content: '▸ ';
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+button.game-card-name[aria-expanded='true']::before {
+  content: '▾ ';
 }
 
 .game-card-name:focus-visible {
@@ -56,16 +69,18 @@
   outline-offset: 2px;
 }
 
-.game-card-header-stats {
-  display: inline-flex;
-  flex-wrap: wrap;
+/* Move, APL, Save and Wounds as four tiles across the card: big values, small labels. */
+.game-card-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
-  white-space: nowrap;
 }
 
 .state-pill {
+  flex: none;
+  min-height: 36px;
   border-radius: 999px;
-  padding: 4px 10px;
+  padding: 4px 14px;
   border: 1px solid transparent;
   font-size: 0.7rem;
   text-transform: uppercase;
@@ -112,7 +127,7 @@
 .health-bar {
   position: relative;
   flex: 1;
-  height: 14px;
+  height: 18px;
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -150,11 +165,12 @@
 }
 
 .game-stat-pill {
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 6px;
+  gap: 2px;
+  padding: 6px 4px 8px;
+  border-radius: 10px;
   background: var(--panel-2);
   border: 1px solid var(--border);
 }
@@ -163,13 +179,16 @@
   font-size: 0.65rem;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
 }
 
 .game-stat-value {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.05;
   color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 .game-stat-value.apl-up {
@@ -202,21 +221,16 @@
 .game-weapon-table {
   display: grid;
   gap: 6px;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
 }
 
 .game-card-details {
-  display: grid;
+  display: none;
   gap: 12px;
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 200ms ease, opacity 200ms ease;
-  opacity: 0;
 }
 
 .game-card-details.open {
-  max-height: 1000px;
-  opacity: 1;
+  display: grid;
 }
 
 .game-card-status {
@@ -224,8 +238,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  margin: 0 0 calc(0.25rem - 18px);
-  margin-top: auto;
+}
+
+/* Nothing to show (no mark, no status): no empty strip at the bottom. */
+.game-card-status:not(:has(.legionary-pill, .status-pill)) {
+  display: none;
 }
 
 .legionary-pill {
@@ -284,7 +301,6 @@
   display: inline-flex;
   flex-wrap: wrap;
   gap: 4px;
-  min-height: 24px;
   margin: 0;
   justify-content: flex-start;
   flex: 1;
@@ -463,7 +479,8 @@
   grid-template-columns: 1.9fr repeat(3, minmax(0, 0.35fr)) 1.1fr;
   gap: 4px;
   align-items: center;
-  padding: 6px 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--panel-2);
 }

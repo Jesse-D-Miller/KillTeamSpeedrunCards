@@ -350,67 +350,67 @@ function UnitCard({
             </span>
           ) : null}
         </div>
-        <div className="game-card-header-stats">
-          {readOnly ? (
-            <span className={`state-pill state-${isDead ? 'dead' : state}`}>
-              {isDead ? 'dead' : state}
-            </span>
-          ) : (
+        {readOnly ? (
+          <span className={`state-pill state-${isDead ? 'dead' : state}`}>
+            {isDead ? 'dead' : state}
+          </span>
+        ) : (
+          <button
+            className={`state-pill state-${isDead ? 'dead' : state}`}
+            type="button"
+            onClick={isDead ? undefined : onCycleState}
+            aria-label={`Set ${opType.opTypeName} to ${
+              isDead ? 'dead' : state
+            }`}
+            disabled={isDead}
+          >
+            {isDead ? 'dead' : state}
+          </button>
+        )}
+      </div>
+      <div className="game-card-stats">
+        <div className="game-stat-pill">
+          <span className="game-stat-label">MV</span>
+          <span
+            className={`game-stat-value${
+              isMoveBoosted ? ' stat-boosted' : isCritical ? ' stat-critical' : ''
+            }`}
+          >
+            {adjustedMove}
+          </span>
+        </div>
+        <div className="game-stat-pill">
+          <span className="game-stat-label">APL</span>
+          {canAdjustApl ? (
             <button
-              className={`state-pill state-${isDead ? 'dead' : state}`}
               type="button"
-              onClick={isDead ? undefined : onCycleState}
-              aria-label={`Set ${opType.opTypeName} to ${
-                isDead ? 'dead' : state
+              className={`game-stat-value apl-button${aplDeltaClass}${
+                isStunned ? ' stat-stunned' : ''
               }`}
-              disabled={isDead}
+              onClick={() => setAplModalOpen(true)}
+              aria-label="Adjust APL"
             >
-              {isDead ? 'dead' : state}
+              {effectiveApl}
             </button>
-          )}
-          <div className="game-stat-pill">
-            <span className="game-stat-label">MV</span>
+          ) : (
             <span
-              className={`game-stat-value${
-                isMoveBoosted ? ' stat-boosted' : isCritical ? ' stat-critical' : ''
+              className={`game-stat-value${aplDeltaClass}${
+                isStunned ? ' stat-stunned' : ''
               }`}
             >
-              {adjustedMove}
+              {effectiveApl}
             </span>
-          </div>
-          <div className="game-stat-pill">
-            <span className="game-stat-label">APL</span>
-            {canAdjustApl ? (
-              <button
-                type="button"
-                className={`game-stat-value apl-button${aplDeltaClass}${
-                  isStunned ? ' stat-stunned' : ''
-                }`}
-                onClick={() => setAplModalOpen(true)}
-                aria-label="Adjust APL"
-              >
-                {effectiveApl}
-              </button>
-            ) : (
-              <span
-                className={`game-stat-value${aplDeltaClass}${
-                  isStunned ? ' stat-stunned' : ''
-                }`}
-              >
-                {effectiveApl}
-              </span>
-            )}
-          </div>
-          <div className="game-stat-pill">
-            <span className="game-stat-label">SV</span>
-            <span className="game-stat-value">{opType.SAVE}</span>
-          </div>
-          <div className="game-stat-pill">
-            <span className="game-stat-label">W</span>
-            <span className="game-stat-value">
-              {currentWounds}/{maxWounds}
-            </span>
-          </div>
+          )}
+        </div>
+        <div className="game-stat-pill">
+          <span className="game-stat-label">SV</span>
+          <span className="game-stat-value">{opType.SAVE}</span>
+        </div>
+        <div className="game-stat-pill">
+          <span className="game-stat-label">W</span>
+          <span className="game-stat-value">
+            {currentWounds}/{maxWounds}
+          </span>
         </div>
       </div>
       <div className="game-card-health">
