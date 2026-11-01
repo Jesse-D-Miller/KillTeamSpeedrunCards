@@ -611,3 +611,80 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* ---- wound effects (see WoundFx in BoardSvg.jsx) ---- */
+
+.token-fx {
+  pointer-events: none;
+}
+
+/* Hurt: the base flashes deep red twice and a red ring bursts outward. */
+.token-fx-hurt-fill {
+  fill: #b00000;
+  opacity: 0;
+  animation: token-hurt-flash 900ms ease-out;
+}
+
+.token-fx-hurt-ring {
+  fill: none;
+  stroke: #ff2a1a;
+  stroke-width: 0.12;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: token-hurt-ring 900ms ease-out;
+}
+
+@keyframes token-hurt-flash {
+  0% { opacity: 0; }
+  12% { opacity: 0.95; }
+  35% { opacity: 0.25; }
+  50% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+@keyframes token-hurt-ring {
+  0% { opacity: 0.9; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.9); }
+}
+
+/* Healed: green leaves twirl round the base, drifting up as they fade. */
+.token-fx-heal-spin {
+  animation: token-heal-twirl 1500ms ease-out;
+}
+
+.token-fx-leaf {
+  fill: #5ce39a;
+  stroke: #1d7a45;
+  stroke-width: 0.02;
+}
+
+.token-fx-leaf-vein {
+  fill: none;
+  stroke: #1d7a45;
+  stroke-width: 0.02;
+}
+
+.token-fx-heal-glow {
+  fill: #5ce39a;
+  opacity: 0;
+  animation: token-heal-glow 1500ms ease-out;
+}
+
+@keyframes token-heal-glow {
+  0% { opacity: 0; }
+  25% { opacity: 0.35; }
+  100% { opacity: 0; }
+}
+
+@keyframes token-heal-twirl {
+  0% { opacity: 0; transform: translate(0, 0.15px) rotate(0deg) scale(0.5); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(0, -0.45px) rotate(300deg) scale(1.25); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .token-fx {
+    display: none;
+  }
+}

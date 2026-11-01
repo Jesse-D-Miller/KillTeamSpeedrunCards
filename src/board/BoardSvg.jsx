@@ -8,6 +8,7 @@ import { BOARD, getLayout, toSvgY } from './boardData.js'
 import { isInjured } from './health.js'
 import { SKULL_PATH } from './icons.js'
 import { NEUTRAL_COLOR, seatColor, zoneOwner } from './colors.js'
+import { useWoundFx } from './useWoundFx.js'
 import MarkerDisc from './MarkerDisc.jsx'
 import OrderTag from './OrderTag.jsx'
 import Overlay, { MoveCount } from './Overlay.jsx'
@@ -124,8 +125,40 @@ function TokenName({ token, view, labelId }) {
 }
 
 
+// Leaves for the healing twirl: six around the base, each a pointed leaf with a vein.
+const LEAF_PATH = 'M0 -0.22C0.13 -0.1 0.13 0.1 0 0.22C-0.13 0.1 -0.13 -0.1 0 -0.22Z'
+const LEAF_ANGLES = [0, 60, 120, 180, 240, 300]
+
+// A short effect on a token whose wounds just changed: a deep red flash when hurt, a
+// twirl of green leaves when healed. key restarts it if it changes again.
+function WoundFx({ fx, x, cy, r }) {
+  if (!fx) return null
+  if (fx.kind === 'hurt') {
+    return (
+      <g key={fx.key} className="token-fx token-fx-hurt" aria-hidden="true">
+        <circle className="token-fx-hurt-fill" cx={x} cy={cy} r={r} />
+        <circle className="token-fx-hurt-ring" cx={x} cy={cy} r={r} />
+      </g>
+    )
+  }
+  return (
+    <g key={fx.key} className="token-fx token-fx-heal" transform={`translate(${x} ${cy})`} aria-hidden="true">
+      <circle className="token-fx-heal-glow" r={r + 0.1} />
+      <g className="token-fx-heal-spin">
+        {LEAF_ANGLES.map((angle) => (
+          <g key={angle} transform={`rotate(${angle}) translate(0 ${-(r + 0.3)}) rotate(35)`}>
+            <path className="token-fx-leaf" d={LEAF_PATH} />
+            <path className="token-fx-leaf-vein" d="M0 -0.18V0.18" />
+          </g>
+        ))}
+      </g>
+    </g>
+  )
+}
+
 // maxWounds: the operative's starting wounds, or null for blank tokens (no badge).
-function TokenBody({ token, view, maxWounds, wounds, highlighted, onPointerDown, glowFilter }) {
+// fx: a wound effect playing on it (see useWoundFx), or null.
+function TokenBody({ token, view, maxWounds, wounds, highlighted, onPointerDown, glowFilter, fx }) {
   const { x, cy, r, dead } = view
   return (
     <g
@@ -146,6 +179,7 @@ function TokenBody({ token, view, maxWounds, wounds, highlighted, onPointerDown,
           transform={`translate(${x} ${cy}) scale(${r * 0.92})`}
         />
       ) : null}
+      {!dead ? <WoundFx fx={fx} x={x} cy={cy} r={r} /> : null}
       {maxWounds && !dead ? (
         <g data-facing={view.facing} transform={view.facing ? `rotate(${view.facing} ${x} ${cy})` : undefined}>
           <WoundBadge x={x} cy={cy} r={r} maxWounds={maxWounds} wounds={wounds ?? maxWounds} glowFilter={glowFilter} />
@@ -269,6 +303,9 @@ function BoardSvg({
     })
     .filter(({ view }) => !(hideDead && view.dead))
   const viewById = new Map(tokenViews.map((entry) => [entry.token.id, entry]))
+  const woundFx = useWoundFx(
+    Object.fromEntries(tokenViews.filter(({ status }) => status?.wounds != null).map(({ token, status }) => [token.id, status.wounds])),
+  )
   // Engaged: living operatives on opposite sides within each other's control range (1"
   // edge to edge). They're marked until they move apart.
   const living = tokenViews.filter(({ token, view }) => token.unitKey && token.seat && !view.dead)
@@ -445,6 +482,7 @@ function BoardSvg({
           glowFilter={glowFilter}
           highlighted={token.id === highlightTokenId}
           onPointerDown={onTokenPointerDown}
+          fx={woundFx[token.id] ?? null}
         />
       ))}
       {tokenViews.map(({ token, view, status }) => {
