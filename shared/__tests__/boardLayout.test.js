@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_BOARD_LAYOUTS, barBounds, boardLayoutFor, placePiece } from '../boardLayout.js'
+import { DEFAULT_BOARD_LAYOUTS, barBounds, boardLayoutFor, boardPieces, layoutKey, placePiece } from '../boardLayout.js'
 import { createGame } from '../game.js'
 import { ActionError, applyAction } from '../reducer.js'
 
@@ -74,6 +74,16 @@ describe('board/layout actions', () => {
     expect(layout.turn.z).toBeGreaterThan(layout.score.z)
     state = applyAction(state, { type: 'board/layout', shape: 'portrait', piece: 'score', x: 0.06, y: 0.3 }, 'A')
     expect(boardLayoutFor(state.settings, 'A', 'portrait').score.z).toBeGreaterThan(layout.turn.z)
+  })
+
+  it('keeps a separate layout for the view during a shot or fight', () => {
+    expect(layoutKey('portrait', true)).toBe('portraitCombat')
+    expect(boardPieces('landscapeCombat')).toEqual(['id', 'combat', 'mods'])
+    const state = applyAction(createGame(), { type: 'board/layout', shape: 'portraitCombat', piece: 'mods', x: 0.06, y: 0.5 }, 'A')
+    expect(boardLayoutFor(state.settings, 'A', 'portraitCombat').mods).toMatchObject({ x: 0.06, y: 0.5 })
+    expect(boardLayoutFor(state.settings, 'A', 'portrait')).toEqual(DEFAULT_BOARD_LAYOUTS.portrait)
+    // A battle piece isn't a combat one.
+    expect(() => applyAction(createGame(), { type: 'board/layout', shape: 'portraitCombat', piece: 'score', x: 0, y: 0 }, 'A')).toThrow(ActionError)
   })
 
   it('arranges only your own board, and only known pieces', () => {

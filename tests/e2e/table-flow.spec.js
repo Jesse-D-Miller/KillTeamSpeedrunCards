@@ -636,6 +636,12 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   expect(await boardOverflows(table)).toEqual([])
   await arranger.getByRole('button', { name: 'Reset' }).click()
   await expect(aliceScore).toHaveAttribute('style', /left: 3%/)
+  // The view during a shot or fight is arranged on its own: its pieces show as boxes.
+  await arranger.getByRole('button', { name: 'Shoot & fight' }).click()
+  await expect(arranger.locator('[data-handle]')).toHaveCount(3)
+  await expect(arranger.locator('[data-handle="mods"]')).toContainText('In effect')
+  await shot(a, '10a2-my-board-combat')
+  await arranger.getByRole('button', { name: 'Battle' }).click()
   await arranger.getByRole('button', { name: 'Done' }).click()
   await expect(arranger).toHaveCount(0)
   // Next TP sits at the top of the drawer, saying how many operatives are left to activate

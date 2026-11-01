@@ -2510,6 +2510,18 @@
   position: absolute;
 }
 
+/* Shoot & fight: the bar's outline, with each piece as a labelled box. */
+.arranger-outline {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+}
+
+.arranger-views button {
+  min-height: 44px;
+}
+
 /* Which edge of the bar faces the mat (pieces can't go past it). */
 .arranger-mat {
   position: absolute;
@@ -2563,6 +2575,11 @@
   font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.arranger-outline ~ .arranger-handles .arranger-handle {
+  background: color-mix(in srgb, var(--seat-color) 10%, rgba(20, 23, 28, 0.9));
+  place-items: center;
 }
 
 .arranger-handle.is-dragging {

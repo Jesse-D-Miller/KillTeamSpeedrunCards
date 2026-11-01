@@ -1,11 +1,13 @@
 // Each player arranges the pieces of their in-game side bar on the projector from
 // their iPad. A layout gives each piece's top-left corner as fractions of the board
 // (0..1 across and down, upright as its player reads it); sizes stay at their
-// defaults. Portrait (Map 1) and landscape (Map 2) boards are arranged separately.
+// defaults. Portrait (Map 1) and landscape (Map 2) boards are arranged separately, and
+// so is each one's view during a shot or fight (portraitCombat, landscapeCombat).
 
-export const BOARD_SHAPES = ['portrait', 'landscape']
+export const BOARD_SHAPES = ['portrait', 'landscape', 'portraitCombat', 'landscapeCombat']
 
-export const BOARD_PIECES = ['id', 'score', 'turn', 'kill', 'ploys', 'tacop', 'critop']
+// The layout for a board shape, in the battle or during a shot or fight.
+export const layoutKey = (shape, combat = false) => (combat ? `${shape}Combat` : shape)
 
 export const BOARD_PIECE_LABELS = {
   id: 'Name',
@@ -15,6 +17,8 @@ export const BOARD_PIECE_LABELS = {
   ploys: 'Ploys',
   tacop: 'Tac op',
   critop: 'Crit op',
+  combat: 'Shot / fight numbers',
+  mods: 'In effect',
 }
 
 // Where everything starts: the old fixed layout, widened to use the whole bar.
@@ -37,7 +41,21 @@ export const DEFAULT_BOARD_LAYOUTS = {
     tacop: { x: 0.65, y: 0.06, w: 0.09, h: 0.88 },
     critop: { x: 0.76, y: 0.06, w: 0.21, h: 0.88 },
   },
+  // During a shot or fight: the name, the numbers (the biggest thing), what's in effect.
+  portraitCombat: {
+    id: { x: 0.06, y: 0.03, w: 0.88, h: 0.065 },
+    combat: { x: 0.06, y: 0.11, w: 0.88, h: 0.66 },
+    mods: { x: 0.06, y: 0.79, w: 0.88, h: 0.18 },
+  },
+  landscapeCombat: {
+    id: { x: 0.03, y: 0.06, w: 0.6, h: 0.2 },
+    combat: { x: 0.03, y: 0.3, w: 0.6, h: 0.64 },
+    mods: { x: 0.66, y: 0.06, w: 0.31, h: 0.88 },
+  },
 }
+
+// The pieces of one layout, in drawing order.
+export const boardPieces = (key) => Object.keys(DEFAULT_BOARD_LAYOUTS[key] ?? {})
 
 // Drops snap to 1% of the board.
 const SNAP = 0.01
@@ -46,13 +64,13 @@ const round = (value) => Math.round(value / SNAP) * SNAP
 const fix = (value) => Number(value.toFixed(3))
 
 export const isBoardShape = (shape) => BOARD_SHAPES.includes(shape)
-export const isBoardPiece = (piece) => BOARD_PIECES.includes(piece)
+export const isBoardPiece = (piece, shape) => boardPieces(shape).includes(piece)
 
 // Every piece's rect for one seat and shape: the saved spots over the defaults.
 export const boardLayoutFor = (settings, seat, shape) => {
   const saved = settings?.boardLayouts?.[seat]?.[shape] ?? {}
   return Object.fromEntries(
-    BOARD_PIECES.map((piece) => {
+    boardPieces(shape).map((piece) => {
       const base = DEFAULT_BOARD_LAYOUTS[shape][piece]
       const spot = saved[piece]
       // z: pieces moved later sit on top of earlier ones where they overlap.

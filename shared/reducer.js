@@ -375,7 +375,7 @@ const handlers = {
     const shape = String(action.shape ?? '')
     const piece = String(action.piece ?? '')
     if (!isBoardShape(shape)) fail('Unknown board shape.')
-    if (!isBoardPiece(piece)) fail('Unknown board piece.')
+    if (!isBoardPiece(piece, shape)) fail('Unknown board piece.')
     const x = Number(action.x)
     const y = Number(action.y)
     if (!Number.isFinite(x) || !Number.isFinite(y)) fail('A position is required.')

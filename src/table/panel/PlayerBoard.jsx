@@ -1,4 +1,4 @@
-import { boardLayoutFor } from '../../../shared/boardLayout.js'
+import { boardLayoutFor, layoutKey } from '../../../shared/boardLayout.js'
 import { otherSeat, turnState } from '../../../shared/game.js'
 import { getKillteamById } from '../../data/ktData.js'
 import { getCritOp } from '../../board/boardData.js'
@@ -22,9 +22,9 @@ import './playerBoard.css'
 //   widthPx/heightPx: the slot on the table plane; rotation: degrees toward the player.
 //   combat: a shot or fight in progress (computeAttack); while this player is in it,
 //   everything below their name swaps to their half of it.
-// In the battle each piece sits where its player put it (see shared/boardLayout.js);
-// layout overrides that while the player is dragging on their iPad, and upright skips
-// the rotation there.
+// In the battle (and during a shot or fight) each piece sits where its player put it
+// (see shared/boardLayout.js); layout overrides that while the player is dragging on
+// their iPad, and upright skips the rotation there.
 const pieceStyle = ({ x, y, w, h, z = 0 }) => ({
   left: `${x * 100}%`,
   top: `${y * 100}%`,
@@ -49,11 +49,11 @@ function PlayerBoard({ game, seat, rotation, connected, widthPx, heightPx, comba
   const firefight = game.phase === 'battle' && game.battle.firefightTp === tp
   const turn = firefight ? turnState(game) : null
   const inCombat = Boolean(combat) && (combat.shooter.seat === seat || combat.target.seat === seat)
-  const layoutClass = inCombat ? 'is-combat' : inGame ? 'is-game is-free' : 'is-setup'
-  const pieces = layout ?? boardLayoutFor(game.settings, seat, landscape ? 'landscape' : 'portrait')
-  // A piece of the arranged board (battle only); elsewhere the grid places it.
+  const layoutClass = inCombat ? 'is-combat is-free' : inGame ? 'is-game is-free' : 'is-setup'
+  const pieces = layout ?? boardLayoutFor(game.settings, seat, layoutKey(landscape ? 'landscape' : 'portrait', inCombat))
+  // A piece of the arranged board (battle and combat); elsewhere the grid places it.
   const piece = (id, className, children) =>
-    inGame && !inCombat ? (
+    inGame ? (
       <div className={`pb-piece ${className}`} data-piece={id} style={pieceStyle(pieces[id])}>
         {children}
       </div>
@@ -85,9 +85,10 @@ function PlayerBoard({ game, seat, rotation, connected, widthPx, heightPx, comba
         )}
 
         {inCombat ? (
-          <div className="pb-area-combat">
-            <CombatBoard combat={combat} seat={seat} player={player} />
-          </div>
+          <>
+            {piece('combat', 'pb-area-numbers', <CombatBoard combat={combat} seat={seat} player={player} part="main" />)}
+            {piece('mods', 'pb-area-mods', <CombatBoard combat={combat} seat={seat} player={player} part="mods" />)}
+          </>
         ) : inGame ? (
           <>
             {piece('score', 'pb-area-score', <ScoreBlock player={player} final={final} />)}

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { BOARD_PIECE_LABELS, BOARD_PIECES, barBounds, boardLayoutFor } from '../../shared/boardLayout.js'
+import { BOARD_PIECE_LABELS, barBounds, boardLayoutFor, boardPieces, layoutKey } from '../../shared/boardLayout.js'
 import { BOARD } from '../board/boardData.js'
 import { seatColor } from '../board/colors.js'
 import PlayerBoard from '../table/panel/PlayerBoard.jsx'
@@ -10,9 +10,18 @@ import { usePlayer } from './usePlayer.js'
 // screen allows, with a handle over each piece to drag it somewhere else. Pieces can
 // overlap and go past the bar to the edge of the projected picture, except on the side
 // facing the mat. A drop snaps to the grid (board/layout) and the projector follows.
-// Portrait (Map 1) and landscape (Map 2) bars keep their own arrangements.
+// Portrait (Map 1) and landscape (Map 2) bars keep their own arrangements, and each has
+// a second one for the view during a shot or fight (switched at the top; it opens on
+// that one while you're in an attack). That view has no content outside an attack, so
+// its pieces show as labelled boxes.
 function BoardArranger({ onClose }) {
-  const { state: game, seat, act, presence } = usePlayer()
+  const { state: game, seat, act, presence, ephemerals } = usePlayer()
+  const inAttack = Object.values(ephemerals ?? {}).some(
+    (payload) =>
+      payload?.tool === 'attack' &&
+      [payload.shooterId, payload.targetId].some((id) => game.tokens.find((token) => token.id === id)?.seat === seat),
+  )
+  const [view, setView] = useState(inAttack ? 'combat' : 'battle')
   const stageRef = useRef(null)
   const [room, setRoom] = useState({ width: 0, height: 0 })
   // The piece being dragged: where it started, where the finger started, where it is.
@@ -46,9 +55,11 @@ function BoardArranger({ onClose }) {
   const height = down * scale
   const matEdge = bounds.minY === 0 ? 'top' : bounds.maxY === 1 ? 'bottom' : bounds.minX === 0 ? 'left' : 'right'
 
-  const saved = boardLayoutFor(game.settings, seat, shape)
+  const key = layoutKey(shape, view === 'combat')
+  const pieces = boardPieces(key)
+  const saved = boardLayoutFor(game.settings, seat, key)
   // The piece being dragged rides on top.
-  const top = 1 + Math.max(0, ...BOARD_PIECES.map((piece) => saved[piece].z ?? 0))
+  const top = 1 + Math.max(0, ...pieces.map((piece) => saved[piece].z ?? 0))
   const layout = drag ? { ...saved, [drag.piece]: { ...saved[drag.piece], x: drag.x, y: drag.y, z: top } } : saved
   // Shown as in the battle, even before it starts.
   const preview = game.phase === 'battle' || game.phase === 'results' ? game : { ...game, phase: 'battle' }
@@ -68,7 +79,7 @@ function BoardArranger({ onClose }) {
   }
   const drop = () => {
     if (!drag) return
-    act({ type: 'board/layout', shape, piece: drag.piece, x: drag.x, y: drag.y, bounds })
+    act({ type: 'board/layout', shape: key, piece: drag.piece, x: drag.x, y: drag.y, bounds })
     setDrag(null)
   }
 
@@ -82,7 +93,15 @@ function BoardArranger({ onClose }) {
           </p>
         </div>
         <div className="row">
-          <button type="button" className="btn" onClick={() => act({ type: 'board/resetLayout', shape })}>
+          <div className="segmented arranger-views" role="group" aria-label="Which view">
+            <button type="button" className={view === 'battle' ? 'is-selected' : ''} aria-pressed={view === 'battle'} onClick={() => setView('battle')}>
+              Battle
+            </button>
+            <button type="button" className={view === 'combat' ? 'is-selected' : ''} aria-pressed={view === 'combat'} onClick={() => setView('combat')}>
+              Shoot &amp; fight
+            </button>
+          </div>
+          <button type="button" className="btn" onClick={() => act({ type: 'board/resetLayout', shape: key })}>
             Reset
           </button>
           <button type="button" className="btn is-primary" onClick={onClose}>
@@ -97,18 +116,22 @@ function BoardArranger({ onClose }) {
               <span>Mat this side</span>
             </span>
             <div className="arranger-board" style={{ width, height, left: -bounds.minX * width, top: -bounds.minY * height }}>
-              <PlayerBoard
-                game={preview}
-                seat={seat}
-                rotation={rotation}
-                upright
-                connected={Boolean(presence?.[seat])}
-                widthPx={panelInches * scale}
-                heightPx={BOARD.height * scale}
-                layout={layout}
-              />
+              {view === 'battle' ? (
+                <PlayerBoard
+                  game={preview}
+                  seat={seat}
+                  rotation={rotation}
+                  upright
+                  connected={Boolean(presence?.[seat])}
+                  widthPx={panelInches * scale}
+                  heightPx={BOARD.height * scale}
+                  layout={layout}
+                />
+              ) : (
+                <div className="arranger-outline" aria-hidden="true" />
+              )}
               <div className="arranger-handles">
-                {BOARD_PIECES.map((piece) => {
+                {pieces.map((piece) => {
                   const rect = layout[piece]
                   return (
                     <div

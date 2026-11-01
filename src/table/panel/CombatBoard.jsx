@@ -55,7 +55,9 @@ function Tile({ tile }) {
 }
 
 // combat: computeAttack(...) for the attack in progress; seat: whose side bar this is.
-function CombatBoard({ combat, seat, player }) {
+// part: 'main' (the numbers) or 'mods' (what's in effect) to draw just one, for a side
+// bar its player has arranged; both when left out.
+function CombatBoard({ combat, seat, player, part = null }) {
   const side = combat.shooter.seat === seat ? 'attack' : 'defence'
   const operative = operativeOf(combat, side)
   const weapon = weaponOf(combat, side)
@@ -65,56 +67,60 @@ function CombatBoard({ combat, seat, player }) {
   // Nobody switches anything on the projector: everything in effect is "applied".
   const { warnings, applied } = groupModifiers(combat.modifiers[side], null)
   const inPlay = [...warnings, ...applied]
+  const main = part !== 'mods'
+  const mods = part !== 'main'
   return (
     <>
-      <section className="pb-section pb-combat" data-combat={side}>
-        <header className="pb-combat-band">
-          <h3 className="pb-combat-role">{roleOf(combat, side)}</h3>
-          <span className="pb-combat-cp">{player.cp} CP</span>
-        </header>
-        <div className="pb-combat-who">
-          <span className="pb-combat-name">{operative.name}</span>
-          {operative.maxWounds ? (
-            <span className="pb-combat-wounds">
-              {operative.wounds}/{operative.maxWounds} W
-            </span>
+      {main ? (
+        <section className="pb-section pb-combat" data-combat={side}>
+          <header className="pb-combat-band">
+            <h3 className="pb-combat-role">{roleOf(combat, side)}</h3>
+            <span className="pb-combat-cp">{player.cp} CP</span>
+          </header>
+          <div className="pb-combat-who">
+            <span className="pb-combat-name">{operative.name}</span>
+            {operative.maxWounds ? (
+              <span className="pb-combat-wounds">
+                {operative.wounds}/{operative.maxWounds} W
+              </span>
+            ) : null}
+          </div>
+          {weapon ? (
+            <div className="pb-combat-weapon">
+              <strong>{weaponLabel(weapon)}</strong> <span>{weaponProfileText(weapon)}</span>
+            </div>
           ) : null}
-        </div>
-        {weapon ? (
-          <div className="pb-combat-weapon">
-            <strong>{weaponLabel(weapon)}</strong> <span>{weaponProfileText(weapon)}</span>
-          </div>
-        ) : null}
-        {!status.ok ? (
-          <p className="pb-combat-status is-bad">
-            ✕ {combat.mode === 'fight' ? 'Can’t fight' : 'Not a valid target'}: {status.text}
-          </p>
-        ) : null}
-        {profile ? (
-          <div className="pb-combat-tiles">
-            {statTiles(combat, side).map((tile) => (
-              <Tile key={tile.cell} tile={tile} />
-            ))}
-          </div>
-        ) : null}
-        {profile?.rerolls.length || (showRules && profile?.rules.length) ? (
-          <ul className="pb-combat-rules">
-            {profile.rerolls.map((entry) => (
-              <li key={`r-${entry.text}`} className={entry.added ? 'is-added' : 'is-base'} data-reroll>
-                ↻ {entry.text}
-              </li>
-            ))}
-            {showRules
-              ? profile.rules.map((rule) => (
-                  <li key={rule.key} className={`is-${rule.state}`} data-rule-state={rule.state}>
-                    {rule.text}
-                  </li>
-                ))
-              : null}
-          </ul>
-        ) : null}
-      </section>
-      {inPlay.length ? (
+          {!status.ok ? (
+            <p className="pb-combat-status is-bad">
+              ✕ {combat.mode === 'fight' ? 'Can’t fight' : 'Not a valid target'}: {status.text}
+            </p>
+          ) : null}
+          {profile ? (
+            <div className="pb-combat-tiles">
+              {statTiles(combat, side).map((tile) => (
+                <Tile key={tile.cell} tile={tile} />
+              ))}
+            </div>
+          ) : null}
+          {profile?.rerolls.length || (showRules && profile?.rules.length) ? (
+            <ul className="pb-combat-rules">
+              {profile.rerolls.map((entry) => (
+                <li key={`r-${entry.text}`} className={entry.added ? 'is-added' : 'is-base'} data-reroll>
+                  ↻ {entry.text}
+                </li>
+              ))}
+              {showRules
+                ? profile.rules.map((rule) => (
+                    <li key={rule.key} className={`is-${rule.state}`} data-rule-state={rule.state}>
+                      {rule.text}
+                    </li>
+                  ))
+                : null}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
+      {mods && inPlay.length ? (
         <section className="pb-section pb-combat-mods" data-combat-mods={side}>
           <h3>In effect</h3>
           <ul>
