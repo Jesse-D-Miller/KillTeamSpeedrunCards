@@ -30,6 +30,10 @@ const PATHS = {
   // A side bar with pieces laid out on it.
   board: 'M6 3h12v18H6zM9 6h6v3H9zM9 11h6v2H9zM9 15h3v3H9z',
   tabs: 'M4 6h16v4H4zM4 14h16v4H4z',
+  // Views: your operatives' cards, the map, the opponent.
+  roster: 'M3 5h8v14H3zM13 5h8v14h-8z',
+  mapView: 'M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14',
+  opponent: 'M9 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5M16 6l5 5M21 6l-5 5',
   fullscreen: 'M4 9V4h5M4 4l6 6M20 9V4h-5M20 4l-6 6M4 15v5h5M4 20l6-6M20 15v5h-5M20 20l-6-6',
   exitFullscreen: 'M10 4v6H4M10 10 4 4M14 4v6h6M14 10l6-6M10 20v-6H4M10 14l-6 6M14 20v-6h6M14 14l6 6',
 }

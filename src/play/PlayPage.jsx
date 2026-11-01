@@ -17,6 +17,7 @@ import MapTab from './MapTab.jsx'
 import OpponentTab from './OpponentTab.jsx'
 import { RuleProvider } from './RuleText.jsx'
 import BattleStep, { StrategySheet } from './steps/BattleStep.jsx'
+import { ViewRail } from './RailParts.jsx'
 import DeployStep from './steps/DeployStep.jsx'
 import LobbyStep from './steps/LobbyStep.jsx'
 import MusterStep from './steps/MusterStep.jsx'
@@ -188,18 +189,6 @@ function Header() {
   )
 }
 
-function TabBar({ tabs, activeTab, mainLabel, onSelect }) {
-  return (
-    <nav className="play-tabs">
-      {tabs.map((id) => (
-        <button key={id} type="button" className={id === activeTab ? 'is-selected' : ''} onClick={() => onSelect(id)}>
-          {id === 'main' ? mainLabel : TAB_LABELS[id]}
-        </button>
-      ))}
-    </nav>
-  )
-}
-
 function MainStep({ onOpenMap }) {
   const { state: game } = useGame()
   switch (game.phase) {
@@ -293,7 +282,11 @@ function SeatScreen() {
 
   return (
     <RuleProvider>
-      <div ref={rootRef} className={`play-root${immersive ? ' is-immersive' : ''}`} style={{ '--seat-color': seatColor(seat) }}>
+      <div
+        ref={rootRef}
+        className={`play-root${immersive ? ' is-immersive' : ''}${!immersive && phase.tabs.length > 1 ? ' has-rail' : ''}`}
+        style={{ '--seat-color': seatColor(seat) }}
+      >
         {immersive ? null : <Header />}
         {status !== 'online' ? (
           <div className="play-offline" role="status">
@@ -305,8 +298,15 @@ function SeatScreen() {
           {activeTab === 'map' ? <MapTab tabs={phase.tabs} tabLabel={tabLabel} onSelectTab={setTab} /> : null}
           {activeTab === 'opponent' ? <OpponentTab /> : null}
         </main>
+        {/* Off the map the left drawer switches views (no bottom tabs); its map tools are greyed. */}
         {!immersive && phase.tabs.length > 1 ? (
-          <TabBar tabs={phase.tabs} activeTab={activeTab} mainLabel={phase.main} onSelect={setTab} />
+          <ViewRail
+            tabs={phase.tabs}
+            activeTab={activeTab}
+            tabLabel={tabLabel}
+            onSelect={setTab}
+            mapTools={state.phase === 'battle' ? [['token', 'Token']] : [['units', 'Units'], ['token', 'Token']]}
+          />
         ) : null}
         {activeTab !== 'map' ? <IncomingAttack /> : null}
         {/* The strategy phase covers every tab until both players start the firefight. */}

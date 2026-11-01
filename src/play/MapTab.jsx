@@ -22,7 +22,7 @@ import FullscreenButton from './FullscreenButton.jsx'
 import { TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
 import VantageMark from './VantageMark.jsx'
 import { NextTpRailButton } from './NextTp.jsx'
-import { TeamEquipment, TeamFactionRules, TeamFirefightPloys, TeamOps, TeamStratPloys } from './TeamSections.jsx'
+import { TeamSectionButtons, TeamSectionPanel, ViewButtons } from './RailParts.jsx'
 import UnitCardModal from './UnitCardModal.jsx'
 import RulesPopover from './RulesPopover.jsx'
 import BoardArranger from './BoardArranger.jsx'
@@ -97,15 +97,6 @@ const RADIAL_ACTIONS = [
   { id: 'rules', label: 'Rules', icon: 'rules' },
 ]
 
-// Your team, a section at a time, from the tool drawer (it stays open beside them).
-const TEAM_SECTIONS = [
-  { id: 'ops', label: 'Ops', Section: TeamOps },
-  { id: 'equipment', label: 'Equipment', Section: TeamEquipment },
-  { id: 'firefight', label: 'Firefight', title: 'Firefight ploys', Section: TeamFirefightPloys },
-  { id: 'strat', label: 'Strat ploys', Section: TeamStratPloys },
-  { id: 'faction', label: 'Faction', title: 'Faction rules', Section: TeamFactionRules },
-]
-
 // Everything else on the board (markers, tokens, blank bases) has a smaller ring.
 const ITEM_ACTIONS = [
   { id: 'move', label: 'Move', icon: 'move' },
@@ -174,7 +165,7 @@ function BaseSizer({ token, onStep }) {
   )
 }
 
-// tabs / tabLabel / onSelectTab: the phase's tabs, so the rail can switch away from the map.
+// tabs / tabLabel / onSelectTab: the phase's views, so the rail can switch away from the map.
 function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const { state: game, seat, killteam, roster, ephemerals, act, sendEphemeral } = usePlayer()
   const svgRef = useRef(null)
@@ -182,7 +173,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // null = no tool: tap an operative for its actions, tap the map to ping, drag to
   // measure, two fingers to pan and zoom.
   const [tool, setTool] = useState(null)
-  const [tabsOpen, setTabsOpen] = useState(false)
   const [arranging, setArranging] = useState(false)
   // The move action picked from an operative's Move ring (MOVE_KINDS or 'adjust'); null
   // is a free move. moveStatus: the banner while moving { label, used, limit, warning }.
@@ -1111,7 +1101,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     ) : null,
   }
   const pressTool = { units: pressUnits, token: pressToken }
-  const openSection = TEAM_SECTIONS.find((section) => section.id === teamSection) ?? null
   // Shoot or Fight: the attacker's ranged or melee weapons, full screen. Cancel ends it.
   const weaponMenu =
     attacker && weaponMenuOpen ? (
@@ -1409,19 +1398,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             )
           })}
           <span className="rail-divider" />
-          {TEAM_SECTIONS.map(({ id, label, title }) => (
-            <button
-              key={id}
-              type="button"
-              className={`rail-tool${teamSection === id ? ' is-selected' : ''}`}
-              onClick={() => setTeamSection((current) => (current === id ? null : id))}
-              aria-label={title ?? label}
-              aria-pressed={teamSection === id}
-            >
-              <ToolIcon tool={id} />
-              <span>{label}</span>
-            </button>
-          ))}
+          <TeamSectionButtons open={teamSection} onToggle={setTeamSection} />
           <span className="rail-divider" />
           {game.phase === 'battle' ? <NextTpRailButton /> : null}
           <button type="button" className="rail-tool" onClick={() => setArranging(true)} aria-label="My board">
@@ -1433,44 +1410,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             <span>Fit</span>
           </button>
           <FullscreenButton variant="rail" />
-          {tabs.length > 1 ? (
-            <button
-              type="button"
-              className={`rail-tool${tabsOpen ? ' is-open' : ''}`}
-              onClick={() => setTabsOpen((open) => !open)}
-              aria-label="Tabs"
-              aria-expanded={tabsOpen}
-            >
-              <ToolIcon tool="tabs" />
-              <span>Tabs</span>
-            </button>
-          ) : null}
+          <ViewButtons tabs={tabs} activeTab="map" tabLabel={tabLabel} onSelect={(id) => id !== 'map' && onSelectTab(id)} />
         </div>
-        {openSection ? (
-          <section className="team-panel" aria-label={openSection.title ?? openSection.label}>
-            <button type="button" className="btn is-small team-panel-close" onClick={() => setTeamSection(null)} aria-label="Close">
-              ✕
-            </button>
-            <openSection.Section />
-          </section>
-        ) : null}
-        {tabsOpen ? (
-          <nav className="rail-flyout tab-flyout glass" aria-label="Switch tab">
-            {tabs.map((id) => (
-              <button
-                key={id}
-                type="button"
-                className={id === 'map' ? 'is-selected' : ''}
-                onClick={() => {
-                  setTabsOpen(false)
-                  if (id !== 'map') onSelectTab(id)
-                }}
-              >
-                {tabLabel(id)}
-              </button>
-            ))}
-          </nav>
-        ) : null}
+        <TeamSectionPanel id={teamSection} onClose={() => setTeamSection(null)} />
       </Drawer>
 
     </section>

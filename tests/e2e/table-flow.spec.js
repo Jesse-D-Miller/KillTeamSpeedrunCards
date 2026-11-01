@@ -8,14 +8,12 @@ const PROJECTOR = { width: 1920, height: 1080 }
 
 const shot = (page, name) => page.screenshot({ path: `test-results/flow-${name}.png` })
 
-// On the map, tabs are switched from the left rail's Tabs flyout; elsewhere from the tab bar.
+// Switch an iPad to another view (Setup / Muster / Map / Opponent...).
 const openTab = async (page, name) => {
-  if (await page.locator('.tool-rail').isVisible()) {
-    await page.getByRole('button', { name: 'Tabs', exact: true }).click()
-    await page.locator('.tab-flyout button', { hasText: name }).click()
-  } else {
-    await page.locator('.play-tabs button', { hasText: name }).click()
-  }
+  // Views are buttons in the left drawer on every screen (no bottom tabs).
+  const drawer = page.locator('.tool-drawer')
+  if (await drawer.evaluate((el) => el.classList.contains('is-closed'))) await drawer.locator('.drawer-handle').click()
+  await page.locator('.tool-rail .rail-view', { hasText: name }).click()
 }
 
 // Player boards must never spill text or graphics out of their boxes (or into their
@@ -527,14 +525,19 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   if (await railExit.isVisible()) await railExit.click()
   else await a.getByRole('dialog').getByRole('button', { name: 'Close' }).click()
   await expect(a.locator('.tool-rail').getByRole('button', { name: 'Full screen' })).toBeVisible()
-  await a.getByRole('button', { name: 'Tabs', exact: true }).click()
-  await expect(a.locator('.tab-flyout')).toBeVisible()
-  await shot(a, '07b-map-tab-flyout')
-  await a.getByRole('button', { name: 'Tabs', exact: true }).click()
-  await expect(a.locator('.tab-flyout')).toHaveCount(0)
+  // The drawer ends with the views: Deploy, Map, Opponent (no bottom tabs anywhere).
+  await expect(a.locator('.tool-rail .rail-view')).toHaveText(['Deploy', 'Map', 'Opponent'])
+  await expect(a.locator('.tool-rail .rail-view.is-selected')).toHaveText('Map')
+  await expect(a.locator('.play-tabs')).toHaveCount(0)
+  await shot(a, '07b-map-views')
 
   // ---- battle ----
   await openTab(a, 'Deploy')
+  // Off the map the same drawer is there, with its map-only tools greyed out.
+  await expect(a.locator('.view-rail .rail-view.is-selected')).toHaveText('Deploy')
+  await expect(a.locator('.view-rail').getByRole('button', { name: 'Token (on the map)' })).toBeDisabled()
+  await expect(a.locator('.view-rail').getByRole('button', { name: 'Fit (on the map)' })).toBeDisabled()
+  await shot(a, '07c-deploy-drawer')
   await readyUp(a, b)
   await expect(a.getByText('Turning point 1 · strategy phase')).toBeVisible()
   // Initiative roll-off every turning point: Bob holds the Re-roll card from setup.
@@ -577,7 +580,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   const cpBeforePloy = Number(await aliceBoard.locator('.pb-stat.is-cp .pb-big-value').textContent())
   // Your team's sections (ops, equipment, ploys, faction rules) open from the map's tool
   // drawer, which stays beside them; there's no Team & rules tab any more.
-  await expect(a.locator('.play-tabs button', { hasText: 'Team & rules' })).toHaveCount(0)
+  await expect(a.locator('.rail-view', { hasText: 'Team & rules' })).toHaveCount(0)
   await openTab(a, 'Map')
   await a.getByRole('button', { name: 'Firefight ploys' }).click()
   const teamPanel = a.getByRole('region', { name: 'Firefight ploys' })
@@ -603,7 +606,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await openTab(a, 'Map')
   await expect(a.getByRole('button', { name: 'Units', exact: true })).toHaveCount(0)
   // Everything else on the operatives comes from their action ring; the rail keeps the rest.
-  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', 'Ops', 'Equipment', 'Firefight', 'Strat ploys', 'Faction', 'Next TP', 'My board', 'Fit', 'Full screen', 'Tabs'])
+  await expect(a.locator('.tool-rail .rail-tool > span')).toHaveText(['Token', 'Ops', 'Equipment', 'Firefight', 'Strat ploys', 'Faction', 'Next TP', 'My board', 'Fit', 'Full screen', 'Operatives', 'Map', 'Opponent'])
   // My board: Alice drags a piece of her side bar on her iPad and the projector follows;
   // Reset puts it back. (Map 2: landscape bars.)
   const aliceScore = aliceBoard.locator('[data-piece="score"]')
@@ -1226,13 +1229,13 @@ test('projector + two iPads play through setup into battle', async ({ browser })
 
   // Next TP asks for confirmation and explains what happens; the turning point moves on
   // once both players have confirmed (and only once).
-  await a.getByRole('button', { name: 'Next TP' }).click()
+  await a.locator('.play-header').getByRole('button', { name: 'Next TP' }).click()
   await expect(a.getByRole('heading', { name: 'End turning point 1?' })).toBeVisible()
   await shot(a, '11-end-turn-ipad')
   await a.getByRole('button', { name: 'Ready for TP 2' }).click()
-  await expect(a.getByRole('button', { name: /Waiting for Bob/ })).toBeVisible()
+  await expect(a.locator('.play-header').getByRole('button', { name: /Waiting for Bob/ })).toBeVisible()
   await expect(b.locator('.play-phase')).toContainText('Turning point 1')
-  await b.getByRole('button', { name: 'Next TP · Alice is ready' }).click()
+  await b.locator('.play-header').getByRole('button', { name: 'Next TP · Alice is ready' }).click()
   await b.getByRole('button', { name: 'Ready for TP 2' }).click()
   await expect(b.locator('.play-phase')).toContainText('Turning point 2')
   await expect(a.locator('.play-phase')).toContainText('Turning point 2')
@@ -1255,7 +1258,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // The firefight starts once both players have tapped Start firefight; until then the
   // first one waits.
   await a.getByRole('button', { name: 'Start firefight' }).click()
-  await expect(a.getByRole('button', { name: 'Waiting for Bob (tap to take back)' })).toBeVisible()
+  await expect(a.locator('.strategy-sheet').getByRole('button', { name: 'Waiting for Bob (tap to take back)' })).toBeVisible()
   await expect(b.getByRole('button', { name: 'Start firefight' })).toContainText('Alice is ready')
   await b.getByRole('button', { name: 'Start firefight' }).click()
   await expect(a.locator('.strategy-sheet')).toHaveCount(0)
