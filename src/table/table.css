@@ -22,22 +22,12 @@
 
 /* On the projector, operative bases and markers are black inside, so no light falls on
    the minis and physical tokens standing on them; their coloured rims, names, tags and
-   glows (all outside the base) still show. (The doubled class beats the state styles.) */
+   glows (all outside the base) still show. (The doubled class beats the state styles.)
+   The killzone's own objective markers keep their colours. */
 .table-board .board-token.board-token .board-token-base,
-.table-board .board-marker.board-marker circle,
-.table-board .board-objective .board-objective-core {
+.table-board .board-marker.board-marker circle {
   fill: #000;
   fill-opacity: 1;
-}
-
-/* An objective marker keeps a red rim and its control-range ring, not the cross. */
-.table-board .board-objective .board-objective-core {
-  stroke: #e23b3b;
-  stroke-width: 0.1;
-}
-
-.table-board .board-objective .board-objective-cross {
-  display: none;
 }
 
 /* The same for the wound effects: the hurt flash is just its ring, no glow on the base. */
