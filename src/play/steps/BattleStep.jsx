@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { NEXT_ACTIVATION, activePloyIds, createUnitState, initiativeBefore, otherSeat } from '../../../shared/game.js'
 import UnitCard from '../../components/UnitCard.jsx'
 import { seatColor } from '../../board/colors.js'
@@ -9,9 +9,9 @@ import { maxWoundsFor } from '../../rules/roster.js'
 import CardPicker from '../CardPicker.jsx'
 import { RuleText } from '../RuleText.jsx'
 import { usePlayer } from '../usePlayer.js'
+import { byStatus, useRowDetails } from '../useRowDetails.js'
 
 
-const rank = (unitState) => (unitState.dead ? 2 : unitState.activation === 'expended' ? 1 : 0)
 
 // The strategy phase as numbered steps (Approved Ops 2025): the initiative roll-off
 // with initiative cards, the winner deciding who has initiative, the secret primary
@@ -202,19 +202,12 @@ export function StrategySheet() {
 function BattleStep() {
   const { state: game, me, roster, act } = usePlayer()
   const tp = game.battle.tp
-  const [openByUnit, setOpenByUnit] = useState({})
-  useEffect(() => {
-    setOpenByUnit({})
-  }, [tp])
+  const details = useRowDetails(tp)
 
   // Unit state seeded by a move may not know its wounds yet: fall back to the defaults.
   const unitStateFor = (unit) => ({ ...createUnitState(maxWoundsFor(unit.opType)), ...me.unitState[unit.key] })
 
-  const ordered = useMemo(
-    () => [...roster].sort((a, b) => rank(unitStateFor(a)) - rank(unitStateFor(b)) || a.index - b.index),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [roster, me.unitState],
-  )
+  const ordered = useMemo(() => byStatus(roster, me.unitState), [roster, me.unitState])
 
   const update = (unit, patch) =>
     act({ type: 'unit/update', unitKey: unit.key, maxWounds: maxWoundsFor(unit.opType), patch })
@@ -222,7 +215,7 @@ function BattleStep() {
   return (
     <section className="step">
       <div className="unit-grid">
-        {ordered.map((unit) => {
+        {ordered.map((unit, index) => {
           const unitState = unitStateFor(unit)
           return (
             <UnitCard
@@ -231,8 +224,8 @@ function BattleStep() {
               instance={unit.instance}
               instanceCount={unit.instanceCount}
               currentWounds={unitState.wounds}
-              detailsOpen={Boolean(openByUnit[unit.key])}
-              onToggleDetails={() => setOpenByUnit((current) => ({ ...current, [unit.key]: !current[unit.key] }))}
+              detailsOpen={details.isOpen(index)}
+              onToggleDetails={() => details.toggle(index)}
               state={unitState.activation}
               onCycleState={() => update(unit, { activation: NEXT_ACTIVATION[unitState.activation] })}
               onWoundsChange={(wounds) => update(unit, { wounds, dead: wounds === 0 })}
