@@ -26,6 +26,21 @@ describe('killOpCounts helpers', () => {
     expect(deriveDeadCount('ORK-KOM', deadUnits)).toBe(3)
   })
 
+  it('leaves out every operative its rules say is ignored for the kill op, not just Bomb Squigs', () => {
+    // Navis C.A.T. Unit and Gheistskull are Expendable.
+    const navis = ['IMP-INB-SGT-0', 'IMP-INB-ARM-1', 'IMP-INB-ARM-2', 'IMP-INB-AXE-0', 'IMP-INB-END-0', 'IMP-INB-GNR-1', 'IMP-INB-CAT-0', 'IMP-INB-GS-0']
+    expect(deriveKillOpCount('IMP-INB', navis)).toBe(6)
+    expect(deriveDeadCount('IMP-INB', { 'IMP-INB-CAT-0': true, 'IMP-INB-ARM-1': true })).toBe(1)
+    // The Spectre Vox-Relay Beacon too.
+    const spectres = ['IMP-SPC-SGT-0', 'IMP-SPC-VRB-0', 'IMP-SPC-MED-0', 'IMP-SPC-GRN-0', 'IMP-SPC-GDE-0', 'IMP-SPC-TRP-1']
+    expect(deriveKillOpCount('IMP-SPC', spectres)).toBe(5)
+  })
+
+  it('uses a starting number fixed by a team rule (Hierotek Chronomancer: 5)', () => {
+    const hierotek = ['NEC-HIER-CHRON-0', 'NEC-HIER-PSYCH-0', 'NEC-HIER-TECH-0', 'NEC-HIER-PA-0', 'NEC-HIER-PR-0', 'NEC-HIER-APP-0']
+    expect(deriveKillOpCount('NEC-HIER', hierotek)).toBe(5)
+  })
+
   it('returns null when kill op count is outside supported range', () => {
     expect(deriveKillOpCount('ORK-KOM', ['ORK-KOM-NOB-1'])).toBeNull()
   })

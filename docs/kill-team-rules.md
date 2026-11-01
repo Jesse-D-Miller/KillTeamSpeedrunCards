@@ -518,7 +518,7 @@ All of these were replaced in Approved Ops 2025.
 ## 12. App compliance status (25 Oct 2026)
 
 **Matches the rules:**
-- Kill op table and grades.
+- Kill op table and grades. Operatives whose datacard says they're "ignored for your opponent's kill/elimination op" don't count, read from the rules text (fixed 1 Nov 2026; before, only Bomb Squigs were left out): Bomb Squigs (Kommandos, Wrecka Krew), Navis C.A.T. Unit and Gheistskull, Tome-Skull, Canoptek Macrocyte Warriors, Gellerpox Mutoid Vermin, XV26 drones and the Spectre Vox-Relay Beacon. Grots count in full (only half a selection when mustering). The Hierotek Chronomancer's rule fixes the opponent's starting number at 5.
 - Max 6VP per op; primary op adds half, rounded up.
 - 4 turning points.
 - Injured below half wounds.
