@@ -60,15 +60,8 @@ function PlayerBoard({ game, seat, rotation, connected, widthPx, heightPx, comba
     ) : (
       <div className={className}>{children}</div>
     )
-  const turnBadge = !turn
-    ? null
-    : turn.activeSeat === seat
-      ? 'activating'
-      : turn.counteractSeat === seat
-        ? 'counteract'
-        : !turn.activeSeat && turn.nextSeat === seat
-          ? 'next'
-          : null
+  // Whose operative is activating (or counteracting) right now.
+  const turnBadge = !turn ? null : turn.activeSeat === seat ? 'activating' : turn.counteractSeat === seat ? 'counteract' : null
 
   return (
     <div className="pb-slot">

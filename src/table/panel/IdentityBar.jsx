@@ -1,11 +1,11 @@
 import { cardLabel } from '../../rules/initiative.js'
 
-const TURN_LABELS = { activating: 'Activating', next: 'Up next', counteract: 'Counteract' }
+const TURN_LABELS = { activating: 'Activating', counteract: 'Counteract' }
 
 // Name, team, connection and initiative, plus any initiative cards the player is
 // holding (Approved Ops 2025; cards are public once gained). The initiative and turn
 // tags sit on their own row under the name, so the name gets the bar's full width.
-// turnBadge: 'activating' | 'next' | 'counteract' | null, during the Firefight phase.
+// turnBadge: 'activating' | 'counteract' | null, during the Firefight phase.
 // compact: just who it is (during a shot or fight, when the name needs the room).
 function IdentityBar({ player, killteam, connected, hasInitiative, turnBadge = null, compact = false }) {
   const cards = compact ? [] : (player.initiativeCards ?? []).filter((card) => !card.used)
