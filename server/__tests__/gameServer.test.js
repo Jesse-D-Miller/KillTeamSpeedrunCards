@@ -46,7 +46,7 @@ const join_ = async (hello) => {
 beforeEach(async () => {
   persistPath = join(mkdtempSync(join(tmpdir(), 'kt-')), 'game.json')
   httpServer = createServer()
-  game = createGameServer({ server: httpServer, persistPath, log: () => {} })
+  game = createGameServer({ server: httpServer, persistPath, log: () => {}, build: () => 'index-abc123.js' })
   await new Promise((resolve) => httpServer.listen(0, '127.0.0.1', resolve))
   url = `ws://127.0.0.1:${httpServer.address().port}/ws`
 })
@@ -70,6 +70,8 @@ describe('game server', () => {
     const again = await join_({ role: 'seat', seat: 'A', token: welcome.token })
     const rewelcome = await again.next('welcome')
     expect(rewelcome.token).toBe(welcome.token)
+    // Each welcome names the built page, so a page left open across a rebuild reloads.
+    expect(rewelcome.build).toBe('index-abc123.js')
   })
 
   it('takeover kicks the previous device', async () => {

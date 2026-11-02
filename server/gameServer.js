@@ -41,7 +41,7 @@ const loadSnapshot = (path) => {
   }
 }
 
-export const createGameServer = ({ server, persistPath = null, historyPath = null, log = console.log }) => {
+export const createGameServer = ({ server, persistPath = null, historyPath = null, log = console.log, build = () => null }) => {
   const snapshot = persistPath ? loadSnapshot(persistPath) : null
   let state = snapshot?.state ?? createGame()
   const seatTokens = snapshot?.seatTokens ?? { A: null, B: null }
@@ -140,7 +140,7 @@ export const createGameServer = ({ server, persistPath = null, historyPath = nul
       socket.role = 'table'
       socket.seat = null
       socket.clientId = `table-${randomUUID().slice(0, 6)}`
-      send(socket, { type: 'welcome', role: 'table', clientId: socket.clientId })
+      send(socket, { type: 'welcome', role: 'table', clientId: socket.clientId, build: build() })
       broadcastState()
       return
     }
@@ -171,7 +171,7 @@ export const createGameServer = ({ server, persistPath = null, historyPath = nul
     socket.clientId = seat
     socket.joinedAt = Date.now()
     log(`Seat ${seat} connected`)
-    send(socket, { type: 'welcome', role: 'seat', seat, token: seatTokens[seat] })
+    send(socket, { type: 'welcome', role: 'seat', seat, token: seatTokens[seat], build: build() })
     updateClock()
     broadcastState()
   }

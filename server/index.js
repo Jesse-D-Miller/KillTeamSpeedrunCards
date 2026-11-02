@@ -109,7 +109,18 @@ const server = createServer((req, res) => {
   sendFile(req, res, join(DIST, 'index.html'))
 })
 
-createGameServer({ server, persistPath: PERSIST_PATH, historyPath: HISTORY_PATH })
+// The built page's main script name (hashed by Vite), sent to each device so a page left
+// open across a rebuild (npm run table restarts with new code) reloads itself.
+const builtScript = () => {
+  if (!SERVE_STATIC) return null
+  try {
+    return readFileSync(join(DIST, 'index.html'), 'utf8').match(/assets\/(index-[\w-]+\.js)/)?.[1] ?? null
+  } catch {
+    return null
+  }
+}
+
+createGameServer({ server, persistPath: PERSIST_PATH, historyPath: HISTORY_PATH, build: builtScript })
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\nKill Team table server on port ${PORT}`)

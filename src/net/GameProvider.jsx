@@ -2,6 +2,23 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { applyAction } from '../../shared/reducer.js'
 import { GameContext } from './gameContext.js'
 
+// This page's own main script name, when it's the built app (see server/index.js).
+const builtScript = () =>
+  Array.from(document.scripts)
+    .map((script) => script.src.match(/assets\/(index-[\w-]+\.js)/)?.[1])
+    .find(Boolean) ?? null
+
+// Reload once per server build at most, in case a cached page keeps the old script.
+const reloadedFor = (build) => {
+  try {
+    if (window.sessionStorage.getItem('kt-reloaded-for') === build) return true
+    window.sessionStorage.setItem('kt-reloaded-for', build)
+  } catch {
+    // No storage (private mode): still reload; the page is served no-cache.
+  }
+  return false
+}
+
 // Single connection to the table server. The server owns the game; this mirrors the
 // snapshot it last sent and forwards actions. Reconnects forever with backoff and
 // immediately when an iPad wakes up.
@@ -157,6 +174,12 @@ export function GameProvider({ role, seat = null, children }) {
       const message = JSON.parse(event.data)
       switch (message.type) {
         case 'welcome':
+          // The table server was rebuilt since this page loaded: load the new code (only
+          // for the built app; the dev server's page has no hashed script).
+          if (message.build && builtScript() && builtScript() !== message.build && !reloadedFor(message.build)) {
+            window.location.reload()
+            return
+          }
           if (message.token) writeToken(seat, message.token)
           socket.welcomed = true
           setStatus('online')

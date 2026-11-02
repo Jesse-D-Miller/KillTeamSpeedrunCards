@@ -180,6 +180,9 @@ describe('applyAction', () => {
     )
     state = applyAction(state, { type: 'game/reset' }, 'table')
     expect(state.settings.showGrid).toBe(false)
+    // Counted, so devices see a new game even when the phase stays in the lobby.
+    expect(state.resets).toBe(1)
+    expect(applyAction(state, { type: 'game/reset' }, 'table').resets).toBe(2)
     expect(state.settings).not.toHaveProperty('junk')
   })
 

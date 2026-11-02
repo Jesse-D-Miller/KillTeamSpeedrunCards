@@ -1583,6 +1583,11 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(b.locator('.rail-phase')).toBeVisible()
   await tableActions(table, [{ type: 'game/reset' }])
   await expect(b).toHaveURL(/\/$/)
+  // Even from the lobby, where the phase doesn't change.
+  await b.goto('/play?seat=B')
+  await expect(b.locator('.rail-phase')).toBeVisible()
+  await tableActions(table, [{ type: 'game/reset' }])
+  await expect(b).toHaveURL(/\/$/)
 })
 
 test('projector calibration warps the board and persists on the server', async ({ browser }) => {

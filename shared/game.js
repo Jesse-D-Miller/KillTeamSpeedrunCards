@@ -165,6 +165,9 @@ export const DEFAULT_SETTINGS = {
 
 export const createGame = (settings = DEFAULT_SETTINGS) => ({
   phase: 'lobby',
+  // How many times New game was pressed, so every device can tell a new game started
+  // (even from the lobby, where the phase doesn't change).
+  resets: 0,
   // The speedrun clock (server time, ms): started the first time both iPads are
   // connected, stopped at the results.
   clock: { startedAt: null, endedAt: null },

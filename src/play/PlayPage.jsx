@@ -78,16 +78,20 @@ function SeatScreen() {
   const [aside, setAside] = useState(null)
   const rootRef = useRef(null)
   useKeyboardOverlay(rootRef)
-  // The game ending opens the results, whichever tab was showing. A new game (only a
-  // reset goes back to the lobby), from either iPad or the projector, sends this iPad to
-  // the opening screen.
+  // The game ending opens the results, whichever tab was showing.
   const phaseNow = state?.phase
   const [lastPhase, setLastPhase] = useState(phaseNow)
-  const [newGame, setNewGame] = useState(false)
   if (lastPhase !== phaseNow) {
     setLastPhase(phaseNow)
     if (phaseNow === 'results') setTab('main')
-    if (phaseNow === 'lobby' && lastPhase) setNewGame(true)
+  }
+  // New game, from either iPad or the projector, sends this iPad to the opening screen.
+  const resetsNow = state?.resets
+  const [lastResets, setLastResets] = useState(resetsNow)
+  const [newGame, setNewGame] = useState(false)
+  if (lastResets !== resetsNow) {
+    setLastResets(resetsNow)
+    if (lastResets != null && resetsNow > lastResets) setNewGame(true)
   }
   const navigate = useNavigate()
   useEffect(() => {

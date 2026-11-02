@@ -477,7 +477,7 @@ const sanitizePoint = (action) => ({
 
 const handlers = {
   // ---- general ----
-  'game/reset': (state) => createGame(state.settings),
+  'game/reset': (state) => ({ ...createGame(state.settings), resets: (state.resets ?? 0) + 1 }),
 
   // The clock is the server's alone (actor 'server'); devices can't set it.
   'clock/start': (state, action, actor) => {
