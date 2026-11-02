@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { COMMAND_REROLL, createGame, musterBlocker, turnState, vantageFloor } from '../game.js'
+import { COMMAND_REROLL, canToughOut, createGame, musterBlocker, toughSurvivalistsDamage, turnState, vantageFloor } from '../game.js'
 import { ActionError, applyAction } from '../reducer.js'
 
 const run = (state, steps) =>
@@ -870,5 +870,30 @@ describe('Hernkyn Yaegirs: Dauntless Explorers', () => {
     expect(() => applyAction(start, { type: 'battle/dauntless', tokenIds: [vespid] }, 'B')).toThrow(/Yaegirs/)
     const tp2 = applyAction(start, { type: 'battle/nextTp' }, 'table')
     expect(() => applyAction(tp2, { type: 'battle/dauntless', tokenIds: [yaegir] }, 'A')).toThrow(/turning point 1/)
+  })
+})
+
+describe('Hernkyn Yaegirs: Tough Survivalists', () => {
+  it('halves damage, rounding up, to a minimum of 2, only when that lowers it', () => {
+    expect([1, 2, 3, 4, 5, 7].map(toughSurvivalistsDamage)).toEqual([null, null, 2, 2, 3, 4])
+  })
+
+  it('applies to the first damage each Yaegir takes in the turning point, with the ploy active', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'VOT-HKY' }, 'A'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'unit/update', unitKey: 'VOT-HKY-WAR-0', maxWounds: 8, patch: { activation: 'ready' } }, 'A'],
+    ])
+    const unit = () => state.players.A.unitState['VOT-HKY-WAR-0']
+    expect(canToughOut(state.players.A, unit(), 1)).toBe(false)
+    state = applyAction(state, { type: 'battle/togglePloy', ployId: 'VOT-HKY-S-TS' }, 'A')
+    expect(canToughOut(state.players.A, unit(), 1)).toBe(true)
+    state = applyAction(state, { type: 'unit/update', unitKey: 'VOT-HKY-WAR-0', maxWounds: 8, patch: { wounds: 6 } }, 'A')
+    expect(unit().damagedTp).toBe(1)
+    expect(canToughOut(state.players.A, unit(), 1)).toBe(false)
+    // Healing doesn't count as taking damage.
+    state = applyAction(state, { type: 'unit/update', unitKey: 'VOT-HKY-WAR-0', maxWounds: 8, patch: { wounds: 7 } }, 'A')
+    expect(canToughOut(state.players.A, unit(), 2)).toBe(false)
   })
 })

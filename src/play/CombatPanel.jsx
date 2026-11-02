@@ -1,3 +1,4 @@
+import { canToughOut, toughSurvivalistsDamage } from '../../shared/game.js'
 import { seatColor } from '../board/colors.js'
 import {
   FIGHT_RESOLVE,
@@ -16,6 +17,7 @@ import {
 } from '../rules/shooting/display.js'
 import { weaponLabel } from '../rules/weaponRules.js'
 import { RulePill } from './RuleText.jsx'
+import { usePlayer } from './usePlayer.js'
 
 // A shot or fight on an iPad (the stats drawer). Laid out to be read top-down:
 // the matchup and whether it can happen, then my side, then theirs. Each side shows its
@@ -154,39 +156,67 @@ function Modifiers({ modifiers, seat, onToggle }) {
 // Damage and healing for my own operative: −1 / +1, and quick buttons for a normal
 // and a critical hit from the opponent's current profile (after any damage changes).
 //   incoming: { normal, crit } damage the opponent deals it in this attack, or null.
-function WoundControls({ operative, incoming, onWounds }) {
+export function WoundControls({ operative, incoming, onWounds }) {
+  const { state: game } = usePlayer()
   const take = (damage, hit = 'normal') => onWounds(operative, operative.wounds - damage, hit)
+  const hits = incoming
+    ? [
+        ['Hit', incoming.normal],
+        ['Crit', incoming.crit],
+      ]
+    : []
+  // Tough Survivalists (Yaegirs): the first damage it takes this turning point can be
+  // halved, so those hits come halved too (when halving lowers them).
+  const owner = game.players[operative.token.seat]
+  const tough = canToughOut(owner, owner?.unitState?.[operative.token.unitKey], game.battle.tp)
+  const halved = tough
+    ? hits.map(([kind, damage]) => [kind, damage, toughSurvivalistsDamage(damage)]).filter(([, , half]) => half != null)
+    : []
   return (
-    <div className="combat-wound-controls" role="group" aria-label={`${operative.name} wounds`}>
-      <button type="button" onClick={() => take(1)} disabled={operative.wounds <= 0} aria-label="Take 1 damage">
-        −1
-      </button>
-      {incoming
-        ? [
-            ['Hit', incoming.normal],
-            ['Crit', incoming.crit],
-          ].map(([kind, damage]) => (
+    <>
+      <div className="combat-wound-controls" role="group" aria-label={`${operative.name} wounds`}>
+        <button type="button" onClick={() => take(1)} disabled={operative.wounds <= 0} aria-label="Take 1 damage">
+          −1
+        </button>
+        {hits.map(([kind, damage]) => (
+          <button
+            key={kind}
+            type="button"
+            className="is-hit"
+            onClick={() => take(damage, kind === 'Crit' ? 'crit' : 'normal')}
+            disabled={operative.wounds <= 0}
+            aria-label={`Take ${damage} damage (${kind === 'Hit' ? 'normal' : 'critical'} hit)`}
+          >
+            −{damage} <span>{kind}</span>
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => take(-1)}
+          disabled={operative.wounds >= operative.maxWounds}
+          aria-label="Heal 1"
+        >
+          +1
+        </button>
+      </div>
+      {halved.length ? (
+        <div className="combat-wound-controls is-tough" role="group" aria-label="Tough Survivalists" data-tough>
+          <span className="combat-tough-label">Tough Survivalists · first damage this turning point, halved</span>
+          {halved.map(([kind, damage, half]) => (
             <button
               key={kind}
               type="button"
               className="is-hit"
-              onClick={() => take(damage, kind === 'Crit' ? 'crit' : 'normal')}
+              onClick={() => take(half, kind === 'Crit' ? 'crit' : 'normal')}
               disabled={operative.wounds <= 0}
-              aria-label={`Take ${damage} damage (${kind === 'Hit' ? 'normal' : 'critical'} hit)`}
+              aria-label={`Take ${half} damage (${kind === 'Hit' ? 'normal' : 'critical'} hit, halved from ${damage})`}
             >
-              −{damage} <span>{kind}</span>
+              −{half} <span>{kind} ½</span>
             </button>
-          ))
-        : null}
-      <button
-        type="button"
-        onClick={() => take(-1)}
-        disabled={operative.wounds >= operative.maxWounds}
-        aria-label="Heal 1"
-      >
-        +1
-      </button>
-    </div>
+          ))}
+        </div>
+      ) : null}
+    </>
   )
 }
 

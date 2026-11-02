@@ -869,6 +869,9 @@ const handlers = {
     if (!unitKey) fail('Missing unit.')
     const patch = sanitizeUnitPatch(action.patch)
     if ('wounds' in patch && !('lastHit' in patch)) patch.lastHit = 'normal'
+    // Rules like Tough Survivalists need the first time it took damage this turning point.
+    const before = state.players[seat]?.unitState?.[unitKey]
+    if (state.phase === 'battle' && 'wounds' in patch && before && patch.wounds < before.wounds) patch.damagedTp = state.battle.tp
     let next = clearAuto(state)
     // Activating an operative by hand also ends the activation in progress.
     if (patch.activation === 'active' && state.players[seat].unitState[unitKey]?.activation !== 'active') {

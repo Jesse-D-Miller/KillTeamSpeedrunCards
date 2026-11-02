@@ -41,6 +41,18 @@ export const otherSeat = (seat) => (seat === 'A' ? 'B' : 'A')
 // control range).
 export const HERNKYN_YAEGIRS = 'VOT-HKY'
 export const resourcefulGain = (outsideControl) => (outsideControl >= 5 ? 2 : outsideControl >= 1 ? 1 : 0)
+// Tough Survivalists (Yaegir strategy ploy): the first damage each Yaegir takes in the
+// turning point can be halved, rounding up, to a minimum of 2. null when halving
+// wouldn't lower it.
+export const TOUGH_SURVIVALISTS = 'VOT-HKY-S-TS'
+export const toughSurvivalistsDamage = (damage) => {
+  const halved = Math.max(2, Math.ceil(damage / 2))
+  return halved < damage ? halved : null
+}
+// Whether an operative (of player) can still halve damage with Tough Survivalists.
+export const canToughOut = (player, unit, tp) =>
+  player?.killteamId === HERNKYN_YAEGIRS && activePloyIds(player, tp).includes(TOUGH_SURVIVALISTS) && unit?.damagedTp !== tp
+
 // APL an operative has from spending Resourceful this activation.
 export const aplBonus = (unit) => (unit?.resourceful === 'apl' ? 1 : 0)
 

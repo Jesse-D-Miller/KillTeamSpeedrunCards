@@ -654,7 +654,7 @@ All of these were replaced in Approved Ops 2025.
     - **Dauntless Explorers (strategic gambit, TP1):** the strategy sheet has a gambit section for the Yaegir player. Using it records the Yaegirs wholly within their drop zone at that moment; the sheet can be put aside to Reposition them on the map, where a banner explains the rule and a move ending more than 4" from the drop zone (as a rectangle grown by 4") gets a warning. Each one's Reposition is the normal Move ring move (its Move stat); the app doesn't stop a second move.
     - Hidden Engagement: in cover from every point of the target's base, since the opponent picks the point.
     - In Position.
-    - Tough Survivalists, as a note.
+    - **Tough Survivalists:** while the ploy is active, a Yaegir that hasn't taken damage yet this turning point (the server records `damagedTp` whenever wounds go down) gets halved Hit and Crit buttons in its stats drawer (rounding up, minimum 2; only shown when that lowers the damage). Any damage, halved or not, uses up its first time.
     - Sturdy.
     - Stalwart Defence.
     - The Fallen Kin marker within 3".
