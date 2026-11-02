@@ -685,7 +685,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     )
   const [mineId] = await tokenIdsOf('#ff5a4e')
   await tokenOf(mineId).click()
-  await expect(ring.getByRole('menuitem')).toHaveText(['Move', 'Measure', 'Sightline', 'Shoot', 'Fight', 'Range', 'Vantage', 'Edit', 'Ping', 'Unit card'])
+  await expect(ring.getByRole('menuitem')).toHaveText(['Move', 'Measure', 'Sightline', 'Shoot', 'Fight', 'Range', 'Vantage', 'Edit', 'Resourceful', 'Ping', 'Unit card'])
   // (Once its buttons have finished popping out.)
   await a.waitForTimeout(250)
   await shot(a, '06r-action-ring-ipad')
@@ -858,7 +858,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // With Move on, tapping an operative goes back to its action ring (Move is off), and
   // tapping the empty map just ends moving.
   await tokenOf('t2').click()
-  await expect(ring.getByRole('menuitem')).toHaveCount(10)
+  await expect(ring.getByRole('menuitem')).toHaveCount(11)
   await ring.getByRole('menuitem', { name: 'Move', exact: true }).click()
   await ring.getByRole('menuitem', { name: 'Dash', exact: true }).click()
   await expect(ring).toHaveCount(0)
@@ -1309,6 +1309,10 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(b.locator('.init-card')).toHaveText([/±2/])
   await expect(bobBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText('5')
   await expect(aliceBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText('4')
+  // Yaegirs gain Resourceful points in the Ready step after TP1 (1 or 2 depending on how
+  // many are clear of enemy control range).
+  await expect(a.locator('[data-score="sp"] .rail-score-value')).toHaveText(/^[12]$/)
+  const aliceRp = Number(await a.locator('[data-score="sp"] .rail-score-value').textContent())
   await shot(b, '12-strategy-tp2-ipad')
 
   // Order tag colours carry over the turning point: expended in TP1 (black) stays black,
@@ -1322,8 +1326,25 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await b.getByRole('button', { name: 'Start firefight' }).click()
   await expect(a.locator('.strategy-sheet')).toHaveCount(0)
   await bladeCard.locator('button.state-pill').click()
+  // Bladekyn is active: spend a Resourceful point on +1 APL from its ring (once per
+  // activation), and the board tags it ▲+1.
+  await openTab(a, 'Map')
+  await ringAction(a, 't2', 'Resourceful')
+  const resourcefulRing = a.locator('.unit-radial[data-ring-for="t2"]')
+  await expect(resourcefulRing.getByRole('menuitem')).toHaveText([`+1+1 APL · ${aliceRp} RP`, `D3+1Heal · ${aliceRp} RP`, 'Back'])
+  await shot(a, '12r-resourceful-ring')
+  await resourcefulRing.getByRole('menuitem', { name: '+1 APL' }).click()
+  await expect(a.locator('[data-score="sp"] .rail-score-value')).toHaveText(String(aliceRp - 1))
+  await expect(table.locator('[data-status-for="t2"] [data-status="apl"]')).toHaveText('▲+1')
+  await ringAction(a, 't2', 'Resourceful')
+  await expect(resourcefulRing.getByRole('menuitem', { name: '+1 APL' })).toBeDisabled()
+  await expect(resourcefulRing.getByRole('menuitem', { name: '+1 APL' })).toContainText('Used this activation')
+  await resourcefulRing.getByRole('menuitem', { name: 'Back' }).click()
+  await openTab(a, 'Operatives')
   await bladeCard.locator('button.state-pill').click()
   await expect(bladeTag).toHaveAttribute('data-order-color', 'red')
+  // Its activation over, the +1 APL is gone.
+  await expect(table.locator('[data-status-for="t2"] [data-status="apl"]')).toHaveCount(0)
 
   // Reloading an iPad reclaims the seat and the game.
   await b.reload()

@@ -1,3 +1,4 @@
+import { aplBonus } from '../../shared/game.js'
 import { isMissionMarker } from '../data/tokenCatalog.js'
 import { isInjured } from './health.js'
 
@@ -47,9 +48,10 @@ const MARK_ANGLES = [30, 90, 150, 210, 270, 330]
 const CARRY_PATH = 'M0 -0.13L0.095 0L0 0.13L-0.095 0Z'
 
 // APL changed: a small tag on the left of the base (clear of the name, order tag, riders
-// and wound badge), ▲ green for more, ▼ red for less. Stunned counts as −1.
+// and wound badge), ▲ green for more, ▼ red for less. Stunned counts as −1, a Resourceful
+// +1 APL as +1 until its activation ends.
 const APL_TAG_ANGLE = 180
-const aplChange = (status) => (Number(status?.apl) || 0) + ((status?.statuses ?? []).includes('stunned') ? -1 : 0)
+const aplChange = (status) => (Number(status?.apl) || 0) + ((status?.statuses ?? []).includes('stunned') ? -1 : 0) + aplBonus(status)
 
 function AplTag({ view, change }) {
   const { x, cy, r, facing = 0 } = view

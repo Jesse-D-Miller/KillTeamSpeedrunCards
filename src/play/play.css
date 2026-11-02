@@ -1045,6 +1045,12 @@
   color: #0b0b0b;
 }
 
+/* Can't be used right now: dimmed, with the reason as its caption. */
+.unit-radial-button.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .unit-radial-button.is-danger {
   border-color: #ff5c5c;
   color: #ff8a80;

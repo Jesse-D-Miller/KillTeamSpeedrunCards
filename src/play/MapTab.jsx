@@ -4,13 +4,14 @@ import {
   BASE_SIZES_MM,
   DEFAULT_BASE_MM,
   MOVE_ADJUST_REACH,
+  RESOURCEFUL_KILLTEAM,
   VANTAGE_FLOORS,
   baseRadiusIn,
   tokenRadiusIn,
   turnState,
   vantageFloor,
 } from '../../shared/game.js'
-import { MOVE_KINDS, bendToward, capPath, moveLimit, moveStat, moveWarning } from '../../shared/movement.js'
+import { MOVE_KINDS, bendToward, capPath, inEnemyControl, moveLimit, moveStat, moveWarning } from '../../shared/movement.js'
 import { clampToBase, defaultShooterPoint, statusOf } from '../../shared/targeting.js'
 import { isInjured } from '../board/health.js'
 import BoardSvg from '../board/BoardSvg.jsx'
@@ -99,6 +100,8 @@ const RADIAL_ACTIONS = [
   { id: 'edit', label: 'Edit', icon: 'edit', own: true },
   // Legionaries only: their Mark of Chaos.
   { id: 'mark', label: 'Mark', icon: 'mark', own: true, legionary: true },
+  // Hernkyn Yaegirs only, in the battle: spend a Resourceful point.
+  { id: 'resourceful', label: 'Resourceful', icon: 'resourceful', own: true, resourceful: true },
   { id: 'ping', label: 'Ping', icon: 'ping' },
   { id: 'card', label: 'Unit card', icon: 'card' },
 ]
@@ -849,7 +852,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const runAction = (id, token) => {
     // Some open a second ring of choices instead (an operative's move in the battle:
     // which move action).
-    if (id === 'range' || id === 'vantage' || id === 'edit' || id === 'mark' || (id === 'move' && token.unitKey && steppedMoves)) {
+    if (id === 'range' || id === 'vantage' || id === 'edit' || id === 'mark' || id === 'resourceful' || (id === 'move' && token.unitKey && steppedMoves)) {
       setRadial((current) => current && { ...current, menu: id })
       return
     }
@@ -1197,6 +1200,31 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         back,
       ]
     }
+    if (radial.menu === 'resourceful') {
+      // Why a point can't be spent now (the server checks the same), shown on the buttons.
+      const player = game.players[radialToken.seat]
+      const unit = player?.unitState?.[radialToken.unitKey] ?? {}
+      const points = player?.sp ?? 0
+      const activating = unit.activation === 'active' || unit.counteractedTp === game.battle.tp
+      const blocked = !activating
+        ? 'Not activated'
+        : unit.resourceful
+          ? 'Used this activation'
+          : points < 1
+            ? 'No points'
+            : inEnemyControl(game, radialToken)
+              ? 'In control range'
+              : null
+      const spend = (use) => () => {
+        act({ type: 'battle/resourceful', unitKey: radialToken.unitKey, use, maxWounds: maxWoundsOf(radialToken.id) })
+        setRadial(null)
+      }
+      return [
+        { key: 'apl', label: '+1 APL', text: '+1', caption: blocked ?? `+1 APL · ${points} RP`, disabled: Boolean(blocked), run: spend('apl') },
+        { key: 'heal', label: 'Heal D3+1', text: 'D3+1', caption: blocked ?? `Heal · ${points} RP`, disabled: Boolean(blocked), run: spend('heal') },
+        back,
+      ]
+    }
     if (radial.menu === 'vantage') {
       const height = game.players[radialToken.seat]?.unitState?.[radialToken.unitKey]?.vantage ?? 0
       return [
@@ -1318,8 +1346,11 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       ]
     }
     const legionary = isLegionaryUnit(roster.find((unit) => unit.key === radialToken.unitKey)?.opType)
+    const resourceful = game.phase === 'battle' && game.players[radialToken.seat]?.killteamId === RESOURCEFUL_KILLTEAM
     const actions = radialIsOperative
-      ? RADIAL_ACTIONS.filter((action) => (!action.own || radialToken.seat === seat) && (!action.legionary || legionary))
+      ? RADIAL_ACTIONS.filter(
+          (action) => (!action.own || radialToken.seat === seat) && (!action.legionary || legionary) && (!action.resourceful || resourceful),
+        )
       : ITEM_ACTIONS
     return actions.map((action) => ({
       key: action.id,
@@ -1397,12 +1428,13 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
                 key={item.key}
                 type="button"
                 role="menuitem"
-                className={`unit-radial-button glass${item.selected ? ' is-selected' : ''}${item.danger ? ' is-danger' : ''}`}
+                className={`unit-radial-button glass${item.selected ? ' is-selected' : ''}${item.danger ? ' is-danger' : ''}${item.disabled ? ' is-disabled' : ''}`}
                 style={{
                   left: reach * Math.cos(((-90 + (index * 360) / radialItems.length) * Math.PI) / 180),
                   top: reach * Math.sin(((-90 + (index * 360) / radialItems.length) * Math.PI) / 180),
                 }}
                 onClick={item.run}
+                disabled={item.disabled}
                 aria-label={item.label}
                 aria-pressed={item.selected ?? undefined}
               >

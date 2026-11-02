@@ -1,4 +1,5 @@
 import { distance } from './geometry.js'
+import { otherSeat, tokenRadiusIn } from './game.js'
 
 // The move actions picked from an operative's Move ring (core rules, Kill Team 2024):
 //   Reposition: up to its Move stat.            Dash: up to 3".
@@ -88,3 +89,15 @@ export const moveWarning = ({ kind, mover, start, enemies, radius }) => {
   }
   return null
 }
+
+// An operative within an enemy operative's control range (1" edge to edge) on the board.
+// Visibility isn't checked, so a wall between them doesn't help (rules like Resourceful
+// that ask for this treat it as a close approximation).
+const livingOperatives = (state, seat) =>
+  state.tokens.filter((token) => token.seat === seat && token.unitKey && !state.players[seat]?.unitState?.[token.unitKey]?.dead)
+export const inEnemyControl = (state, token) =>
+  livingOperatives(state, otherSeat(token.seat)).some(
+    (enemy) => distance(token, enemy) - tokenRadiusIn(token) - tokenRadiusIn(enemy) <= CONTROL_RANGE_IN,
+  )
+// How many of seat's operatives are in the killzone and outside enemy control range.
+export const outsideEnemyControl = (state, seat) => livingOperatives(state, seat).filter((token) => !inEnemyControl(state, token)).length

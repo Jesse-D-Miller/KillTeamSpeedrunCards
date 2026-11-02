@@ -1,5 +1,5 @@
 import { boardLayoutFor, isBoardPiece, isBoardShape, placePiece } from './boardLayout.js'
-import { isMoveKind } from './movement.js'
+import { inEnemyControl, isMoveKind, outsideEnemyControl } from './movement.js'
 import {
   DEFAULT_BASE_MM,
   MAX_CATEGORY_VP,
@@ -10,6 +10,7 @@ import {
   PHASES,
   READY_CP,
   SCORE_CATEGORIES,
+  RESOURCEFUL_KILLTEAM,
   SEATS,
   VANTAGE_FLOORS,
   createGame,
@@ -22,6 +23,7 @@ import {
   musterBlocker,
   otherSeat,
   ployUses,
+  resourcefulGain,
 } from './game.js'
 import { adjustPath, clampWithin } from './geometry.js'
 import { ARRANGEMENT_OPTIONS, CRIT_OP_IDS, pickRandom } from './rolls.js'
@@ -215,8 +217,13 @@ const patchUnit = (state, seat, unitKey, patch, maxWounds) =>
     const wasExpended = current.activation === 'expended'
     const isExpended = (patch.activation ?? current.activation) === 'expended'
     const orderFlips = flips + (isExpended && !wasExpended ? 1 : !isExpended && wasExpended ? -1 : 0)
-    return { unitState: { ...player.unitState, [unitKey]: { ...current, ...patch, orderFlips } } }
+    // A new activation (or counteraction) starts, or one ends: Resourceful spent during
+    // the last one (and its +1 APL) is done with.
+    const activationChanged = (patch.activation && patch.activation !== current.activation) || (patch.counteractedTp != null && patch.counteractedTp !== current.counteractedTp)
+    const resourceful = activationChanged && !('resourceful' in patch) ? { resourceful: null } : {}
+    return { unitState: { ...player.unitState, [unitKey]: { ...current, ...patch, ...resourceful, orderFlips } } }
   })
+
 
 // Only one operative is active at a time: expend whichever is (other than `keep`).
 const expendActive = (state, keep = null) => {
@@ -718,16 +725,45 @@ const handlers = {
     SEATS.forEach((seat) => {
       next = updatePlayer(next, seat, (player) => ({
         cp: player.cp + READY_CP,
+        // Yaegirs discard last turning point's Resourceful points and gain new ones.
+        ...(player.killteamId === RESOURCEFUL_KILLTEAM ? { sp: resourcefulGain(outsideEnemyControl(next, seat)) } : {}),
         initiativeCards: (player.initiativeCards ?? []).filter((card) => !card.used),
         unitState: Object.fromEntries(
           Object.entries(player.unitState).map(([key, unit]) => [
             key,
-            { ...unit, activation: 'ready' },
+            { ...unit, activation: 'ready', resourceful: null },
           ]),
         ),
       }))
     })
     return next
+  },
+
+  // Yaegirs spend a Resourceful point on the operative in its activation (or
+  // counteraction): use 'apl' (+1 APL until the activation ends) or 'heal' (regain D3+1
+  // lost wounds, rolled here). Once per activation, outside enemy control range.
+  'battle/resourceful': (state, action, actor, random) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const player = state.players[seat]
+    if (player.killteamId !== RESOURCEFUL_KILLTEAM) fail('Only Hernkyn Yaegirs are Resourceful.')
+    const use = action.use === 'heal' ? 'heal' : 'apl'
+    const unitKey = String(action.unitKey ?? '')
+    const unit = player.unitState[unitKey]
+    const token = state.tokens.find((candidate) => candidate.seat === seat && candidate.unitKey === unitKey)
+    if (!unit || !token || unit.dead) fail('Unknown operative.')
+    const activating = unit.activation === 'active' || unit.counteractedTp === state.battle.tp
+    if (!activating) fail('Resourceful is spent during its activation.')
+    if (unit.resourceful) fail('Already Resourceful this activation.')
+    if ((player.sp ?? 0) < 1) fail('No Resourceful points left.')
+    if (inEnemyControl(state, token)) fail('Not within control range of enemy operatives.')
+    const patch = { resourceful: use }
+    if (use === 'heal') {
+      const roll = Math.floor(random() * 3) + 2
+      const maxWounds = Math.max(1, Math.round(toNumber(action.maxWounds, unit.wounds)))
+      Object.assign(patch, { wounds: Math.min(maxWounds, unit.wounds + roll), lastHit: 'normal', resourcefulRoll: roll })
+    }
+    return updatePlayer(patchUnit(state, seat, unitKey, patch), seat, (current) => ({ sp: current.sp - 1 }))
   },
 
   // A player confirms (or takes back) ending turning point fromTp. It moves on once, when

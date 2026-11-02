@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { NEXT_ACTIVATION, activePloyIds, createUnitState, initiativeBefore, otherSeat } from '../../../shared/game.js'
+import { NEXT_ACTIVATION, activePloyIds, aplBonus, createUnitState, initiativeBefore, otherSeat } from '../../../shared/game.js'
 import UnitCard from '../../components/UnitCard.jsx'
 import { seatColor } from '../../board/colors.js'
 import { formatCostLabel, isLegionaryUnit } from '../../rules/equipment.js'
@@ -235,6 +235,7 @@ function BattleStep() {
               stance={unitState.order}
               selectedStatuses={unitState.statuses}
               aplAdjustment={unitState.apl}
+              aplBonus={aplBonus(unitState)}
               onAplAdjustChange={(apl) => update(unit, { apl })}
               legionaryMark={isLegionaryUnit(unit.opType) ? unitState.mark : null}
               onLegionaryMarkChange={isLegionaryUnit(unit.opType) ? (mark) => update(unit, { mark }) : undefined}

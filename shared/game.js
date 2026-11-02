@@ -33,6 +33,17 @@ export const equipmentOptionCount = (eqIds) => new Set((eqIds ?? []).map(equipme
 
 export const otherSeat = (seat) => (seat === 'A' ? 'B' : 'A')
 
+// Hernkyn Yaegirs' Resourceful (faction rule, Aug 2026): in the Ready step of each
+// Strategy phase after the first they gain 2 points with 5+ friendly operatives in the
+// killzone outside enemy control range, 1 with 1-4, and discard them at the end of the
+// turning point. Each operative can spend 1 per activation: +1 APL until the end of its
+// activation, or regain D3+1 lost wounds when it's activated (both only outside enemy
+// control range).
+export const RESOURCEFUL_KILLTEAM = 'VOT-HKY'
+export const resourcefulGain = (outsideControl) => (outsideControl >= 5 ? 2 : outsideControl >= 1 ? 1 : 0)
+// APL an operative has from spending Resourceful this activation.
+export const aplBonus = (unit) => (unit?.resourceful === 'apl' ? 1 : 0)
+
 // Kill teams that keep a tally of special points (Yaegirs' Resourceful points, the
 // Vespids' points) shown beside CP and VP.
 const SP_KILLTEAMS = new Set(['VOT-HKY', 'TAU-VESP'])

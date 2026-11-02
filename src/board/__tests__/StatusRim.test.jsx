@@ -72,4 +72,9 @@ describe('status rim', () => {
     expect(carrying([{ catalogId: 'orb' }])).not.toBeNull()
     expect(carrying([{ catalogId: 'guard' }])).toBeNull()
   })
+
+  it('counts a Resourceful +1 APL in the tag', () => {
+    expect(rim({ wounds: 8, resourceful: 'apl' }).querySelector('[data-status="apl"]').textContent).toBe('▲+1')
+    expect(rim({ wounds: 8, resourceful: 'heal' }).querySelector('[data-status="apl"]')).toBeNull()
+  })
 })

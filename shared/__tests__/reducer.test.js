@@ -783,3 +783,70 @@ describe('nudging a finished move', () => {
     expect(() => applyAction(fresh, { type: 'token/adjust', id: 't1', x: 5, y: 6 }, 'A')).toThrow(/Nothing to adjust/)
   })
 })
+
+describe('Hernkyn Yaegirs: Resourceful', () => {
+  // Yaegirs (A) at y=2 in a row 2" apart; one Vespid (B) right beside the first.
+  const battle = (yaegirs = 6) =>
+    run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'VOT-HKY' }, 'A'],
+      [{ type: 'setup/killteam', killteamId: 'TAU-VESP' }, 'B'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      ...Array.from({ length: yaegirs }, (_, i) => [
+        { type: 'token/add', seat: 'A', unitKey: `VOT-HKY-WAR-${i}`, maxWounds: 8, x: 2 + i * 2, y: 2, baseMm: 28.5 },
+        'A',
+      ]),
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-VSS-0', maxWounds: 9, x: 2, y: 3.5, baseMm: 28.5 }, 'B'],
+    ])
+  const nextTp = (state) => applyAction(state, { type: 'battle/nextTp' }, 'table')
+  const spend = (state, use, unitKey = 'VOT-HKY-WAR-1', random = () => 0.99) =>
+    applyAction(state, { type: 'battle/resourceful', unitKey, use, maxWounds: 8 }, 'A', random)
+  const activate = (state, unitKey = 'VOT-HKY-WAR-1') =>
+    applyAction(state, { type: 'unit/update', unitKey, maxWounds: 8, patch: { activation: 'active' } }, 'A')
+
+  it('gains 2 points with 5+ operatives outside enemy control range, 1 with fewer, from the 2nd turning point', () => {
+    const six = battle(6)
+    expect(six.players.A.sp).toBe(0)
+    // One of six is within the Vespid's control range: five count.
+    expect(nextTp(six).players.A.sp).toBe(2)
+    expect(nextTp(battle(5)).players.A.sp).toBe(1)
+    // The Vespids aren't Resourceful.
+    expect(nextTp(six).players.B.sp).toBe(0)
+  })
+
+  it('discards unspent points at the end of the turning point', () => {
+    // 2 gained, 1 spent, 1 left over: the next turning point starts from its own gain.
+    const spent = spend(activate(nextTp(battle(6))), 'apl')
+    expect(spent.players.A.sp).toBe(1)
+    expect(nextTp(spent).players.A.sp).toBe(2)
+  })
+
+  it('spends a point on +1 APL, once per activation, outside enemy control range', () => {
+    let state = activate(nextTp(battle(6)))
+    state = spend(state, 'apl')
+    expect(state.players.A.sp).toBe(1)
+    expect(state.players.A.unitState['VOT-HKY-WAR-1'].resourceful).toBe('apl')
+    expect(() => spend(state, 'heal')).toThrow(/Already/)
+    // The next activation can spend again; the +1 APL ended with the last one.
+    state = applyAction(state, { type: 'unit/update', unitKey: 'VOT-HKY-WAR-1', maxWounds: 8, patch: { activation: 'expended' } }, 'A')
+    expect(state.players.A.unitState['VOT-HKY-WAR-1'].resourceful).toBeNull()
+    // Not in an activation, or within an enemy's control range: refused.
+    expect(() => spend(state, 'apl')).toThrow(/activation/)
+    expect(() => spend(activate(state, 'VOT-HKY-WAR-0'), 'apl', 'VOT-HKY-WAR-0')).toThrow(/control range/)
+  })
+
+  it('heals D3+1 lost wounds, never past its starting wounds', () => {
+    let state = activate(nextTp(battle(6)))
+    state = applyAction(state, { type: 'unit/update', unitKey: 'VOT-HKY-WAR-1', maxWounds: 8, patch: { wounds: 3 } }, 'A')
+    const healed = spend(state, 'heal', 'VOT-HKY-WAR-1', () => 0.99)
+    expect(healed.players.A.unitState['VOT-HKY-WAR-1'].wounds).toBe(7)
+    expect(healed.players.A.unitState['VOT-HKY-WAR-1'].resourcefulRoll).toBe(4)
+    state = applyAction(state, { type: 'unit/update', unitKey: 'VOT-HKY-WAR-1', maxWounds: 8, patch: { wounds: 7 } }, 'A')
+    expect(spend(state, 'heal').players.A.unitState['VOT-HKY-WAR-1'].wounds).toBe(8)
+  })
+
+  it('needs a point to spend', () => {
+    const state = activate(battle(6))
+    expect(() => spend(state, 'apl')).toThrow(/points/)
+  })
+})

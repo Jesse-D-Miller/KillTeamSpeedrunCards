@@ -111,6 +111,8 @@ function UnitCard({
   stance = 'conceal',
   selectedStatuses = [],
   aplAdjustment = 0,
+  // APL gained for this activation only (Yaegirs' Resourceful), on top of the adjustment.
+  aplBonus = 0,
   onAplAdjustChange,
   legionaryMark,
   onLegionaryMarkChange,
@@ -254,7 +256,7 @@ function UnitCard({
   const baseApl = Number.parseInt(opType.APL, 10)
   const hasNumericApl = !Number.isNaN(baseApl)
   const effectiveApl = hasNumericApl
-    ? Math.max(0, baseApl + statusAplDelta + aplAdjustment)
+    ? Math.max(0, baseApl + statusAplDelta + aplAdjustment + aplBonus)
     : opType.APL
   const isStunned = selectedStatuses.includes('stunned')
   const selectedStatusEffects = selectedStatuses
@@ -294,7 +296,7 @@ function UnitCard({
     : new Set()
   const canAdjustApl = Boolean(onAplAdjustChange) && !readOnly && hasNumericApl
   const aplDeltaClass =
-    aplAdjustment > 0 ? ' apl-up' : aplAdjustment < 0 ? ' apl-down' : ''
+    aplAdjustment + aplBonus > 0 ? ' apl-up' : aplAdjustment + aplBonus < 0 ? ' apl-down' : ''
   const adjustApl = (delta) => {
     if (!onAplAdjustChange) return
     onAplAdjustChange(aplAdjustment + delta)

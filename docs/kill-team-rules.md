@@ -650,6 +650,7 @@ All of these were replaced in Approved Ops 2025.
   - The projector's "Ploys this TP" lists strategy ploys (filled) and firefight ploys (dashed outline, ×N for repeats).
 - **Hand-checked teams:** Hernkyn Yaegirs, Vespid Stingwings and Kommandos, checked against the current team rules.
   - **Hernkyn Yaegirs:**
+    - **Resourceful (faction rule, Aug 2026) is automated.** At each new turning point the app discards the Yaegir player's Resourceful points (shown as SP) and adds the Ready-step gain: 2 with 5+ Yaegirs in the killzone outside enemy control range, 1 with 1–4, none in TP1. During an operative's activation (or counteraction), its action ring's **Resourceful** spends 1: **+1 APL** until the activation ends (shown on the card and as ▲+1 on the board), or **Heal D3+1** (rolled by the server, up to its starting wounds). Once per activation, and only outside enemy control range. *Interpretation:* "within control range" is checked as 1" edge to edge without the visibility check, so a wall between them doesn't help; a counteracting operative's +1 APL shows until the next activation or turning point.
     - Hidden Engagement: in cover from every point of the target's base, since the opponent picks the point.
     - In Position.
     - Tough Survivalists, as a note.

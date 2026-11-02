@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { NEXT_ACTIVATION, createUnitState } from '../../shared/game.js'
+import { NEXT_ACTIVATION, aplBonus, createUnitState } from '../../shared/game.js'
 import { isHidden } from '../../shared/views.js'
 import UnitCard from '../components/UnitCard.jsx'
 import { getKillteamById } from '../data/ktData.js'
@@ -57,6 +57,7 @@ function UnitCardModal({ token, onClose }) {
               stance={unitState.order}
               selectedStatuses={unitState.statuses}
               aplAdjustment={unitState.apl}
+              aplBonus={aplBonus(unitState)}
               assignedEquipment={unit.assignedEquipment}
               {...(mine
                 ? {
