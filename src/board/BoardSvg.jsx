@@ -527,7 +527,12 @@ function BoardSvg({
         />
       ))}
       {Object.entries(tokenFx).map(([id, effects]) => (
-        <TokenEvents key={id} tokenId={id} effects={effects.filter((effect) => !WOUND_FX.has(effect.kind))} />
+        <TokenEvents
+          key={id}
+          tokenId={id}
+          color={seatColor(viewById.get(id)?.token.seat)}
+          effects={effects.filter((effect) => !WOUND_FX.has(effect.kind))}
+        />
       ))}
       {tokenViews.map(({ token, view, status }) =>
         token.unitKey && !view.dead ? <StatusRim key={token.id} token={token} view={view} status={status} maxWounds={maxWoundsOf(token)} /> : null,

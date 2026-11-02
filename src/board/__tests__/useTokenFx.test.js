@@ -36,4 +36,11 @@ describe('token effects', () => {
     rerender({ ops: { t1: op({ wounds: 2, injured: true }) } })
     expect(kinds(result, 't1')).toEqual(['hurt'])
   })
+
+  it('shatters an operative where it stood before it moved to the casualty area', () => {
+    const { result, rerender } = renderHook(({ ops }) => useTokenFx(ops), { initialProps: { ops: { t1: op({ wounds: 1, x: 4, cy: 6 }) } } })
+    rerender({ ops: { t1: op({ wounds: 0, dead: true, x: 29, cy: 1 }) } })
+    expect(kinds(result, 't1')).toEqual(['shatter'])
+    expect(result.current.t1[0]).toMatchObject({ x: 4, cy: 6 })
+  })
 })

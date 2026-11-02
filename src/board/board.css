@@ -772,3 +772,29 @@
     opacity: 0;
   }
 }
+
+/* Taken out: the rim breaks into six pieces that drift outward and fade. */
+.token-event-shard {
+  fill: none;
+  stroke: var(--token-color, #fff);
+  stroke-width: 0.08;
+  stroke-linecap: round;
+  animation: token-shard 1s ease-out forwards;
+}
+
+@keyframes token-shard {
+  0% {
+    transform: translateY(0);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-0.45px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .token-event-shard {
+    animation: token-fade 1s ease-in forwards;
+  }
+}

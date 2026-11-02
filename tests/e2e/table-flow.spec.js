@@ -1245,6 +1245,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await hit()
   await expect(badge).toHaveText('4/9')
   for (let i = 0; i < 4; i += 1) await hit()
+  // Taken out: its rim shatters where it stood as it moves to the casualty area.
+  await expect(table.locator('[data-events-for="t1"] [data-event="shatter"]')).toHaveCount(1)
   await expect(badge).toHaveCount(0)
   await expect(theynToken).toHaveClass(/is-dead/)
   await expect(theynToken.locator('.board-token-skull')).toHaveCount(1)
