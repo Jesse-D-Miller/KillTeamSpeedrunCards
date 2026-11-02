@@ -13,6 +13,14 @@ const shardPath = (r) => {
   return `M${-r * Math.sin(half)} ${-r * Math.cos(half)}A${r} ${r} 0 0 1 ${r * Math.sin(half)} ${-r * Math.cos(half)}`
 }
 
+// Counteracting: a jagged ring round the rim, like a spark of lightning.
+const boltRing = (r) =>
+  Array.from({ length: 18 }, (_, index) => {
+    const angle = (index / 18) * Math.PI * 2
+    const radius = r + (index % 2 ? 0.2 : 0.09)
+    return `${(Math.cos(angle) * radius).toFixed(3)},${(Math.sin(angle) * radius).toFixed(3)}`
+  }).join(' ')
+
 function TokenEvent({ effect }) {
   const { kind, x, cy, r } = effect
   if (kind === 'engage' || kind === 'conceal') {
@@ -23,6 +31,13 @@ function TokenEvent({ effect }) {
     return (
       <g className={`token-event token-event-${kind}`} data-event={kind} transform={`translate(${x} ${cy})`}>
         <circle className="token-event-order-ring" r={r} style={{ '--from': engage ? 1 : far, '--to': engage ? far : 1.04 }} />
+      </g>
+    )
+  }
+  if (kind === 'counteract') {
+    return (
+      <g className="token-event token-event-counteract" data-event="counteract" transform={`translate(${x} ${cy})`}>
+        <polygon className="token-event-bolt" points={boltRing(r)} />
       </g>
     )
   }
