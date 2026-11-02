@@ -1,5 +1,6 @@
 import {
   TONE_ARROW,
+  costLabel,
   groupModifiers,
   modifierIcon,
   operativeOf,
@@ -135,7 +136,7 @@ function CombatBoard({ combat, seat, player, part = null }) {
                 <span>
                   <strong>{modifier.name}</strong> {modifier.text}
                 </span>
-                {modifier.cost ? <span className="pb-cost">{modifier.cost}CP</span> : null}
+                {modifier.cost ? <span className="pb-cost">{costLabel(modifier)}</span> : null}
               </li>
             ))}
           </ul>

@@ -686,7 +686,8 @@ All of these were replaced in Approved Ops 2025.
     - Airborne Predators.
     - Aerial Agility.
     - Neutron Charge, using `unitState.movedTp` to remember moving this turning point.
-    - Communion, both the targeting point and the re-roll.
+    - Communion, both the targeting point and the re-roll: each is a switch that spends 1 point from the Vespid player's SP (`shot/toggle` with `currency: 'sp'`, given back if switched off), shown as "1 SP".
+    - **Communion points (automated):** in each Ready step (TP1 included) the Vespid player is asked for a D3, tapped on the strategy sheet (or the map banner); it's added to SP, plus 1 while a friendly Oversight Drone is on the board. Points carry over: the rule never discards them. Neurostimulant changes the prompt to "roll two D3 and keep one". Ammo Resupply (a mission action) costs a Stingwing (not the drone) 1 point, except once per turning point with Convergence Stimulant (`convergenceTp`); other Pick Up and mission actions aren't actions in the app, so the player takes the point off SP from the drawer. A Charge's banner reminds that it must end by the closest enemy it can unless a point is spent (from the drawer).
     - Warrior Instincts: off once a Communion point is spent.
     - Aerial Guidance: the shooter must be visible to and within 6" of a drone that can see the target.
     - Ocelli: +3" for Vantage.

@@ -609,6 +609,15 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await shot(a, '07c-deploy-drawer')
   await readyUp(a, b)
   await expect(a.getByText('Turning point 1 · strategy phase')).toBeVisible()
+  // Vespid Communion: in the Ready step Bob rolls a D3 and taps it on his strategy sheet;
+  // it's added to his points (SP).
+  const bobCommunion = b.locator('[data-team-rolls] [data-roll-kind="communion"]')
+  await expect(bobCommunion).toContainText('Communion')
+  await expect(a.locator('[data-team-rolls]')).toHaveCount(0)
+  await shot(b, '08c-communion-roll')
+  await bobCommunion.getByRole('button', { name: 'Rolled 2' }).click()
+  await expect(b.locator('[data-team-rolls]')).toHaveCount(0)
+  await expect(b.locator('[data-score="sp"] .rail-score-value')).toHaveText('2')
   // Initiative roll-off every turning point: Bob holds the Re-roll card from setup.
   await expect(a.getByRole('button', { name: 'Start firefight' })).toBeDisabled()
   await expect(a.getByText('Both players gain 1CP in turning point 1.')).toBeVisible()
@@ -1372,6 +1381,9 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(aliceBoard.locator('.pb-tp')).toHaveText('TP 2 / 4')
   // Both iPads are into turning point 2's strategy phase.
   await expect(a.locator('.strategy-sheet')).toContainText('Turning point 2')
+  // Bob's next Communion roll (points carry over: 2 + 1).
+  await b.locator('[data-team-rolls]').getByRole('button', { name: 'Rolled 1' }).click()
+  await expect(b.locator('[data-score="sp"] .rail-score-value')).toHaveText('3')
 
   // TP2: both gain 1 CP (3 -> 4); the player WITHOUT initiative gains 2 instead.
   await expect(b.getByRole('button', { name: 'Start firefight' })).toBeDisabled()
@@ -1464,7 +1476,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   const flipped = flippedState.markers.find((marker) => marker.catalogId === 'vot-hky-minefield')
   expect(flipped.minefield.flipped).toBe(true)
   // A HY-Pex mine asks Alice for its D6; taking the Vespid off forgets it.
-  expect(flippedState.battle.rolls?.length ?? 0).toBe(flipped.minefield.mine ? 1 : 0)
+  expect((flippedState.battle.rolls ?? []).filter((roll) => roll.kind === 'hypex')).toHaveLength(flipped.minefield.mine ? 1 : 0)
   await tableActions(table, [
     { type: 'marker/remove', id: flipped.id },
     { type: 'token/remove', id: stalwartEnemy.id },

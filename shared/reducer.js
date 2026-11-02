@@ -34,6 +34,9 @@ import {
   MINES_DAMAGE,
   MINES_MARKER,
   SMOKE_MARKER,
+  VESPID_STINGWINGS,
+  NEUROSTIMULANT,
+  CONVERGENCE_STIMULANT,
   SMOKE_USES_KEY,
   grenadeAllowance,
   MARKER_SPANS_IN,
@@ -117,6 +120,7 @@ const enterPhase = (state, phase, random) => {
     SEATS.forEach((seat) => {
       next = updatePlayer(next, seat, (player) => ({ cp: player.cp + READY_CP }))
     })
+    next = communionReadyStep(next)
   }
   if (phase === 'results' && !state.battle.endedAt) {
     next = { ...next, battle: { ...next.battle, endedAt: Date.now() } }
@@ -484,6 +488,36 @@ const countSmoke = (state, seat, step) => {
   return updatePlayer(state, seat, { teamWeaponUses: { ...uses, battle: { ...uses.battle, [SMOKE_USES_KEY]: Math.max(0, used) } } })
 }
 
+// Vespid Communion, in each Ready step: the Vespid player rolls a D3 (two, keeping one,
+// with Neurostimulant) and gains that many points (SP), plus 1 while a friendly
+// Oversight Drone is in the killzone. Points carry over (the rule doesn't discard them).
+const communionReadyStep = (state) =>
+  SEATS.filter((seat) => state.players[seat].killteamId === VESPID_STINGWINGS).reduce(
+    (next, seat) =>
+      addRoll(next, {
+        kind: 'communion',
+        die: 3,
+        seat,
+        tokenId: null,
+        label: (state.players[seat].equipment ?? []).includes(NEUROSTIMULANT)
+          ? 'Communion: roll two D3 and keep one (Neurostimulant); +1 with an Oversight Drone in the killzone'
+          : 'Communion: gain D3 points; +1 with an Oversight Drone in the killzone',
+      }),
+    state,
+  )
+// Communion: a Vespid Stingwing (not an Oversight Drone) pays 1 point for Pick Up or a
+// mission action; Convergence Stimulant makes one free each turning point.
+const payForMissionAction = (state, seat, token) => {
+  const player = state.players[seat]
+  if (player.killteamId !== VESPID_STINGWINGS || /-OSD-/.test(token.unitKey ?? '')) return state
+  const { tp } = state.battle
+  if ((player.equipment ?? []).includes(CONVERGENCE_STIMULANT) && player.convergenceTp !== tp) return updatePlayer(state, seat, { convergenceTp: tp })
+  if ((player.sp ?? 0) < 1) fail('A Vespid needs a Communion point for a mission action.')
+  return updatePlayer(state, seat, { sp: player.sp - 1 })
+}
+const oversightDroneIn = (state, seat) =>
+  state.tokens.some((token) => token.seat === seat && /-OSD-/.test(token.unitKey ?? '') && !state.players[seat].unitState[token.unitKey]?.dead)
+
 // Activations completed (operatives expended) between two states, for Smoke.
 const expendedCount = (state) =>
   SEATS.reduce((sum, seat) => sum + Object.values(state.players[seat]?.unitState ?? {}).filter((unit) => unit.activation === 'expended').length, 0)
@@ -511,7 +545,9 @@ const STUN_AREA_IN = 1
 const dropOrphanRolls = (state) => {
   const rolls = state.battle?.rolls
   if (!rolls?.length) return state
-  const kept = rolls.filter((roll) => state.tokens.some((token) => token.id === roll.tokenId) || state.markers.some((marker) => marker.id === roll.tokenId))
+  const kept = rolls.filter(
+    (roll) => roll.tokenId == null || state.tokens.some((token) => token.id === roll.tokenId) || state.markers.some((marker) => marker.id === roll.tokenId),
+  )
   return kept.length === rolls.length ? state : { ...state, battle: { ...state.battle, rolls: kept } }
 }
 
@@ -555,6 +591,8 @@ const ROLL_EFFECTS = {
     }
     return victim?.unitKey && extra ? hurt(noted, victim, extra) : noted
   },
+  communion: (state, roll, value) =>
+    updatePlayer(state, roll.seat, (player) => ({ sp: (player.sp ?? 0) + value + (oversightDroneIn(state, roll.seat) ? 1 : 0) })),
   // Resourceful (Yaegirs): heal D3+1, never past its starting wounds.
   resourceful: (state, roll, value) => {
     const token = state.tokens.find((candidate) => candidate.id === roll.tokenId)
@@ -1019,7 +1057,7 @@ const handlers = {
         ),
       }))
     })
-    return smokeReadyStep(next, state.battle.tp)
+    return communionReadyStep(smokeReadyStep(next, state.battle.tp))
   },
 
   // Yaegirs spend a Resourceful point on the operative in its activation (or
@@ -1190,7 +1228,7 @@ const handlers = {
     )
     if (!cache) fail('It must control one of your unused Ammo Cache markers.')
     const used = { ...state, markers: state.markers.map((marker) => (marker.id === cache.id ? { ...marker, usedTp: tp } : marker)) }
-    return patchUnit(used, seat, token.unitKey, { resuppliedTp: tp }, token.maxWounds)
+    return payForMissionAction(patchUnit(used, seat, token.unitKey, { resuppliedTp: tp }, token.maxWounds), seat, token)
   },
 
   // Stun Grenade thrown by tokenId at targetId: a stun test (D6, the thrower's player
@@ -1244,9 +1282,10 @@ const handlers = {
   },
 
   // Sightline shot card: a player turns one of their own modifiers on or off for the
-  // shot `key` (shooterId|targetId). A cost (CP) and a limit (uses per turning point,
-  // e.g. 1 for a firefight ploy) are spent when it's turned on, and refunded if it's
-  // turned off again in the same shot.
+  // shot `key` (shooterId|targetId). A cost (CP, or with currency 'sp' the team's
+  // special points, e.g. Vespid Communion) and a limit (uses per turning point, e.g. 1
+  // for a firefight ploy) are spent when it's turned on, and refunded if it's turned off
+  // again in the same shot.
   'shot/toggle': (state, action, actor) => {
     const seat = resolveSeat(action, actor)
     const key = String(action.key ?? '').slice(0, 80)
@@ -1254,6 +1293,7 @@ const handlers = {
     if (!key || !id) fail('Missing modifier.')
     const on = Boolean(action.on)
     const cost = clamp(Math.round(toNumber(action.cost)), 0, 3)
+    const purse = action.currency === 'sp' ? 'sp' : 'cp'
     const limit = action.limit == null ? null : clamp(Math.round(toNumber(action.limit)), 1, 9)
     const { tp } = state.battle
     const shots = state.battle.shots ?? {}
@@ -1265,15 +1305,17 @@ const handlers = {
       const player = state.players[seat]
       const uses = player.usesByTp?.[tp]?.[id] ?? 0
       if (limit && uses >= limit) fail(limit === 1 ? 'Already used this turning point.' : `Already used ${limit} times this turning point.`)
-      if (player.cp < cost) fail('Not enough CP.')
+      if ((player[purse] ?? 0) < cost) fail(purse === 'sp' ? 'Not enough points.' : 'Not enough CP.')
       next = updatePlayer(next, seat, (current) => ({
-        cp: current.cp - cost,
+        [purse]: (current[purse] ?? 0) - cost,
         usesByTp: { ...current.usesByTp, [tp]: { ...current.usesByTp?.[tp], [id]: uses + 1 } },
       }))
-      spent[id] = cost
+      // A number is CP; special points are kept as { sp }.
+      spent[id] = purse === 'sp' ? { sp: cost } : cost
     } else if (!on && id in spent) {
+      const refund = typeof spent[id] === 'object' ? { sp: (state.players[seat].sp ?? 0) + spent[id].sp } : { cp: state.players[seat].cp + spent[id] }
       next = updatePlayer(next, seat, (current) => ({
-        cp: current.cp + spent[id],
+        ...refund,
         usesByTp: {
           ...current.usesByTp,
           [tp]: { ...current.usesByTp?.[tp], [id]: Math.max(0, (current.usesByTp?.[tp]?.[id] ?? 1) - 1) },

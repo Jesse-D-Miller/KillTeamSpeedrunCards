@@ -13,7 +13,8 @@
 //           'note'     a reminder; changes no numbers
 //           'inactive' in play, but its conditions aren't met (text says why)
 //           'warning'  something that stops or limits the shot
-//   cost    CP spent when it's turned on; limit: uses per turning point
+//   cost    CP spent when it's turned on (currency 'sp': the team's special points,
+//           e.g. Vespid Communion); limit: uses per turning point
 //   generic true for suggestions read from another team's rules text
 //   blockedBy(onModifiers) -> reason it can't apply right now, or null
 //   effect  see emptyEffects

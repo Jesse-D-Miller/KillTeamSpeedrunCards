@@ -1069,8 +1069,8 @@ describe('Hernkyn Yaegirs: Minefield and HY-Pex mines', () => {
     state = moveVespid(state, 10, 10.9)
     expect(state.players.B.unitState['TAU-VESP-VSS-0'].wounds).toBe(6)
     // The Yaegir player rolls the D6: a 4, under Save 5: 3 + 4 = 7 damage.
-    const [roll] = state.battle.rolls
-    expect(roll).toMatchObject({ kind: 'hypex', die: 6, seat: 'A' })
+    const roll = state.battle.rolls.find((candidate) => candidate.kind === 'hypex')
+    expect(roll).toMatchObject({ die: 6, seat: 'A' })
     state = applyAction(state, { type: 'battle/roll', id: roll.id, value: 4 }, 'A')
     const marker = state.markers.find((candidate) => candidate.catalogId === MINEFIELD_ID)
     expect(marker.minefield).toMatchObject({ flipped: true, mine: true, result: { damage: 7, roll: 4 } })
@@ -1292,3 +1292,60 @@ describe('Universal grenades: limits', () => {
   })
 })
 
+describe('Vespid Stingwings: Communion points', () => {
+  const battle = (equipment = []) =>
+    run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'VOT-HKY' }, 'A'],
+      [{ type: 'setup/killteam', killteamId: 'TAU-VESP' }, 'B'],
+      [{ type: 'phase/set', phase: 'muster' }, 'table'],
+      ...equipment.map((eqId) => [{ type: 'muster/toggleEquipment', eqId }, 'B']),
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+    ])
+  const communion = (state) => state.battle.rolls.find((roll) => roll.kind === 'communion')
+
+  it('asks the Vespid player for a D3 in each Ready step, +1 with an Oversight Drone, keeping what is left', () => {
+    let state = battle()
+    expect(communion(state)).toMatchObject({ die: 3, seat: 'B', tokenId: null })
+    state = applyAction(state, { type: 'battle/roll', id: communion(state).id, value: 2 }, 'B')
+    expect(state.players.B.sp).toBe(2)
+    state = applyAction(state, { type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-OSD-0', maxWounds: 7, x: 20, y: 20, baseMm: 28.5 }, 'B')
+    state = applyAction(state, { type: 'battle/nextTp', fromTp: 1 }, 'table')
+    state = applyAction(state, { type: 'battle/roll', id: communion(state).id, value: 1 }, 'B')
+    expect(state.players.B.sp).toBe(4)
+  })
+
+  it('says to roll two and keep one with Neurostimulant', () => {
+    expect(communion(battle(['TAU-VESP-NS'])).label).toMatch(/two D3/)
+  })
+
+  it('spends a point from a shot card switch, and gives it back when switched off', () => {
+    let state = battle()
+    state = applyAction(state, { type: 'battle/roll', id: communion(state).id, value: 1 }, 'B')
+    const toggle = (on) => ({ type: 'shot/toggle', key: 'shoot|s|t', id: 'TAU-VESP-communion-reroll', on, cost: 1, currency: 'sp' })
+    state = applyAction(state, toggle(true), 'B')
+    expect(state.players.B.sp).toBe(0)
+    expect(state.players.B.cp).toBe(3)
+    expect(() => applyAction(state, { ...toggle(true), id: 'TAU-VESP-communion-target' }, 'B')).toThrow(/points/)
+    state = applyAction(state, toggle(false), 'B')
+    expect(state.players.B.sp).toBe(1)
+  })
+
+  it('pays a point for a mission action (Ammo Resupply), one free per turning point with Convergence Stimulant', () => {
+    const resupply = (equipment) => {
+      let state = battle(['UNIVERSAL-UE-AC', ...equipment])
+      state = run(state, [
+        [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-WAR-0', maxWounds: 9, x: 5, y: 15, baseMm: 28.5 }, 'B'],
+        [{ type: 'marker/add', catalogId: 'ammo-cache', x: 5.9, y: 15, radius: 0.4 }, 'B'],
+      ])
+      return state
+    }
+    let state = resupply([])
+    const id = state.tokens[0].id
+    expect(() => applyAction(state, { type: 'battle/ammoResupply', tokenId: id }, 'B')).toThrow(/Communion point/)
+    state = applyAction(state, { type: 'battle/roll', id: communion(state).id, value: 2 }, 'B')
+    expect(applyAction(state, { type: 'battle/ammoResupply', tokenId: id }, 'B').players.B.sp).toBe(1)
+    const free = resupply(['TAU-VESP-CS'])
+    expect(applyAction(free, { type: 'battle/ammoResupply', tokenId: free.tokens[0].id }, 'B').players.B.convergenceTp).toBe(1)
+  })
+})

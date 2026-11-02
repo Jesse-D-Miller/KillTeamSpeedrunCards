@@ -2747,3 +2747,26 @@
   background: rgba(255, 255, 255, 0.12);
   font-size: 0.72rem;
 }
+
+/* ---- rolls the app waits for, entered as a dice face ---- */
+
+.dice-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  flex-basis: 100%;
+}
+
+.dice-button {
+  min-width: 48px;
+  min-height: 48px;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.team-roll p {
+  margin: 0 0 0.4rem;
+}
+

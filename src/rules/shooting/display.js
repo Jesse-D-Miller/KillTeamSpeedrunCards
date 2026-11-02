@@ -13,12 +13,15 @@ const switchable = (modifier) => modifier.mode === 'toggle' || modifier.mode ===
 // Whether a player can turn this modifier on or off on their own iPad.
 export const canToggle = (modifier, seat) => modifier.seat === seat && switchable(modifier) && !modifier.used
 
+// '1CP', or '1 SP' for special points (Vespid Communion).
+export const costLabel = (modifier) => (modifier.currency === 'sp' ? `${modifier.cost} SP` : `${modifier.cost}CP`)
+
 // What the switch's corner says: Used, its CP cost, and for free equipment with a limit
 // (e.g. Stabilised Bolt Shells, twice per turning point) how many uses are left.
 export const badgeOf = (modifier) => {
   if (modifier.used) return 'Used'
   const left = !modifier.cost && modifier.limit ? `${modifier.usesLeft}/${modifier.limit} left` : ''
-  return [modifier.cost ? `${modifier.cost}CP` : '', left].filter(Boolean).join(' · ')
+  return [modifier.cost ? costLabel(modifier) : '', left].filter(Boolean).join(' · ')
 }
 
 // Resolving a fight, as a reminder (core rules).

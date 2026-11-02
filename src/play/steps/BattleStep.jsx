@@ -13,6 +13,7 @@ import CardPicker from '../CardPicker.jsx'
 import { RuleText } from '../RuleText.jsx'
 import { usePlayer } from '../usePlayer.js'
 import { byStatus, useRowDetails } from '../useRowDetails.js'
+import TeamRolls from '../TeamRolls.jsx'
 
 
 
@@ -108,6 +109,7 @@ export function StrategySheet({ onAside }) {
           <h3>Turning point {tp} · strategy phase</h3>
         </div>
         <div className="sheet-body">
+          <TeamRolls />
           <section className="strategy-step">
             <h4>
               <span className="step-number">1</span> Initiative roll-off

@@ -147,6 +147,11 @@ export const clampAplChange = (change) => Math.max(-1, Math.min(1, change))
 
 // Kill teams that keep a tally of special points (Yaegirs' Resourceful points, the
 // Vespids' points) shown beside CP and VP.
+export const VESPID_STINGWINGS = 'TAU-VESP'
+// Vespid equipment: roll two D3 for Communion and keep one.
+export const NEUROSTIMULANT = 'TAU-VESP-NS'
+// Vespid equipment: once per turning point, a Pick Up or mission action without a point.
+export const CONVERGENCE_STIMULANT = 'TAU-VESP-CS'
 const SP_KILLTEAMS = new Set(['VOT-HKY', 'TAU-VESP'])
 export const tracksSp = (killteamId) => SP_KILLTEAMS.has(killteamId)
 

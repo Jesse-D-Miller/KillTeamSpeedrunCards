@@ -318,11 +318,14 @@ describe('Vespid Stingwings', () => {
   it('Communion: a point to target anything but the closest enemy within 8"', () => {
     const game = vespidShot({ tokens: [op('s', 'A', WARRIOR, 2), op('t', 'B', THEYN, 9), op('n', 'B', 'VOT-HKY-WAR-0', 5, 8)] })
     const shot = shoot(game, 'TAU-VESP-WAR-NB-0')
-    expect(find(shot, 'attack', 'Communion')).toMatchObject({ mode: 'warning' })
-    expect(shot.attack.dice.auto).toBe(0)
+    // A switch that spends 1 Communion point (SP); until it's on, Warrior Instincts holds.
+    expect(find(shot, 'attack', 'Communion')).toMatchObject({ mode: 'toggle', cost: 1, currency: 'sp' })
+    expect(shot.attack.dice.auto).toBe(1)
+    const spent = shoot({ ...game, battle: { ...game.battle, shots: toggled('A', { 'TAU-VESP-communion-target': true }) } }, 'TAU-VESP-WAR-NB-0')
+    expect(spent.attack.dice.auto).toBe(0)
     // More than 8" away always needs a point (FAQ).
     const far = shoot(vespidShot({ tokens: [op('s', 'A', WARRIOR, 2), op('t', 'B', THEYN, 12)] }), 'TAU-VESP-WAR-NB-0')
-    expect(far.modifiers.attack.some((modifier) => modifier.mode === 'warning' && /more than 8"/.test(modifier.text))).toBe(true)
+    expect(far.modifiers.attack.some((modifier) => modifier.id === 'TAU-VESP-communion-target' && /more than 8"/.test(modifier.text))).toBe(true)
   })
 
   it('Ocelli: Vantage benefits as if 3" higher', () => {

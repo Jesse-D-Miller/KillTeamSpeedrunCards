@@ -28,7 +28,7 @@ export const useAttack = (own = null) => {
   const toggle = useCallback(
     (modifier) =>
       attack &&
-      act({ type: 'shot/toggle', key: attack.key, id: modifier.id, on: !modifier.on, cost: modifier.cost, limit: modifier.limit }),
+      act({ type: 'shot/toggle', key: attack.key, id: modifier.id, on: !modifier.on, cost: modifier.cost, currency: modifier.currency, limit: modifier.limit }),
     [act, attack],
   )
   const pickWeapon = useCallback((weaponId) => attack && act({ type: 'shot/weapon', key: attack.key, weaponId }), [act, attack])

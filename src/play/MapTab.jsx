@@ -6,6 +6,7 @@ import {
   MOVE_ADJUST_REACH,
   HERNKYN_YAEGIRS,
   MARKER_SPANS_IN,
+  VESPID_STINGWINGS,
   MINEFIELD,
   AMMO_CACHE_MARKER,
   SSSSHHHH,
@@ -35,6 +36,7 @@ import VantageMark from './VantageMark.jsx'
 import { RailPhaseButton, RailStatus, TeamSectionButtons, TeamSectionPanel, ViewButtons } from './RailParts.jsx'
 import UnitCardModal from './UnitCardModal.jsx'
 import TokenRules from './TokenRules.jsx'
+import { DiceButtons } from './TeamRolls.jsx'
 import BoardArranger from './BoardArranger.jsx'
 import WeaponChooser from './WeaponChooser.jsx'
 import StalwartPrompt from './StalwartPrompt.jsx'
@@ -193,8 +195,18 @@ function BaseSizer({ token, onStep }) {
 // Each Turn tap on a long marker (Razor Wire), in degrees.
 const WIRE_TURN = 15
 
-function RollPrompt({ roll, mine, token, count, onOpen }) {
+function RollPrompt({ roll, mine, token, count, onOpen, onPick }) {
   const what = roll.label
+  // Not about a piece (e.g. Vespid Communion): the dice are right here.
+  if (mine && roll.tokenId == null) {
+    return (
+      <div className="move-status glass is-roll" data-roll-prompt={roll.kind}>
+        <span className="move-status-label">Roll a D{roll.die}</span>
+        <span className="move-status-warning">{what}</span>
+        <DiceButtons die={roll.die} onPick={onPick} />
+      </div>
+    )
+  }
   return mine ? (
     <button type="button" className="move-status glass is-roll" data-roll-prompt={roll.kind} onClick={() => token && onOpen(token)}>
       <span className="move-status-label">
@@ -357,6 +369,10 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     return fitted
   }
   const moveCost = (gesture) => gesture.path.length - gesture.keep + crossingsOf(gesture)
+  // Vespid Communion: a Stingwing's Charge must end within control range of the closest
+  // enemy it can, unless a point is spent (from the SP count in the drawer).
+  const communionCharge = (gesture) =>
+    gesture.kind === 'charge' && game.players[gesture.token.seat]?.killteamId === VESPID_STINGWINGS && !/-(OSD|DRONE)-/.test(gesture.token.unitKey ?? '')
   // Ladders: the app has no vertical movement, so a move passing within control range
   // of one reminds the players that climbing there counts as 1".
   const ladders = game.markers.filter((marker) => marker.catalogId === 'ladder' && !marker.attachedTo)
@@ -386,7 +402,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         : null)
     const crossings = crossingsOf(gesture)
     setMoveStatus({
-      label: `${MOVE_KINDS[gesture.kind]?.label ?? 'Free move'}${crossings ? ` · razor wire +${crossings}"` : ''}${nearLadder(gesture) ? ' · ladder: a climb here counts as 1"' : ''}`,
+      label: `${MOVE_KINDS[gesture.kind]?.label ?? 'Free move'}${crossings ? ` · razor wire +${crossings}"` : ''}${nearLadder(gesture) ? ' · ladder: a climb here counts as 1"' : ''}${communionCharge(gesture) ? ' · Communion: end by the closest enemy you can, or spend 1 SP' : ''}`,
       used: moveCost(gesture),
       limit: gesture.limit,
       warning,
@@ -1784,6 +1800,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             count={rolls.filter((roll) => roll.seat === (rolls.some((mine) => mine.seat === seat) ? seat : rolls[0].seat)).length}
             token={itemById((rolls.find((roll) => roll.seat === seat) ?? rolls[0]).tokenId)}
             onOpen={openRadial}
+            onPick={(value) => act({ type: 'battle/roll', id: (rolls.find((roll) => roll.seat === seat) ?? rolls[0]).id, value })}
           />
         ) : null}
         {moveStatus ? (
