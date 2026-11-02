@@ -406,7 +406,7 @@
         {
           "id": "arr_05_volkus_G",
           "pieceId": "volkus_G",
-          "placement": { "x": 17, "y": 19, "rotation": 90 }
+          "placement": { "x": 17, "y": 18.88, "rotation": 90 }
         },
         {
           "id": "arr_05_volkus_H",
@@ -495,7 +495,7 @@
         {
           "id": "arr_06_volkus_H",
           "pieceId": "volkus_H",
-          "placement": { "x": 19, "y": 0.21, "rotation": 90 }
+          "placement": { "x": 19, "y": 0.31, "rotation": 90 }
         },
         {
           "id": "arr_06_volkus_I",
