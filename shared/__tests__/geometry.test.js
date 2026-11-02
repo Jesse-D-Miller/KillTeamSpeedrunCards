@@ -6,6 +6,7 @@ import {
   pathLength,
   resolveZoneRect,
   sightlineHits,
+  wallOutlines,
   zoneEdge,
 } from '../geometry.js'
 
@@ -139,3 +140,16 @@ describe('buildTerrain', () => {
     expect(interiors[0].points.map(({ x, y }) => [Math.round(x), Math.round(y)])).toEqual([[3, 4], [3, 5], [2, 5], [2, 4]])
   })
 })
+
+describe('wall outlines', () => {
+  const wall = (x1, y1, x2, y2) => ({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 } })
+  it('joins face lines into closed loops, and closes an open chain across its gap', () => {
+    const square = [wall(0, 0, 1, 0), wall(1, 0, 1, 1), wall(1, 1, 0, 1), wall(0, 1, 0, 0)]
+    expect(wallOutlines(square)).toHaveLength(1)
+    expect(wallOutlines(square)[0]).toHaveLength(4)
+    const open = [wall(5, 0, 6, 0), wall(6, 0, 6, 1), wall(6, 1, 5, 1)]
+    const outlines = wallOutlines([...square, ...open])
+    expect(outlines.map((outline) => outline.length).sort()).toEqual([4, 4])
+  })
+})
+

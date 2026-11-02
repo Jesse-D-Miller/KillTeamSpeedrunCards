@@ -47,6 +47,46 @@ export const polygonCentroid = (points) => {
 }
 
 // Flatten an arrangement into world-space polygons and wall segments.
+// A piece's wall face lines joined end to end into outlines: each closed loop, plus
+// any open chain closed straight across its gap. Filled even-odd they give the solid
+// body of the walls (the space between their faces).
+const POINT_KEY = (point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`
+export const wallOutlines = (walls) => {
+  const links = new Map()
+  const link = (from, to) => links.set(POINT_KEY(from), [...(links.get(POINT_KEY(from)) ?? []), to])
+  walls.forEach(({ start, end }) => {
+    link(start, end)
+    link(end, start)
+  })
+  const used = new Set()
+  const edgeKey = (a, b) => [POINT_KEY(a), POINT_KEY(b)].sort().join('|')
+  const walk = (first) => {
+    const loop = [first]
+    let current = first
+    for (;;) {
+      const next = (links.get(POINT_KEY(current)) ?? []).find((point) => !used.has(edgeKey(current, point)))
+      if (!next) return loop
+      used.add(edgeKey(current, next))
+      if (POINT_KEY(next) === POINT_KEY(first)) return loop
+      loop.push(next)
+      current = next
+    }
+  }
+  const outlines = []
+  // Open chains first, from their ends, then the closed loops left.
+  const ends = walls.flatMap(({ start, end }) => [start, end]).filter((point) => links.get(POINT_KEY(point)).length === 1)
+  ends.forEach((point) => {
+    const loop = walk(point)
+    if (loop.length > 2) outlines.push(loop)
+  })
+  walls.forEach(({ start, end }) => {
+    if (used.has(edgeKey(start, end))) return
+    const loop = walk(start)
+    if (loop.length > 2) outlines.push(loop)
+  })
+  return outlines
+}
+
 export const buildTerrain = (arrangement, pieceById) => {
   const areas = []
   const walls = []
@@ -102,7 +142,10 @@ export const buildTerrain = (arrangement, pieceById) => {
       })
     })
   })
-  return { areas, walls, interiors, doors }
+  // Each feature's wall bodies (see wallOutlines).
+  const features = [...new Set(walls.map((wall) => wall.featureId))]
+  const wallBodies = features.map((featureId) => ({ id: `${featureId}-body`, featureId, outlines: wallOutlines(walls.filter((wall) => wall.featureId === featureId)) }))
+  return { areas, walls, interiors, doors, wallBodies }
 }
 
 // A base (centre point, radius) wholly within a rect { x, y, w, h }, or within margin

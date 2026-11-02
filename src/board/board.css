@@ -55,6 +55,12 @@
   stroke-linecap: round;
 }
 
+/* The solid body of the walls, between their faces: unfilled on the iPads; black on
+   the projector (see table.css), so no light falls on the real walls. */
+.board-wall-body {
+  fill: none;
+}
+
 .board-wall.is-heavy {
   stroke: #f2efe6;
   stroke-width: 0.16;

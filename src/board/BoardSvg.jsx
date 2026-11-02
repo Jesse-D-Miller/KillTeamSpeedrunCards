@@ -445,6 +445,15 @@ function BoardSvg({
           {layout.areas.map((area) => (
             <polygon key={area.id} className="board-terrain-area" points={pointsAttr(area.points)} />
           ))}
+          {(layout.wallBodies ?? []).map((body) => (
+            <path
+              key={body.id}
+              className="board-wall-body"
+              data-wall-body-for={body.featureId}
+              fillRule="evenodd"
+              d={body.outlines.map((outline) => `M${outline.map((point) => `${point.x} ${toSvgY(point.y)}`).join('L')}Z`).join('')}
+            />
+          ))}
           {['light', 'heavy'].map((type) =>
             layout.walls
               .filter((wall) => wall.type === type)

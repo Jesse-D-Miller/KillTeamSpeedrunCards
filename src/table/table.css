@@ -20,6 +20,11 @@
   --board-mat: #0b0c0e;
 }
 
+/* On the projector the walls are black between their faces (the real walls stand there). */
+.table-board .board-wall-body {
+  fill: #000;
+}
+
 /* On the projector, operative bases and markers are black inside, so no light falls on
    the minis and physical tokens standing on them; their coloured rims, names, tags and
    glows (all outside the base) still show. (The doubled class beats the state styles.)
