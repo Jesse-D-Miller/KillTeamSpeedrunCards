@@ -750,6 +750,52 @@
   }
 }
 
+/* Poisoned: a lumpy green haze turning slowly round the rim, with a bubble rising off
+   the top every so often. */
+.status-haze {
+  fill: none;
+  stroke: #8fd14f;
+  stroke-opacity: 0.22;
+  stroke-width: 0.16;
+  stroke-dasharray: 0.5 0.12 0.28 0.2;
+  stroke-linecap: round;
+  animation: status-orbit 14s linear infinite reverse;
+}
+
+.status-bubble {
+  fill: none;
+  stroke: #8fd14f;
+  stroke-width: 0.02;
+  opacity: 0;
+  animation: status-bubble 2.6s ease-out infinite;
+}
+
+@keyframes status-bubble {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.7;
+  }
+  60%,
+  100% {
+    transform: translateY(-0.35px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-haze {
+    animation: none;
+  }
+
+  .status-bubble {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
 /* APL changed: a small ▲/▼ tag that pops in (up) or sinks in (down) once. */
 .status-apl rect {
   fill-opacity: 0.85;

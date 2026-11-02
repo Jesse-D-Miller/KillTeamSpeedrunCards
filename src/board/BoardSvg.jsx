@@ -535,7 +535,16 @@ function BoardSvg({
         />
       ))}
       {tokenViews.map(({ token, view, status }) =>
-        token.unitKey && !view.dead ? <StatusRim key={token.id} token={token} view={view} status={status} maxWounds={maxWoundsOf(token)} /> : null,
+        token.unitKey && !view.dead ? (
+          <StatusRim
+            key={token.id}
+            token={token}
+            view={view}
+            status={status}
+            maxWounds={maxWoundsOf(token)}
+            riders={markers.filter((marker) => marker.attachedTo === token.id)}
+          />
+        ) : null,
       )}
       {tokenViews.map(({ token, view, status }) => {
         if (!token.unitKey || view.dead) return null

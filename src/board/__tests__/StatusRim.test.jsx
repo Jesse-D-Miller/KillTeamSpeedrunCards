@@ -30,4 +30,16 @@ describe('status rim', () => {
     expect(tag({ apl: 1, statuses: ['stunned'] })).toBeNull()
     expect(tag({})).toBeNull()
   })
+
+  it('hazes an operative carrying a Poison token', () => {
+    const withRiders = (riders) =>
+      render(
+        <svg>
+          <StatusRim token={{ id: 't1' }} view={view} status={{ wounds: 8 }} maxWounds={8} riders={riders} />
+        </svg>,
+      ).container.querySelector('[data-status="poisoned"]')
+    expect(withRiders([{ catalogId: 'chaos-pm-poison' }])).not.toBeNull()
+    expect(withRiders([{ catalogId: 'apl-minus' }])).toBeNull()
+    expect(withRiders([])).toBeNull()
+  })
 })
