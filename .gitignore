@@ -29,3 +29,6 @@ server/data
 # Playwright output
 test-results
 playwright-report
+
+# 3D terrain models (traced for terrainPieces.json; never pushed)
+/terrain-models/
