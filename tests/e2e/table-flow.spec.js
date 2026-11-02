@@ -1484,10 +1484,26 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   for (let i = 1; i <= 12; i += 1) await a.mouse.move(wx + (3.2 * wirePx * i) / 12, wy)
   await expect(a.locator('[data-move-status]')).toContainText('razor wire +1"')
   await expect(a.locator('[data-move-status] .move-status-inches')).toHaveText(/^4 \//)
+  // Not near a ladder, no ladder note.
+  await expect(a.locator('[data-move-status]')).not.toContainText('ladder')
   await a.mouse.up()
+  // Ladders: a move passing within 1" of one reminds the players a climb there counts as 1".
   await tableActions(table, [
     { type: 'token/update', id: 't2', x: wireBlade.x, y: wireBlade.y },
     { type: 'marker/remove', id: wireId },
+    { type: 'marker/add', catalogId: 'ladder', label: 'Ladder', short: 'LAD', x: wireBlade.x + 2, y: wireBlade.y + 1, radius: 0.25 },
+  ])
+  await ringAction(a, 't2', 'Move')
+  await a.locator('.unit-radial[data-ring-for="t2"]').getByRole('menuitem', { name: 'Move', exact: true }).click()
+  await a.mouse.move(wx, wy)
+  await a.mouse.down()
+  for (let i = 1; i <= 12; i += 1) await a.mouse.move(wx + (2 * wirePx * i) / 12, wy)
+  await expect(a.locator('[data-move-status]')).toContainText('ladder: a climb here counts as 1"')
+  await a.mouse.up()
+  const ladderId = (await tableState(table)).markers.find((marker) => marker.catalogId === 'ladder').id
+  await tableActions(table, [
+    { type: 'token/update', id: 't2', x: wireBlade.x, y: wireBlade.y },
+    { type: 'marker/remove', id: ladderId },
   ])
   await openTab(a, 'Operatives')
   await bladeCard.locator('button.state-pill').click()

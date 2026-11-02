@@ -16,7 +16,7 @@ import {
   turnState,
   vantageFloor,
 } from '../../shared/game.js'
-import { MOVE_KINDS, bendToward, capPath, inEnemyControl, moveLimit, moveStat, moveWarning, obstructedCrossings, obstructions } from '../../shared/movement.js'
+import { CONTROL_RANGE_IN, MOVE_KINDS, bendToward, capPath, inEnemyControl, moveLimit, moveStat, moveWarning, obstructedCrossings, obstructions } from '../../shared/movement.js'
 import { clampToBase, defaultShooterPoint, statusOf } from '../../shared/targeting.js'
 import { isInjured } from '../board/health.js'
 import BoardSvg from '../board/BoardSvg.jsx'
@@ -348,6 +348,13 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     return fitted
   }
   const moveCost = (gesture) => gesture.path.length - gesture.keep + crossingsOf(gesture)
+  // Ladders: the app has no vertical movement, so a move passing within control range
+  // of one reminds the players that climbing there counts as 1".
+  const ladders = game.markers.filter((marker) => marker.catalogId === 'ladder' && !marker.attachedTo)
+  const nearLadder = (gesture) =>
+    ladders.some((ladder) =>
+      gesture.path.slice(gesture.keep - 1).some((point) => distance(point, ladder) - tokenRadiusIn(gesture.token) - ladder.radius <= CONTROL_RANGE_IN),
+    )
 
   // Show where a stepped drag has got to: the preview on both screens and the banner.
   // Past its limit the operative stays at the end of its path instead of the finger.
@@ -370,7 +377,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         : null)
     const crossings = crossingsOf(gesture)
     setMoveStatus({
-      label: `${MOVE_KINDS[gesture.kind]?.label ?? 'Free move'}${crossings ? ` · razor wire +${crossings}"` : ''}`,
+      label: `${MOVE_KINDS[gesture.kind]?.label ?? 'Free move'}${crossings ? ` · razor wire +${crossings}"` : ''}${nearLadder(gesture) ? ' · ladder: a climb here counts as 1"' : ''}`,
       used: moveCost(gesture),
       limit: gesture.limit,
       warning,
