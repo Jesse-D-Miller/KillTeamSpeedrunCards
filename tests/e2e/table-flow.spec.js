@@ -500,6 +500,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await ringA.getByRole('menuitem', { name: '1st floor' }).click()
   await expect(table.locator(`[data-vantage-for="${sniper}"]`)).toHaveAttribute('data-floor', '1')
   await expect(table.locator(`[data-vantage-for="${sniper}"] path`)).toHaveCount(1)
+  // Up on Vantage, a soft shadow sits under the base as if it were raised.
+  await expect(table.locator(`[data-shadow-for="${sniper}"]`)).toHaveCount(1)
   await shot(table, '07w-vantage-table')
   await tableActions(table, [{ type: 'unit/update', seat: 'B', unitKey: 'TEST-OPEN', patch: { order: 'engage' } }])
   await ringAction(a, sniper, 'Sightline')

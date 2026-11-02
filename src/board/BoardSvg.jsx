@@ -515,6 +515,18 @@ function BoardSvg({
       {tokenViews.map(({ token, view }) => (
         <TokenName key={token.id} token={token} view={view} labelId={`${instanceId}-label-${token.id}`} />
       ))}
+      {/* Up on Vantage: a soft shadow under the base, further off for the 2nd floor. */}
+      {tokenViews.map(({ token, view, status }) => {
+        const floor = !view.dead && status?.vantage ? vantageFloor(status.vantage) : 0
+        if (!floor) return null
+        const offset = 0.1 * floor
+        return (
+          <g key={`shadow-${token.id}`} className="board-token-shadow" data-shadow-for={token.id} aria-hidden="true">
+            <circle cx={view.x + offset} cy={view.cy + offset * 1.3} r={view.r + 0.06} />
+            <circle cx={view.x + offset} cy={view.cy + offset * 1.3} r={view.r} />
+          </g>
+        )
+      })}
       {tokenViews.map(({ token, view, status }) => (
         <TokenBody
           key={token.id}

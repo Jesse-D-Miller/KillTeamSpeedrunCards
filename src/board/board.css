@@ -1094,3 +1094,13 @@
     animation: none;
   }
 }
+
+/* Up on Vantage: a soft dark shadow under the base, as if it were raised. */
+.board-token-shadow {
+  pointer-events: none;
+}
+
+.board-token-shadow circle {
+  fill: #000;
+  fill-opacity: 0.28;
+}
