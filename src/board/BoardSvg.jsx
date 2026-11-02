@@ -445,14 +445,13 @@ function BoardSvg({
           {layout.areas.map((area) => (
             <polygon key={area.id} className="board-terrain-area" points={pointsAttr(area.points)} />
           ))}
-          {['light', 'heavy', 'door'].map((type) =>
+          {['light', 'heavy'].map((type) =>
             layout.walls
               .filter((wall) => wall.type === type)
               .map((wall) => (
                 <line
                   key={wall.id}
                   className={`board-wall is-${type}`}
-                  style={wall.width ? { strokeWidth: wall.width } : undefined}
                   x1={wall.start.x}
                   y1={toSvgY(wall.start.y)}
                   x2={wall.end.x}
@@ -460,6 +459,9 @@ function BoardSvg({
                 />
               )),
           )}
+          {(layout.doors ?? []).map((door) => (
+            <polygon key={door.id} className="board-door" data-door-for={door.featureId} points={pointsAttr(door.points)} />
+          ))}
           {layout.areas.map((area) =>
             flags.terrainLabels && area.centroid && area.height ? (
               <text

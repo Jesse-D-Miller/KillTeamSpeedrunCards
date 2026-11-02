@@ -65,12 +65,13 @@
   stroke-width: 0.1;
 }
 
-/* A solid band across the wall's thickness (its width comes from the data), ending
-   square at the door panel's edges. */
-.board-wall.is-door {
+/* A door: a solid yellow block between the wall's faces across the door panel, edged
+   as wide as the wall lines so it covers them without sticking out. */
+.board-door {
+  fill: #ffd166;
   stroke: #ffd166;
   stroke-width: 0.16;
-  stroke-linecap: butt;
+  stroke-linejoin: round;
 }
 
 /* Dark letters: on the projector they're left unlit, so they read faintly without

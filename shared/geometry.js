@@ -52,6 +52,9 @@ export const buildTerrain = (arrangement, pieceById) => {
   const walls = []
   // Inside a stronghold's walls (the killzone's Condensed and Garrisoned Stronghold rules).
   const interiors = []
+  // Doors drawn as blocks filling the wall between its faces (the door line in walls is
+  // what sightlines use).
+  const doors = []
   ;(arrangement?.terrain ?? []).forEach((entry) => {
     const piece = entry?.pieceId ? pieceById.get(entry.pieceId) : entry
     if (!piece) return
@@ -80,6 +83,13 @@ export const buildTerrain = (arrangement, pieceById) => {
         points: piece.interior.points.map((point) => transformPoint(point, placement)),
       })
     }
+    ;(piece.doors ?? []).forEach((door, index) => {
+      doors.push({
+        id: `${entry.id || piece.id}-door-${index}`,
+        featureId: entry.id || piece.id,
+        points: door.points.map((point) => transformPoint(point, placement)),
+      })
+    })
     ;(piece.walls?.segments ?? []).forEach((segment, index) => {
       const segmentPoints = getSegmentPoints(segment)
       if (!Array.isArray(segmentPoints)) return
@@ -87,14 +97,12 @@ export const buildTerrain = (arrangement, pieceById) => {
         id: `${entry.id || piece.id}-wall-${index}`,
         featureId: entry.id || piece.id,
         type: getSegmentType(segment),
-        // A door's band covers the wall's whole thickness (inches); other walls use the CSS width.
-        width: segment?.width ?? null,
         start: transformPoint(segmentPoints[0], placement),
         end: transformPoint(segmentPoints[1], placement),
       })
     })
   })
-  return { areas, walls, interiors }
+  return { areas, walls, interiors, doors }
 }
 
 // Map 2 zone rects are authored in portrait (22x30); the board is always drawn landscape.
