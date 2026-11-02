@@ -49,6 +49,11 @@ describe('rangedWeaponsFor', () => {
     expect(list.map((weapon) => weapon.id)).toEqual(['VOT-HKY-THEYN-BR-0', 'grenade-frag', 'grenade-stun'])
     expect(list[1].rules).toMatchObject({ range: 6, blast: 2, saturate: true })
     expect(list[2].rules.stunArea).toBe(1)
+    // Shared by the kill team: two frag (only frag picked), two stun.
+    expect(list[1].teamLimit).toEqual({ per: 'battle', count: 2 })
+    expect(list[2].teamLimit).toEqual({ per: 'battle', count: 2 })
+    const both = rangedWeaponsFor(game({}, ['UNIVERSAL-UE-XG-FRAG', 'UNIVERSAL-UE-XG-KRAK']), theyn)
+    expect(both.filter((weapon) => weapon.grenade).map((weapon) => weapon.teamLimit.count)).toEqual([1, 1])
   })
 })
 
@@ -83,6 +88,8 @@ describe('rangedWeaponsFor stats and extra weapons', () => {
     const list = rangedWeaponsFor(player('IMP-AOD'), { seat: 'A', unitKey: 'IMP-AOD-GRN-0' })
     expect(list.map((weapon) => weapon.id)).toEqual(['IMP-AOD-GRN-HBP-0', 'grenade-frag', 'grenade-krak'])
     expect(list[1]).toMatchObject({ source: 'grenade', grenade: 'frag', grenadier: { hitBonus: 1 } })
+    // A Grenadier's grenades don't count towards the limit.
+    expect(list[1].teamLimit).toBeUndefined()
   })
 
   it('reads equipment weapon rules from the table when the data leaves them out', () => {

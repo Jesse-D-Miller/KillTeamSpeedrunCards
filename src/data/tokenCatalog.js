@@ -1,3 +1,4 @@
+import { SMOKE_USES_KEY, grenadeAllowance } from '../../shared/game.js'
 import { getKillteamById } from './ktData.js'
 import factionTokens from './factionTokens.json'
 import { getTacOp } from './tacOps.js'
@@ -91,8 +92,13 @@ export const categoriesFor = (game, seat) => {
   const player = game.players?.[seat]
   const chosen = new Set(player?.equipment ?? [])
   const isChosen = (entry) => (entry.eqIds ?? []).some((eqId) => chosen.has(eqId))
+  // Smoke grenades thrown in the battle count down from the muster pick.
+  const smokeLeft =
+    game.phase === 'battle' && grenadeAllowance(player?.equipment, 'smoke')
+      ? grenadeAllowance(player.equipment, 'smoke') - (player.teamWeaponUses?.battle?.[SMOKE_USES_KEY] ?? 0)
+      : null
   const equipment = [
-    ...EQUIPMENT.filter(isChosen).map((entry) => ({ ...entry, chosen: true })),
+    ...EQUIPMENT.filter(isChosen).map((entry) => ({ ...entry, chosen: true, ...(entry.id === 'smoke-grenade' && smokeLeft != null ? { left: smokeLeft } : {}) })),
     ...EQUIPMENT.filter((entry) => !isChosen(entry)),
   ]
   const killteam = getKillteamById(player?.killteamId)

@@ -29,7 +29,33 @@ export const READY_CP = 1
 // option (utility or explosive grenades) is one option however it's split.
 export const MAX_EQUIPMENT_OPTIONS = 4
 export const equipmentOptionKey = (eqId) => String(eqId).replace(/^(UNIVERSAL-UE-(?:UG|XG))-.*$/, '$1')
-export const equipmentOptionCount = (eqIds) => new Set((eqIds ?? []).map(equipmentOptionKey)).size
+// Phobos' Additional Utility Grenades replaces the utility grenades option (its split is
+// still picked from the smoke / stun entries, which then don't count as another option).
+export const ADDITIONAL_UTILITY_GRENADES = 'IMP-PHO-AUG'
+export const equipmentOptionCount = (eqIds) => {
+  const additional = (eqIds ?? []).includes(ADDITIONAL_UTILITY_GRENADES)
+  return new Set((eqIds ?? []).map((eqId) => (additional && /^UNIVERSAL-UE-UG-/.test(eqId) ? ADDITIONAL_UTILITY_GRENADES : equipmentOptionKey(eqId)))).size
+}
+
+// Universal grenades: how many of each kind a kill team can use in the battle, from its
+// muster picks. "Select two" is stored as which kinds were picked: one kind means two of
+// it, both kinds one each. Additional Utility Grenades makes it four utility grenades
+// (split evenly when both kinds are picked).
+export const GRENADE_EQUIPMENT = {
+  frag: 'UNIVERSAL-UE-XG-FRAG',
+  krak: 'UNIVERSAL-UE-XG-KRAK',
+  smoke: 'UNIVERSAL-UE-UG-SMK',
+  stun: 'UNIVERSAL-UE-UG-STN',
+}
+const GRENADE_PAIRS = { frag: 'krak', krak: 'frag', smoke: 'stun', stun: 'smoke' }
+export const grenadeAllowance = (equipment = [], kind) => {
+  if (!equipment.includes(GRENADE_EQUIPMENT[kind])) return 0
+  const utility = kind === 'smoke' || kind === 'stun'
+  const total = utility && equipment.includes(ADDITIONAL_UTILITY_GRENADES) ? 4 : 2
+  return equipment.includes(GRENADE_EQUIPMENT[GRENADE_PAIRS[kind]]) ? total / 2 : total
+}
+// The name each kind's uses are counted under (teamWeaponUses.battle).
+export const SMOKE_USES_KEY = 'Smoke Grenade'
 
 export const otherSeat = (seat) => (seat === 'A' ? 'B' : 'A')
 

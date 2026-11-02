@@ -56,9 +56,17 @@ export function TokenFlyout({ categories, menu, onOpenCategory, onChoose }) {
       </button>
       {category.entries.length ? (
         category.entries.map((entry) => (
-          <button key={entry.id} type="button" className="flyout-entry" onClick={() => onChoose(entry)}>
+          <button
+            key={entry.id}
+            type="button"
+            className="flyout-entry"
+            onClick={() => onChoose(entry)}
+            disabled={entry.left != null && entry.left <= 0}
+            data-left={entry.left ?? undefined}
+          >
             <Swatch entry={entry} />
             <span>{entry.name}</span>
+            {entry.left != null ? <span className="muted">{entry.left} left</span> : null}
             {entry.chosen ? <span className="flyout-dot" title="In your equipment" /> : null}
           </button>
         ))

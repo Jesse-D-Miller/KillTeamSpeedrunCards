@@ -1,3 +1,4 @@
+import { grenadeAllowance } from '../../shared/game.js'
 import { getKillteamById } from '../data/ktData.js'
 import { toOpTypeId } from './killOpCounts.js'
 import { parseEquipmentWeaponEffects } from './equipment.js'
@@ -207,6 +208,14 @@ export const grenadierOf = (opType) => {
   return { grenades, hitBonus }
 }
 
+// Universal grenades are shared by the kill team: as many uses in the battle as were
+// picked at muster (see grenadeAllowance). A Grenadier's own use doesn't count.
+const grenadeLimit = (player, kind, grenadier) => {
+  const count = grenadeAllowance(player.equipment, kind)
+  if (!count || grenadier.grenades.has(kind)) return {}
+  return { teamLimit: { per: 'battle', count }, uses: `${count} per battle (kill team)` }
+}
+
 // The ranged weapon profiles a placed operative can shoot with (its loadout when the
 // player picked one), then weapons from equipment its player took, then grenades
 // (from equipment, or from its own abilities such as Grenadier).
@@ -266,9 +275,10 @@ export const rangedWeaponsFor = (game, token) => {
         grenade: kind,
         // Grenadier: using it doesn't count towards limits, and may improve Hit.
         grenadier: grenadier.grenades.has(kind) ? { hitBonus: grenadier.hitBonus } : null,
+        ...grenadeLimit(player, kind, grenadier),
       }))
   })
-  const stun = taken.has(STUN_EQUIPMENT) || grenadier.grenades.has('stun') ? [STUN_GRENADE] : []
+  const stun = taken.has(STUN_EQUIPMENT) || grenadier.grenades.has('stun') ? [{ ...STUN_GRENADE, ...grenadeLimit(player, 'stun', grenadier) }] : []
   // A grenade already on the datacard (e.g. a Plague Marine Bombardier's blight
   // grenade) stays as printed; a Grenadier's copy of a faction grenade replaces the
   // equipment one.

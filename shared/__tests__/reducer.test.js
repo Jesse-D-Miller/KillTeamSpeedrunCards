@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { COMMAND_REROLL, aplBonus, canToughOut, clampAplChange, createGame, musterBlocker, toughSurvivalistsDamage, turnState, vantageFloor } from '../game.js'
+import { COMMAND_REROLL, aplBonus, canToughOut, clampAplChange, createGame, equipmentOptionCount, grenadeAllowance, musterBlocker, toughSurvivalistsDamage, turnState, vantageFloor } from '../game.js'
 import { ActionError, applyAction } from '../reducer.js'
 import { viewFor } from '../views.js'
 
@@ -1246,6 +1246,33 @@ describe('Universal equipment: Stun Grenade', () => {
     expect(statuses(state, 'TAU-VESP-VSS-0')).toEqual(['stunned'])
     state = update({ activation: 'expended' })
     expect(statuses(state, 'TAU-VESP-VSS-0')).toEqual([])
+  })
+})
+
+describe('Universal grenades: limits', () => {
+  it('works out each kind from the muster picks', () => {
+    expect(grenadeAllowance(['UNIVERSAL-UE-XG-FRAG'], 'frag')).toBe(2)
+    expect(grenadeAllowance(['UNIVERSAL-UE-XG-FRAG', 'UNIVERSAL-UE-XG-KRAK'], 'krak')).toBe(1)
+    expect(grenadeAllowance(['UNIVERSAL-UE-XG-FRAG'], 'krak')).toBe(0)
+    expect(grenadeAllowance(['UNIVERSAL-UE-UG-SMK', 'IMP-PHO-AUG'], 'smoke')).toBe(4)
+    expect(grenadeAllowance(['UNIVERSAL-UE-UG-SMK', 'UNIVERSAL-UE-UG-STN', 'IMP-PHO-AUG'], 'stun')).toBe(2)
+    // Additional Utility Grenades replaces the utility option.
+    expect(equipmentOptionCount(['IMP-PHO-AUG', 'UNIVERSAL-UE-UG-SMK', 'UNIVERSAL-UE-UG-STN'])).toBe(1)
+  })
+
+  it('counts smoke grenades thrown, giving one back if removed before its roll', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'VOT-HKY' }, 'A'],
+      [{ type: 'phase/set', phase: 'muster' }, 'table'],
+      [{ type: 'muster/toggleEquipment', eqId: 'UNIVERSAL-UE-UG-SMK' }, 'A'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'marker/add', catalogId: 'smoke-grenade', x: 5, y: 5, radius: 0.4 }, 'A'],
+      [{ type: 'marker/add', catalogId: 'smoke-grenade', x: 9, y: 5, radius: 0.4 }, 'A'],
+    ])
+    expect(state.players.A.teamWeaponUses.battle['Smoke Grenade']).toBe(2)
+    state = applyAction(state, { type: 'marker/remove', id: state.markers[1].id }, 'A')
+    expect(state.players.A.teamWeaponUses.battle['Smoke Grenade']).toBe(1)
   })
 })
 

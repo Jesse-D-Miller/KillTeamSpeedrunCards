@@ -34,6 +34,8 @@ import {
   MINES_DAMAGE,
   MINES_MARKER,
   SMOKE_MARKER,
+  SMOKE_USES_KEY,
+  grenadeAllowance,
   MARKER_SPANS_IN,
   RAZOR_WIRE_MARKER,
   RAZOR_WIRE_SPAN,
@@ -453,6 +455,19 @@ const smokeReadyStep = (state, fromTp) => {
       })
     })
   return next
+}
+
+// Smoke grenades used by a kill team in the battle (shared with Smoke Grenade weapon
+// counts). A smoke marker removed before its D3 is rolled, in the turning point it was
+// thrown, is taken as a mistake and given back.
+const countSmoke = (state, seat, step) => {
+  const allowance = grenadeAllowance(state.players[seat].equipment, 'smoke')
+  if (!allowance) return state
+  const uses = { battle: {}, byTp: {}, ...state.players[seat].teamWeaponUses }
+  // Not refused past the allowance: a Grenadier's smoke doesn't count, and the app
+  // can't tell who threw it. The Token menu stops offering it at 0.
+  const used = (uses.battle[SMOKE_USES_KEY] ?? 0) + step
+  return updatePlayer(state, seat, { teamWeaponUses: { ...uses, battle: { ...uses.battle, [SMOKE_USES_KEY]: Math.max(0, used) } } })
 }
 
 // Activations completed (operatives expended) between two states, for Smoke.
@@ -1403,7 +1418,8 @@ const handlers = {
       ...(action.catalogId === RAZOR_WIRE_MARKER ? { span: sanitizeSpan(action.span), angle: sanitizeAngle(action.angle) } : {}),
       ...(action.catalogId === SMOKE_MARKER && state.phase === 'battle' ? { smoke: { tp: state.battle.tp, left: null } } : {}),
     }
-    return { ...state, markers: [...state.markers, marker], nextId: state.nextId + 1 }
+    const placed = { ...state, markers: [...state.markers, marker], nextId: state.nextId + 1 }
+    return marker.smoke && marker.seat ? countSmoke(placed, marker.seat, 1) : placed
   },
 
   'marker/update': (state, action) => {
@@ -1424,10 +1440,12 @@ const handlers = {
     }
   },
 
-  'marker/remove': (state, action) => ({
-    ...state,
-    markers: state.markers.filter((marker) => marker.id !== String(action.id ?? '')),
-  }),
+  'marker/remove': (state, action) => {
+    const removed = state.markers.find((marker) => marker.id === String(action.id ?? ''))
+    const next = { ...state, markers: state.markers.filter((marker) => marker !== removed) }
+    const mistake = removed?.smoke && removed.seat && removed.smoke.tp === state.battle.tp && removed.smoke.left == null
+    return mistake ? countSmoke(next, removed.seat, -1) : next
+  },
 }
 
 export const ACTION_TYPES = Object.keys(handlers)
