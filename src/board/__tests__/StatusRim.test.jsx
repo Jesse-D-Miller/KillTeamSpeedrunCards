@@ -77,4 +77,15 @@ describe('status rim', () => {
     expect(rim({ wounds: 8, resourceful: 'apl' }).querySelector('[data-status="apl"]').textContent).toBe('▲+1')
     expect(rim({ wounds: 8, resourceful: 'heal' }).querySelector('[data-status="apl"]')).toBeNull()
   })
+
+  it("hides APL changes on a Kommando that Shook It Off this turning point", () => {
+    const tag = (tp) =>
+      render(
+        <svg>
+          <StatusRim token={{ id: 't1' }} view={view} status={{ wounds: 8, apl: -1, shakeItOffTp: 2 }} maxWounds={8} tp={tp} />
+        </svg>,
+      ).container.querySelector('[data-status="apl"]')
+    expect(tag(2)).toBeNull()
+    expect(tag(3).textContent).toBe('▼−1')
+  })
 })

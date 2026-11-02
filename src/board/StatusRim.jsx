@@ -1,4 +1,4 @@
-import { aplBonus } from '../../shared/game.js'
+import { aplBonus, aplChangesIgnored } from '../../shared/game.js'
 import { isMissionMarker } from '../data/tokenCatalog.js'
 import { isInjured } from './health.js'
 
@@ -51,7 +51,9 @@ const CARRY_PATH = 'M0 -0.13L0.095 0L0 0.13L-0.095 0Z'
 // and wound badge), ▲ green for more, ▼ red for less. Stunned counts as −1, a Resourceful
 // +1 APL as +1 until its activation ends.
 const APL_TAG_ANGLE = 180
-const aplChange = (status) => (Number(status?.apl) || 0) + ((status?.statuses ?? []).includes('stunned') ? -1 : 0) + aplBonus(status)
+// Shake It Off (Kommandos) ignores every change for the rest of the turning point.
+const aplChange = (status, tp) =>
+  aplChangesIgnored(status, tp) ? 0 : (Number(status?.apl) || 0) + ((status?.statuses ?? []).includes('stunned') ? -1 : 0) + aplBonus(status)
 
 function AplTag({ view, change }) {
   const { x, cy, r, facing = 0 } = view
@@ -72,11 +74,11 @@ function AplTag({ view, change }) {
   )
 }
 
-function StatusRim({ token, view, status, maxWounds, riders = [] }) {
+function StatusRim({ token, view, status, maxWounds, riders = [], tp = null }) {
   const { x, cy, r } = view
   const injured = maxWounds && status?.wounds != null && isInjured(maxWounds, status.wounds)
   const stunned = (status?.statuses ?? []).includes('stunned')
-  const apl = aplChange(status)
+  const apl = aplChange(status, tp)
   const poisoned = riders.some(isPoison)
   const guarding = riders.some(isGuard)
   const mark = MARK_GLYPHS[status?.mark] ?? null

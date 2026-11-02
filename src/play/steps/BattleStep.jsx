@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { HERNKYN_YAEGIRS, KOMMANDOS, SSSSHHHH, SSSSHHHH_RANGE_IN, NEXT_ACTIVATION, activePloyIds, aplBonus, createUnitState, initiativeBefore, otherSeat, tokenRadiusIn } from '../../../shared/game.js'
+import { HERNKYN_YAEGIRS, KOMMANDOS, SSSSHHHH, SSSSHHHH_RANGE_IN, NEXT_ACTIVATION, activePloyIds, aplBonus, aplChangesIgnored, createUnitState, initiativeBefore, otherSeat, tokenRadiusIn } from '../../../shared/game.js'
 import { baseWithinRect } from '../../../shared/geometry.js'
 import { concealedAndClear } from '../../../shared/movement.js'
 import { getLayout } from '../../board/boardData.js'
@@ -305,6 +305,7 @@ function BattleStep() {
               selectedStatuses={unitState.statuses}
               aplAdjustment={unitState.apl}
               aplBonus={aplBonus(unitState)}
+              aplLocked={aplChangesIgnored(unitState, game.battle.tp)}
               onAplAdjustChange={(apl) => update(unit, { apl })}
               legionaryMark={isLegionaryUnit(unit.opType) ? unitState.mark : null}
               onLegionaryMarkChange={isLegionaryUnit(unit.opType) ? (mark) => update(unit, { mark }) : undefined}

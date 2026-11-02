@@ -572,6 +572,7 @@ function BoardSvg({
             status={status}
             maxWounds={maxWoundsOf(token)}
             riders={markers.filter((marker) => marker.attachedTo === token.id)}
+            tp={game.battle?.tp ?? null}
           />
         ) : null,
       )}

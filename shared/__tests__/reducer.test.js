@@ -148,6 +148,11 @@ describe('applyAction', () => {
     expect([0, 2, 3.2, 4, 6.4].map(vantageFloor)).toEqual([0, 1, 1, 2, 2])
   })
 
+  it('records the turning point Shake It Off was used on an operative', () => {
+    const state = applyAction(createGame(), { type: 'unit/update', unitKey: 'u-1', maxWounds: 10, patch: { shakeItOffTp: 2 } }, 'B')
+    expect(state.players.B.unitState['u-1'].shakeItOffTp).toBe(2)
+  })
+
   it('remembers whether the latest damage was a critical hit', () => {
     const hit = (state, patch) => applyAction(state, { type: 'unit/update', unitKey: 'u-1', maxWounds: 10, patch }, 'B')
     let state = hit(createGame(), { wounds: 6, lastHit: 'crit' })

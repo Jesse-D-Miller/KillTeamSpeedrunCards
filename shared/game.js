@@ -88,6 +88,11 @@ export const toughSurvivalistsDamage = (damage) => {
 export const canToughOut = (player, unit, tp) =>
   player?.killteamId === HERNKYN_YAEGIRS && activePloyIds(player, tp).includes(TOUGH_SURVIVALISTS) && unit?.damagedTp !== tp
 
+// Kommandos' Shake It Off (firefight ploy): until the start of the next turning point,
+// ignore any changes to that operative's APL.
+export const SHAKE_IT_OFF = 'ORK-KOM-T-SIO'
+export const aplChangesIgnored = (unit, tp) => unit?.shakeItOffTp != null && unit.shakeItOffTp === tp
+
 // APL an operative has from spending Resourceful this activation.
 export const aplBonus = (unit) => (unit?.resourceful === 'apl' ? 1 : 0)
 

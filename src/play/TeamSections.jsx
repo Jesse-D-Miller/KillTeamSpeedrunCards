@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BONDS_RANGE_IN, BONDS_THAT_BIND, COMMAND_REROLL, KRUMP_EM, ployUses, tokenRadiusIn, turnState } from '../../shared/game.js'
+import { BONDS_RANGE_IN, BONDS_THAT_BIND, COMMAND_REROLL, KRUMP_EM, SHAKE_IT_OFF, ployUses, tokenRadiusIn, turnState } from '../../shared/game.js'
 import { distance } from '../../shared/geometry.js'
 import { isHidden } from '../../shared/views.js'
 import TacOpCard from '../components/TacOpCard.jsx'
@@ -162,12 +162,27 @@ function KrumpEm({ ploy }) {
   )
 }
 
+// Shake It Off (Kommandos): used as a Kommando is activated or its APL changes; until the
+// next turning point its APL changes are ignored (on its card and the board).
+function ShakeItOff({ ploy }) {
+  const { state: game, act } = usePlayer()
+  return (
+    <OperativePloy
+      ploy={ploy}
+      eligible={() => true}
+      when={() => null}
+      onPick={(token) => act({ type: 'unit/update', unitKey: token.unitKey, patch: { shakeItOffTp: game.battle.tp } })}
+    />
+  )
+}
+
 // Play a firefight ploy from here (one used in a shot or fight is switched on in the
 // stats drawer instead; both count the same use). Each is once per turning point,
 // except Command Re-roll.
 export function PloyUse({ ploy }) {
   if (ploy.ployId === BONDS_THAT_BIND) return <BondsThatBind ploy={ploy} />
   if (ploy.ployId === KRUMP_EM) return <KrumpEm ploy={ploy} />
+  if (ploy.ployId === SHAKE_IT_OFF) return <ShakeItOff ploy={ploy} />
   return <PlainPloyUse ploy={ploy} />
 }
 

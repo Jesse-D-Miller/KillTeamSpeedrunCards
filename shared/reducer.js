@@ -152,6 +152,8 @@ const UNIT_FIELDS = {
   // What the latest damage was ('crit' from the stats drawer's Crit button), so the board
   // can play the right effect. Any other change of wounds counts as 'normal'.
   lastHit: (value) => (['crit', 'normal'].includes(value) ? value : null),
+  // The turning point Shake It Off (Kommandos) was used on it: APL changes ignored then.
+  shakeItOffTp: (value) => (value == null ? null : Math.max(1, Math.round(toNumber(value)))),
   // Height on Vantage terrain (0 = killzone floor), used by the Sightline tool.
   vantage: (value) => ([0, ...VANTAGE_FLOORS.map((floor) => floor.height)].includes(Number(value)) ? Number(value) : null),
 }
