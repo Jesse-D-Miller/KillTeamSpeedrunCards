@@ -741,7 +741,7 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator(`.move-count[data-count-for="${mineId}"]`)).toHaveText('3.0"')
   await expect(table.locator(`[data-token-id="${mineId}"] .board-token-base`)).not.toHaveAttribute('cx', mineCx)
   await ringAction(a, mineId, 'Move')
-  await expect(ring.getByRole('menuitem')).toHaveText(['5"Move', '3"Dash', '7"Charge', '5"Fall Back', '1"Adjust', 'Undo', 'Back'])
+  await expect(ring.getByRole('menuitem')).toHaveText(['5"Move', '3"Dash', '7"Conceal order', '5"Fall Back', '1"Adjust', 'Undo', 'Back'])
   await ring.getByRole('menuitem', { name: 'Undo', exact: true }).click()
   await expect(table.locator(`[data-token-id="${mineId}"] .board-token-base`)).toHaveAttribute('cx', mineCx)
   await expect(table.locator(`[data-token-id="${mineId}"]`)).not.toHaveClass(/is-active/)
@@ -765,9 +765,11 @@ test('projector + two iPads play through setup into battle', async ({ browser })
 
   // In battle, Move opens a ring of move actions, each with its distance (Yaegirs have
   // a 5" Move): Move, Dash 3", Charge Move + 2", Fall Back (Adjust once it has moved).
+  // Charging needs an Engage order, so on Conceal it's greyed out and says why.
   await ringAction(a, 't1', 'Move')
   await expect(ring).toHaveAttribute('data-menu', 'move')
-  await expect(ring.getByRole('menuitem')).toHaveText(['5"Move', '3"Dash', '7"Charge', '5"Fall Back', 'Back'])
+  await expect(ring.getByRole('menuitem')).toHaveText(['5"Move', '3"Dash', '7"Conceal order', '5"Fall Back', 'Back'])
+  await expect(ring.getByRole('menuitem', { name: 'Charge' })).toBeDisabled()
   await a.waitForTimeout(250)
   await shot(a, '06m-move-ring-ipad')
   // Pick Move, then drag the operative in an L: it moves in whole-inch steps up to 5",

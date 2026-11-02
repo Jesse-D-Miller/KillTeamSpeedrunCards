@@ -23,7 +23,7 @@ import { MARKER_SIZES_MM, categoriesFor, radiusFor } from '../data/tokenCatalog.
 import { maxWoundsFor, saveFor, tokenLabelFor } from '../rules/roster.js'
 import { isLegionaryUnit } from '../rules/equipment.js'
 import { LEGIONARY_MARKS } from '../rules/legionary.js'
-import { concealOnly, engageOnlyInBattle } from '../rules/orders.js'
+import { chargeOnConceal, concealOnly, engageOnlyInBattle } from '../rules/orders.js'
 import Drawer from './Drawer.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
 import { TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
@@ -1209,12 +1209,17 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       ]
     }
     if (radial.menu === 'move') {
+      // Charge needs an Engage order, unless a rule lets it Charge on Conceal.
+      const radialOrder = game.players[radialToken.seat]?.unitState?.[radialToken.unitKey]?.order ?? 'conceal'
+      const radialOpType = roster.find((unit) => unit.key === radialToken.unitKey)?.opType
+      const noCharge = radialOrder === 'conceal' && !chargeOnConceal(radialOpType)
       return [
         ...Object.entries(MOVE_KINDS).map(([kind, { label }]) => ({
           key: `move-${kind}`,
           label,
           text: `${moveLimitFor(radialToken, kind)}"`,
-          caption: label,
+          caption: kind === 'charge' && noCharge ? 'Conceal order' : label,
+          disabled: kind === 'charge' && noCharge,
           run: () => startMove(kind, radialToken),
         })),
         ...(radialToken.lastMove

@@ -683,6 +683,7 @@ All of these were replaced in Approved Ops 2025.
     - Skytorch: only operatives in the torch zone between the start and end of its move; no cover or obscured.
   - **Kommandos:**
     - **Checked against Wahapedia (Nov 2026):** every datacard's stats, weapons and abilities, the faction rule (Throat Slittas), all eight ploys and the four equipment items match the app's data (only wording differs; the Grappling Hook typo "Selected" is fixed). The app's data was already current.
+    - **Throat Slittas:** the Move ring offers Charge on a Conceal order to Kommandos (not Bomb Squigs, the rule's exclusion). For everyone else, Charge on Conceal is greyed out ("Conceal order"), per the core rules; rules that allow it are read from the operative's own abilities (e.g. the Yaegir Bladekyn's Stalker) or its faction rule.
     - **Sneaky Zogger:** a Kommando Grot's order tag can't be switched to Engage (a banner says why), like the Bomb Squig's Stoopid can't go to Conceal in the battle.
     - DAKKA! DAKKA! DAKKA!
     - Skulk About.
