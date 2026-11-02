@@ -1136,6 +1136,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // with marker/... or token/... actions).
   const radialIsMarker = Boolean(radialToken) && !tokens.includes(radialToken)
   const radialIsOperative = Boolean(radialToken?.unitKey) && !radialIsMarker
+  const radialStatuses = (radialIsOperative && game.players[radialToken.seat]?.unitState?.[radialToken.unitKey]?.statuses) || []
   const updateRadial = (patch) => act({ type: `${radialIsMarker ? 'marker' : 'token'}/update`, id: radialToken.id, ...patch })
   const cardToken = cardFor ? tokens.find((token) => token.id === cardFor && token.unitKey) ?? null : null
   const rulesToken = rulesFor ? tokens.find((token) => token.id === rulesFor.tokenId && token.unitKey) ?? null : null
@@ -1234,6 +1235,31 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       return [
         { key: 'name', label: 'Name', icon: 'name', run: openMenu('name') },
         { key: 'base', label: radialIsOperative ? 'Base size' : 'Size', icon: 'base', run: openMenu('base') },
+        // Stunned (Stun weapons and grenades): APL −1 until the end of its next activation;
+        // the card counts it, and sparks circle the base on the map.
+        ...(radialIsOperative && radialToken.unitKey
+          ? [
+              {
+                key: 'stunned',
+                label: 'Stunned',
+                icon: 'stun',
+                selected: radialStatuses.includes('stunned'),
+                run: () => {
+                  act({
+                    type: 'unit/update',
+                    unitKey: radialToken.unitKey,
+                    maxWounds: maxWoundsOf(radialToken.id),
+                    patch: {
+                      statuses: radialStatuses.includes('stunned')
+                        ? radialStatuses.filter((status) => status !== 'stunned')
+                        : [...radialStatuses, 'stunned'],
+                    },
+                  })
+                  setRadial(null)
+                },
+              },
+            ]
+          : []),
         ...(radialToken.attachedTo
           ? [
               {

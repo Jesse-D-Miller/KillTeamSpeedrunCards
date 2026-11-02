@@ -16,4 +16,9 @@ describe('status rim', () => {
     expect(rim({ wounds: 4 }).querySelector('[data-status="injured"]')).toBeNull()
     expect(rim({ wounds: 8 }).querySelector('[data-status="injured"]')).toBeNull()
   })
+
+  it('circles sparks round a stunned operative', () => {
+    expect(rim({ wounds: 8, statuses: ['stunned'] }).querySelectorAll('[data-status="stunned"] .status-spark')).toHaveLength(3)
+    expect(rim({ wounds: 8, statuses: [] }).querySelector('[data-status="stunned"]')).toBeNull()
+  })
 })

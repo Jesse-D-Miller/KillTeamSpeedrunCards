@@ -728,6 +728,28 @@
   }
 }
 
+/* Stunned: three faint yellow sparks drifting round the rim, a turn every 9s. */
+.status-spark {
+  fill: #ffd84a;
+  fill-opacity: 0.75;
+}
+
+.status-orbit {
+  animation: status-orbit 9s linear infinite;
+}
+
+@keyframes status-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-orbit {
+    animation: none;
+  }
+}
+
 /* ---- Token events: one-off effects, about a second each (TokenEvents.jsx) ---- */
 .token-events {
   pointer-events: none;
