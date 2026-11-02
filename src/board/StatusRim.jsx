@@ -21,6 +21,15 @@ const BUBBLES = [
   { dx: 0.16, delay: 1.3 },
 ]
 
+// On guard (a Guard token rides on it): a thin arc on the side facing the opponent's edge
+// sweeps slowly back and forth, like a sentry watching. Labels turn by `facing` to read
+// from the opponent's seat, so that side is straight down in their turned frame.
+const isGuard = (marker) => marker.catalogId === 'guard'
+const guardArc = (radius) => {
+  const half = (35 * Math.PI) / 180
+  return `M${-radius * Math.sin(half)} ${radius * Math.cos(half)}A${radius} ${radius} 0 0 0 ${radius * Math.sin(half)} ${radius * Math.cos(half)}`
+}
+
 // APL changed: a small tag on the left of the base (clear of the name, order tag, riders
 // and wound badge), ▲ green for more, ▼ red for less. Stunned counts as −1.
 const APL_TAG_ANGLE = 180
@@ -51,6 +60,7 @@ function StatusRim({ token, view, status, maxWounds, riders = [] }) {
   const stunned = (status?.statuses ?? []).includes('stunned')
   const apl = aplChange(status)
   const poisoned = riders.some(isPoison)
+  const guarding = riders.some(isGuard)
   return (
     <g className="status-rim" data-status-for={token.id} aria-hidden="true">
       {injured ? <circle className="status-injured" data-status="injured" cx={x} cy={cy} r={r + 0.14} strokeDasharray={CRACKS} /> : null}
@@ -69,6 +79,11 @@ function StatusRim({ token, view, status, maxWounds, riders = [] }) {
           {BUBBLES.map(({ dx, delay }) => (
             <circle key={dx} className="status-bubble" cx={dx} cy={-(r + 0.12)} r={0.035} style={{ animationDelay: `${delay}s` }} />
           ))}
+        </g>
+      ) : null}
+      {guarding ? (
+        <g className="status-guard" data-status="guard" transform={`translate(${x} ${cy}) rotate(${view.facing ?? 0})`}>
+          <path className="status-guard-arc" d={guardArc(r + 0.32)} />
         </g>
       ) : null}
       {apl ? <AplTag key={apl} view={view} change={apl} /> : null}

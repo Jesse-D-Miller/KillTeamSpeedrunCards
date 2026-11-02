@@ -797,6 +797,31 @@
   }
 }
 
+/* On guard: a thin arc toward the enemy sweeping ±25° every few seconds. */
+.status-guard-arc {
+  fill: none;
+  stroke: #e9ecef;
+  stroke-opacity: 0.55;
+  stroke-width: 0.04;
+  stroke-linecap: round;
+  animation: status-sweep 4s ease-in-out infinite alternate;
+}
+
+@keyframes status-sweep {
+  from {
+    transform: rotate(-25deg);
+  }
+  to {
+    transform: rotate(25deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-guard-arc {
+    animation: none;
+  }
+}
+
 /* APL changed: a small ▲/▼ tag that pops in (up) or sinks in (down) once. */
 .status-apl rect {
   fill-opacity: 0.85;

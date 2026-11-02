@@ -42,4 +42,15 @@ describe('status rim', () => {
     expect(withRiders([{ catalogId: 'apl-minus' }])).toBeNull()
     expect(withRiders([])).toBeNull()
   })
+
+  it('sweeps a guard arc while a Guard token rides on it', () => {
+    const guard = (riders) =>
+      render(
+        <svg>
+          <StatusRim token={{ id: 't1' }} view={view} status={{ wounds: 8 }} maxWounds={8} riders={riders} />
+        </svg>,
+      ).container.querySelector('[data-status="guard"]')
+    expect(guard([{ catalogId: 'guard' }])).not.toBeNull()
+    expect(guard([{ catalogId: 'apl-plus' }])).toBeNull()
+  })
 })
