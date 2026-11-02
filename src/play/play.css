@@ -2645,3 +2645,18 @@
 .nokin-prompt .btn {
   min-height: 44px;
 }
+
+/* Limited weapons: uses left, and one that's used up can't be picked. */
+.weapon-card-uses {
+  margin: 0;
+  color: var(--good, #63d68f);
+  font-weight: 700;
+}
+
+.weapon-card-uses.is-spent {
+  color: var(--bad);
+}
+
+.weapon-card.is-spent {
+  opacity: 0.5;
+}

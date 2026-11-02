@@ -976,3 +976,13 @@ describe('Hernkyn Yaegirs: No Kin Left Behind', () => {
     expect(state.markers.filter((marker) => marker.catalogId === 'vot-hky-fallen-kin')).toMatchObject([{ x: 9, y: 9 }])
   })
 })
+
+describe('Limited weapons', () => {
+  it('counts each use of a Limited weapon per operative, and gives one back', () => {
+    let state = applyAction(createGame(), { type: 'unit/weaponUse', unitKey: 'u-1', maxWounds: 8, weapon: 'Throwing hatchet' }, 'A')
+    expect(state.players.A.unitState['u-1'].weaponUses).toEqual({ 'Throwing hatchet': 1 })
+    state = applyAction(state, { type: 'unit/weaponUse', unitKey: 'u-1', weapon: 'Throwing hatchet', on: false }, 'A')
+    state = applyAction(state, { type: 'unit/weaponUse', unitKey: 'u-1', weapon: 'Throwing hatchet', on: false }, 'A')
+    expect(state.players.A.unitState['u-1'].weaponUses).toEqual({ 'Throwing hatchet': 0 })
+  })
+})

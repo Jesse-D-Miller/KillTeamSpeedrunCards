@@ -693,6 +693,7 @@ All of these were replaced in Approved Ops 2025.
   - **Recognised:** granted weapon rules, Hit/Atk/Dmg/Save changes (including "to a maximum of 3+"), ignore Piercing/Saturate, extra or crit cover saves, re-rolls, "cannot be obscured", "not a valid target" and damage reduction.
   - **When they apply:** only plain, unconditional text from an active strategy ploy or an ability applies by itself. Everything else is offered as a toggle marked "check its conditions".
   - **Left out:** rules with several options under headings.
+- **Limited x weapons (all teams):** picking one in the Shoot or Fight weapon chooser counts a use for that operative (`unit/weaponUse`, by weapon name); swapping to another weapon gives it back. The chooser shows the uses left, and one that's used up can't be picked (e.g. the Yaegir Bladekyn's throwing plasma knife and the Tracker's throwing hatchet, Limited 1).
 - **Moved this activation:** the operative is active (or counteracting) and still holds the latest move on the board.
 
 **Not modelled:** scoring is entered by hand, and the app doesn't automate VP conditions.

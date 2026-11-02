@@ -1135,6 +1135,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   }
   const pressTool = { units: pressUnits, token: pressToken }
   // Shoot or Fight: the attacker's ranged or melee weapons, full screen. Cancel ends it.
+  const weaponUsesOf = (token) => game.players[token.seat]?.unitState?.[token.unitKey]?.weaponUses ?? {}
   const weaponMenu =
     attacker && weaponMenuOpen ? (
       <WeaponChooser
@@ -1150,7 +1151,16 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
               )
         }
         selectedId={overlay.weaponId ?? null}
+        usesLeft={(weapon) => (weapon.rules?.limited ? weapon.rules.limited - (weaponUsesOf(attacker)[weapon.name] ?? 0) : null)}
         onChoose={(weaponId) => {
+          // Limited weapons count a use when picked; swapping away from one gives it back.
+          const pool = overlay.mode === 'fight' ? meleeWeaponsFor(game, attacker) : rangedWeaponsFor(game, attacker)
+          const before = pool.find((weapon) => weapon.id === overlay.weaponId)
+          const after = pool.find((weapon) => weapon.id === weaponId)
+          const count = (weapon, on) =>
+            act({ type: 'unit/weaponUse', seat: attacker.seat, unitKey: attacker.unitKey, maxWounds: maxWoundsOf(attacker.id), weapon: weapon.name, on })
+          if (before?.rules?.limited && before.name !== after?.name) count(before, false)
+          if (after?.rules?.limited && after.name !== before?.name) count(after, true)
           publish({ ...overlay, weaponId })
           setWeaponMenuOpen(false)
         }}

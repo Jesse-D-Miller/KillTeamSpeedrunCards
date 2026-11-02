@@ -844,6 +844,19 @@ const handlers = {
     return { ...spent, markers: [...others, marker], nextId: spent.nextId + 1 }
   },
 
+  // A weapon with Limited x picked for a shot or fight counts one use (by name, per
+  // operative); on: false gives it back (picked by mistake, or swapped for another).
+  'unit/weaponUse': (state, action, actor) => {
+    const seat = resolveSeat(action, actor)
+    const unitKey = String(action.unitKey ?? '')
+    const weapon = String(action.weapon ?? '').slice(0, 80)
+    if (!unitKey || !weapon) fail('Missing weapon.')
+    const unit = state.players[seat].unitState[unitKey]
+    const used = unit?.weaponUses?.[weapon] ?? 0
+    const next = Math.max(0, used + (action.on === false ? -1 : 1))
+    return patchUnit(state, seat, unitKey, { weaponUses: { ...unit?.weaponUses, [weapon]: next } }, action.maxWounds)
+  },
+
   // A player confirms (or takes back) ending turning point fromTp. It moves on once, when
   // the second player confirms; a confirmation for a turning point that's already over
   // is ignored, so two players confirming never skips one.
