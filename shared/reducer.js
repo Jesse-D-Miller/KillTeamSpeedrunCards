@@ -937,11 +937,25 @@ const handlers = {
 
   // A weapon with Limited x picked for a shot or fight counts one use (by name, per
   // operative); on: false gives it back (picked by mistake, or swapped for another).
+  // team: 'battle' | 'tp' counts it for the whole kill team instead (equipment weapons
+  // like Kommandos' Dynamite, once per battle, or Harpoon, once per turning point).
   'unit/weaponUse': (state, action, actor) => {
     const seat = resolveSeat(action, actor)
     const unitKey = String(action.unitKey ?? '')
     const weapon = String(action.weapon ?? '').slice(0, 80)
     if (!unitKey || !weapon) fail('Missing weapon.')
+    if (action.team === 'battle' || action.team === 'tp') {
+      const step = action.on === false ? -1 : 1
+      return updatePlayer(state, seat, (player) => {
+        const uses = { battle: {}, byTp: {}, ...player.teamWeaponUses }
+        if (action.team === 'battle') {
+          return { teamWeaponUses: { ...uses, battle: { ...uses.battle, [weapon]: Math.max(0, (uses.battle[weapon] ?? 0) + step) } } }
+        }
+        const tp = state.battle.tp
+        const thisTp = uses.byTp[tp] ?? {}
+        return { teamWeaponUses: { ...uses, byTp: { ...uses.byTp, [tp]: { ...thisTp, [weapon]: Math.max(0, (thisTp[weapon] ?? 0) + step) } } } }
+      })
+    }
     const unit = state.players[seat].unitState[unitKey]
     const used = unit?.weaponUses?.[weapon] ?? 0
     const next = Math.max(0, used + (action.on === false ? -1 : 1))

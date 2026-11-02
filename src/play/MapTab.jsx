@@ -1201,6 +1201,11 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       run: () => setRadial((current) => current && { ...current, menu: 'support' }),
     },
   }
+  // Uses of a team-limited equipment weapon so far (this battle, or this turning point).
+  const teamUsesOf = (owner, weapon) => {
+    const uses = game.players[owner]?.teamWeaponUses
+    return (weapon.teamLimit.per === 'tp' ? uses?.byTp?.[game.battle.tp] : uses?.battle)?.[weapon.name] ?? 0
+  }
   const weaponUsesOf = (token) => game.players[token.seat]?.unitState?.[token.unitKey]?.weaponUses ?? {}
   const weaponMenu =
     attacker && weaponMenuOpen ? (
@@ -1218,16 +1223,31 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
               )
         }
         selectedId={overlay.weaponId ?? null}
-        usesLeft={(weapon) => (weapon.rules?.limited ? weapon.rules.limited - (weaponUsesOf(attacker)[weapon.name] ?? 0) : null)}
+        usesLeft={(weapon) =>
+          weapon.teamLimit
+            ? weapon.teamLimit.count - teamUsesOf(attacker.seat, weapon)
+            : weapon.rules?.limited
+              ? weapon.rules.limited - (weaponUsesOf(attacker)[weapon.name] ?? 0)
+              : null
+        }
         onChoose={(weaponId) => {
           // Limited weapons count a use when picked; swapping away from one gives it back.
           const pool = overlay.mode === 'fight' ? meleeWeaponsFor(game, attacker) : rangedWeaponsFor(game, attacker)
           const before = pool.find((weapon) => weapon.id === overlay.weaponId)
           const after = pool.find((weapon) => weapon.id === weaponId)
+          const counted = (weapon) => weapon?.teamLimit || weapon?.rules?.limited
           const count = (weapon, on) =>
-            act({ type: 'unit/weaponUse', seat: attacker.seat, unitKey: attacker.unitKey, maxWounds: maxWoundsOf(attacker.id), weapon: weapon.name, on })
-          if (before?.rules?.limited && before.name !== after?.name) count(before, false)
-          if (after?.rules?.limited && after.name !== before?.name) count(after, true)
+            act({
+              type: 'unit/weaponUse',
+              seat: attacker.seat,
+              unitKey: attacker.unitKey,
+              maxWounds: maxWoundsOf(attacker.id),
+              weapon: weapon.name,
+              team: weapon.teamLimit?.per,
+              on,
+            })
+          if (counted(before) && before.name !== after?.name) count(before, false)
+          if (counted(after) && after.name !== before?.name) count(after, true)
           publish({ ...overlay, weaponId })
           setWeaponMenuOpen(false)
         }}

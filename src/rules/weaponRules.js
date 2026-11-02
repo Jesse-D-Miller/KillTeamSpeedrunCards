@@ -153,6 +153,19 @@ const equipmentAllows = (description, keywords) => {
 }
 
 // "Once per turning point" etc., shown with the weapon.
+// How often the kill team as a whole can use an equipment weapon: { per: 'battle' | 'tp',
+// count }, or null when it's unlimited (e.g. Kommandos' Dynamite once per battle, Harpoon
+// once per turning point).
+const COUNT_WORDS = { once: 1, twice: 2, three: 3, four: 4 }
+export const teamLimitOf = (description) => {
+  const text = String(description ?? '')
+  if (/once per turning point/i.test(text)) return { per: 'tp', count: 1 }
+  if (/once per battle/i.test(text)) return { per: 'battle', count: 1 }
+  const times = text.match(/more than (once|twice|(\w+) times) during the battle/i)
+  const count = times ? COUNT_WORDS[(times[2] ?? times[1]).toLowerCase()] : null
+  return count ? { per: 'battle', count } : null
+}
+
 const usesNote = (description) => {
   const text = String(description ?? '')
   if (/once per turning point/i.test(text)) return 'Once per turning point'
@@ -233,6 +246,7 @@ export const rangedWeaponsFor = (game, token) => {
         wr: weapon.WR ?? '',
         source: 'equipment',
         uses: usesNote(item.description),
+        teamLimit: teamLimitOf(item.description),
       })),
     )
   const grenadier = grenadierOf(opType)

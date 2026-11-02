@@ -990,6 +990,18 @@ describe('Hernkyn Yaegirs: No Kin Left Behind', () => {
   })
 })
 
+describe('Team-limited equipment weapons', () => {
+  it('counts uses for the whole kill team, per battle or per turning point', () => {
+    let state = run(createGame(), [[{ type: 'phase/set', phase: 'battle' }, 'table']])
+    const use = (unitKey, weapon, team, on) => applyAction(state, { type: 'unit/weaponUse', unitKey, weapon, team, on }, 'A')
+    state = use('ORK-KOM-BOY-0', 'Dynamite', 'battle')
+    state = use('ORK-KOM-DAK-0', 'Harpoon', 'tp')
+    expect(state.players.A.teamWeaponUses).toEqual({ battle: { Dynamite: 1 }, byTp: { 1: { Harpoon: 1 } } })
+    state = use('ORK-KOM-DAK-0', 'Harpoon', 'tp', false)
+    expect(state.players.A.teamWeaponUses.byTp[1].Harpoon).toBe(0)
+  })
+})
+
 describe('Limited weapons', () => {
   it('counts each use of a Limited weapon per operative, and gives one back', () => {
     let state = applyAction(createGame(), { type: 'unit/weaponUse', unitKey: 'u-1', maxWounds: 8, weapon: 'Throwing hatchet' }, 'A')

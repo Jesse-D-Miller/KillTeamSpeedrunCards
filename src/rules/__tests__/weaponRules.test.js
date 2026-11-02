@@ -71,6 +71,12 @@ describe('rangedWeaponsFor stats and extra weapons', () => {
     expect(ids(game, 'ORK-KOM-SQUIG-0')).toEqual(['ORK-KOM-SQUIG-EXPL-0'])
     const [, dynamite] = rangedWeaponsFor(game, { seat: 'A', unitKey: 'ORK-KOM-BOY-0' })
     expect(dynamite).toMatchObject({ atk: 5, hit: 4, uses: 'Once per battle', rules: { range: 4, blast: 1, saturate: true, heavy: 'reposition', limited: 1 } })
+    // Counted for the whole kill team: Dynamite once per battle, Harpoon once per turning point.
+    const [, , harpoon] = rangedWeaponsFor(game, { seat: 'A', unitKey: 'ORK-KOM-BOY-0' })
+    expect([dynamite.teamLimit, harpoon.teamLimit]).toEqual([
+      { per: 'battle', count: 1 },
+      { per: 'tp', count: 1 },
+    ])
   })
 
   it('gives Grenadiers frag and krak grenades with their Hit bonus', () => {

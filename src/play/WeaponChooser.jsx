@@ -68,7 +68,9 @@ function WeaponChooser({ mode, operativeName, weapons, selectedId, onChoose, onC
                   {weapon.uses ? <p className="muted">{weapon.uses}</p> : null}
                   {left != null ? (
                     <p className={`weapon-card-uses${left <= 0 ? ' is-spent' : ''}`}>
-                      {left > 0 ? `${left} use${left === 1 ? '' : 's'} left this battle` : 'Used up this battle'}
+                      {left > 0
+                        ? `${left} use${left === 1 ? '' : 's'} left this ${weapon.teamLimit?.per === 'tp' ? 'turning point' : 'battle'}`
+                        : `Used up this ${weapon.teamLimit?.per === 'tp' ? 'turning point' : 'battle'}`}
                     </p>
                   ) : null}
                   {weapon.wr && weapon.wr !== '-' ? (
