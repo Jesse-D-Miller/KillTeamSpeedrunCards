@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyHomography, computeHomography } from '../homography.js'
 import {
+  buildTerrain,
   isObscured,
   pathLength,
   resolveZoneRect,
@@ -115,5 +116,17 @@ describe('casualty slots', async () => {
     const slots = casualtySlots(dead, panelCasualtyArea(slot, rotation, board))
     for (const point of slots.values()) expect(onLeft(point)).toBe(true)
     expect(firstNearer(slots.get('t2'), slots.get('t10'))).toBe(true)
+  })
+})
+
+describe('buildTerrain', () => {
+  it('takes floor heights (Vantage) and rubble heights (not Vantage) from the pieces', () => {
+    const square = [[0, 0], [1, 0], [1, 1], [0, 1]]
+    const pieces = new Map([
+      ['volkus_B', { id: 'volkus_B', name: 'volkus_B', areas: [{ points: square, vantage: 3.2 }, { points: square, vantage: 6.4 }], walls: { segments: [] } }],
+      ['volkus_I', { id: 'volkus_I', name: 'volkus_I', area: { points: square, height: 1.1 }, walls: { segments: [] } }],
+    ])
+    const { areas } = buildTerrain({ terrain: [{ id: 'b', pieceId: 'volkus_B', placement: { x: 0, y: 0 } }, { id: 'i', pieceId: 'volkus_I', placement: { x: 5, y: 5 } }] }, pieces)
+    expect(areas.map(({ vantage, height }) => [vantage, height])).toEqual([[3.2, 3.2], [6.4, 6.4], [null, 1.1]])
   })
 })

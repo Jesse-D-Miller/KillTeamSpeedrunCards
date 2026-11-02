@@ -11,6 +11,7 @@ import {
   READY_CP,
   SCORE_CATEGORIES,
   SEATS,
+  VANTAGE_FLOORS,
   createGame,
   activeUnit,
   canCounteract,
@@ -138,7 +139,7 @@ const UNIT_FIELDS = {
   apl: (value) => clamp(Math.round(toNumber(value)), -3, 3),
   mark: (value) => (value == null ? null : String(value)),
   // Height on Vantage terrain (0 = killzone floor), used by the Sightline tool.
-  vantage: (value) => ([0, 2, 4].includes(Number(value)) ? Number(value) : null),
+  vantage: (value) => ([0, ...VANTAGE_FLOORS.map((floor) => floor.height)].includes(Number(value)) ? Number(value) : null),
 }
 
 const sanitizeUnitPatch = (patch) => {

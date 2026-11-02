@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { COMMAND_REROLL, createGame, musterBlocker, turnState } from '../game.js'
+import { COMMAND_REROLL, createGame, musterBlocker, turnState, vantageFloor } from '../game.js'
 import { ActionError, applyAction } from '../reducer.js'
 
 const run = (state, steps) =>
@@ -135,6 +135,16 @@ describe('applyAction', () => {
     expect(unit.wounds).toBe(7)
     expect(unit.order).toBe('conceal')
     expect(unit).not.toHaveProperty('hacked')
+  })
+
+  it('takes the Vantage floors at their measured heights', () => {
+    const up = (vantage) =>
+      applyAction(createGame(), { type: 'unit/update', unitKey: 'u-1', maxWounds: 10, patch: { vantage } }, 'B').players.B.unitState['u-1'].vantage
+    expect(up(3.2)).toBe(3.2)
+    expect(up(6.4)).toBe(6.4)
+    expect(up(5)).toBeUndefined()
+    // Games saved with the old 2" and 4" floors still read as 1st and 2nd floor.
+    expect([0, 2, 3.2, 4, 6.4].map(vantageFloor)).toEqual([0, 1, 1, 2, 2])
   })
 
   it('adds, moves and removes tokens', () => {

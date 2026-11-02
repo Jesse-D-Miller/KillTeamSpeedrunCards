@@ -4,9 +4,11 @@ import {
   BASE_SIZES_MM,
   DEFAULT_BASE_MM,
   MOVE_ADJUST_REACH,
+  VANTAGE_FLOORS,
   baseRadiusIn,
   tokenRadiusIn,
   turnState,
+  vantageFloor,
 } from '../../shared/game.js'
 import { MOVE_KINDS, bendToward, capPath, moveLimit, moveStat, moveWarning } from '../../shared/movement.js'
 import { clampToBase, defaultShooterPoint, statusOf } from '../../shared/targeting.js'
@@ -80,9 +82,11 @@ const RANGES = [0, 1, 2, 3, 6]
 // Vantage: which floor of Vantage terrain an operative is on, and the height the rules
 // use for it (inches up; see shared/targeting.js).
 const FLOORS = [
-  { height: 0, floor: 0, label: 'Ground' },
-  { height: 2, floor: 1, label: '1st floor' },
-  { height: 4, floor: 2, label: '2nd floor' },
+  { height: 0, floor: 0, label: 'Ground', caption: 'Ground' },
+  ...VANTAGE_FLOORS.map(({ floor, height }) => {
+    const label = `${floor === 1 ? '1st' : '2nd'} floor`
+    return { height, floor, label, caption: `${label} · ${height}"` }
+  }),
 ]
 // An opponent's operative offers only Ping and Unit card.
 const RADIAL_ACTIONS = [
@@ -1208,8 +1212,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           key: `floor-${floor.height}`,
           label: floor.label,
           mark: <VantageMark floor={floor.floor} />,
-          caption: floor.label,
-          selected: height === floor.height,
+          caption: floor.caption,
+          selected: vantageFloor(height) === floor.floor,
           run: () => {
             act({
               type: 'unit/update',

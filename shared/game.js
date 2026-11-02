@@ -62,6 +62,17 @@ export const createPlayer = (seat) => ({
   unitState: {},
 })
 
+// Heights (inches) of the Vantage floors an operative can stand on, as the Volkus models
+// measure them: a stronghold's first floor, and Stronghold B's tower. A large ruin's
+// upper level counts as a stronghold's first floor (killzone rules).
+export const VANTAGE_FLOORS = [
+  { floor: 1, height: 3.2 },
+  { floor: 2, height: 6.4 },
+]
+
+// Which floor a stored Vantage height is; games saved before real heights used 2 and 4.
+export const vantageFloor = (height) => (!height ? 0 : height > VANTAGE_FLOORS[0].height + 0.5 ? 2 : 1)
+
 export const DEFAULT_SETTINGS = {
   calibration: null,
   showGrid: true,

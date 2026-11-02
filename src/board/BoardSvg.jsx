@@ -1,5 +1,5 @@
 import { useId, useMemo } from 'react'
-import { SEATS, otherSeat, tokenRadiusIn } from '../../shared/game.js'
+import { SEATS, otherSeat, tokenRadiusIn, vantageFloor } from '../../shared/game.js'
 import { EDGE_ROTATION, casualtySlots, edgeCasualtyArea } from '../../shared/geometry.js'
 import { getKillteamById } from '../data/ktData.js'
 import { toOpTypeId } from '../rules/killOpCounts.js'
@@ -406,7 +406,7 @@ function BoardSvg({
               )),
           )}
           {layout.areas.map((area) =>
-            flags.terrainLabels && area.centroid && area.vantage ? (
+            flags.terrainLabels && area.centroid && area.height ? (
               <text
                 key={`${area.id}-v`}
                 className="board-vantage"
@@ -415,7 +415,7 @@ function BoardSvg({
                 textAnchor="middle"
                 dominantBaseline="middle"
               >
-                {area.pieceLabel} · {area.vantage}&quot;
+                {area.pieceLabel} · {area.height}&quot;
               </text>
             ) : null,
           )}
@@ -538,10 +538,10 @@ function BoardSvg({
       )}
 
       {/* Operatives up on Vantage terrain (set from the action ring) show which floor:
-          one chevron for the 1st floor (2" up), two for the 2nd (4" up). */}
+          one chevron for the 1st floor, two for the 2nd (Stronghold B's tower). */}
       {tokenViews.map(({ token, view, status }) => {
         if (!status?.vantage || view.dead) return null
-        const floor = status.vantage >= 4 ? 2 : 1
+        const floor = vantageFloor(status.vantage)
         return (
           <g
             key={`vantage-${token.id}`}

@@ -63,8 +63,10 @@ export const buildTerrain = (arrangement, pieceById) => {
         // The terrain feature this belongs to (rules care about "the same feature").
         featureId: entry.id || piece.id,
         pieceLabel: label,
-        // Volkus B's second area is the tall tower.
-        vantage: label ? (label === 'B' && areaIndex === 1 ? 4 : 2) : null,
+        // Floors carry the height an operative stands at there; rubble only its own height
+        // (it isn't Vantage terrain).
+        vantage: area.vantage ?? null,
+        height: area.vantage ?? area.height ?? null,
         points,
         centroid: polygonCentroid(points),
       })

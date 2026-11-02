@@ -490,7 +490,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   // floor): shooting down at an Engage target gives Accurate.
   await ringAction(a, sniper, 'Vantage')
   const ringA = a.locator(`.unit-radial[data-ring-for="${sniper}"]`)
-  await expect(ringA.getByRole('menuitem')).toHaveText(['Ground', '1st floor', '2nd floor', 'Back'])
+  // Each floor shows its measured height (the Volkus models).
+  await expect(ringA.getByRole('menuitem')).toHaveText(['Ground', '1st floor · 3.2"', '2nd floor · 6.4"', 'Back'])
   await expect(ringA.getByRole('menuitem', { name: 'Ground' })).toHaveAttribute('aria-pressed', 'true')
   await a.waitForTimeout(250)
   await shot(a, '07v-vantage-ring')

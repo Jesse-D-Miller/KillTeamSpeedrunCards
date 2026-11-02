@@ -13,6 +13,7 @@
       "name": "volkus_A",
       "area": {
         "shape": "poly",
+        "vantage": 3.2,
         "points": [
           [0.75, 7.61],
           [0.75, 6.43],
@@ -1435,6 +1436,7 @@
       "areas": [
         {
           "shape": "poly",
+          "vantage": 3.2,
           "points": [
             [2.34, 3.2],
             [1.39, 3.2],
@@ -1471,6 +1473,7 @@
         },
         {
           "shape": "poly",
+          "vantage": 6.4,
           "points": [
             [7.61, 2.02],
             [5.72, 2.02],
@@ -2545,6 +2548,7 @@
       "name": "volkus_C",
       "area": {
         "shape": "poly",
+        "vantage": 3.2,
         "points": [
           [5.76, 3.05],
           [5.65, 3.06],
@@ -2996,6 +3000,7 @@
       "name": "volkus_D",
       "area": {
         "shape": "poly",
+        "vantage": 3.2,
         "points": [
           [5.27, 0.4],
           [5.07, 0.65],
@@ -3435,6 +3440,7 @@
       "name": "volkus_G",
       "area": {
         "shape": "poly",
+        "height": 1.8,
         "points": [
           [1.4, 1.01],
           [1.05, 0.88],
@@ -4075,6 +4081,7 @@
       "name": "volkus_H",
       "area": {
         "shape": "poly",
+        "height": 1.8,
         "points": [
           [1.96, 0.97],
           [1.82, 0.97],
@@ -4272,6 +4279,7 @@
       "name": "volkus_I",
       "area": {
         "shape": "poly",
+        "height": 1.1,
         "points": [
           [0.02, 1.75],
           [0.39, 0.47],
@@ -4446,6 +4454,7 @@
       "name": "volkus_J",
       "area": {
         "shape": "poly",
+        "height": 1.6,
         "points": [
           [0.41, 0.03],
           [0.65, 0.03],
@@ -4587,6 +4596,7 @@
       "name": "volkus_K",
       "area": {
         "shape": "poly",
+        "height": 1.4,
         "points": [
           [0.43, 0.73],
           [0.13, 0.73],
@@ -4705,6 +4715,7 @@
       "name": "volkus_L",
       "area": {
         "shape": "poly",
+        "height": 0.7,
         "points": [
           [0.06, 3.3],
           [0.07, 2.43],
@@ -4894,6 +4905,7 @@
       "name": "volkus_M",
       "area": {
         "shape": "poly",
+        "height": 0.6,
         "points": [
           [0.68, 0.13],
           [2.61, 0.3],
@@ -5075,6 +5087,7 @@
       "name": "volkus_N",
       "area": {
         "shape": "poly",
+        "height": 0.5,
         "points": [
           [1.27, 0.18],
           [1.27, 1.27],
