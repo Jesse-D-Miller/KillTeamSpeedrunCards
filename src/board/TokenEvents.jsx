@@ -15,6 +15,17 @@ const shardPath = (r) => {
 
 function TokenEvent({ effect }) {
   const { kind, x, cy, r } = effect
+  if (kind === 'engage' || kind === 'conceal') {
+    // Engage: one orange ring ripples out. Conceal: a dashed ring closes in on the rim
+    // and fades, like ducking out of sight. --from/--to scale it from/to the rim.
+    const engage = kind === 'engage'
+    const far = (r + (engage ? 0.6 : 0.3)) / r
+    return (
+      <g className={`token-event token-event-${kind}`} data-event={kind} transform={`translate(${x} ${cy})`}>
+        <circle className="token-event-order-ring" r={r} style={{ '--from': engage ? 1 : far, '--to': engage ? far : 1.04 }} />
+      </g>
+    )
+  }
   if (kind === 'shatter') {
     return (
       <g className="token-event token-event-shatter" data-event="shatter" transform={`translate(${x} ${cy})`}>

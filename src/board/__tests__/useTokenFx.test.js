@@ -43,4 +43,14 @@ describe('token effects', () => {
     expect(kinds(result, 't1')).toEqual(['shatter'])
     expect(result.current.t1[0]).toMatchObject({ x: 4, cy: 6 })
   })
+
+  it('marks an order change, and a counteraction', () => {
+    const { result, rerender } = renderHook(({ ops }) => useTokenFx(ops), { initialProps: { ops: { t1: op() } } })
+    rerender({ ops: { t1: op({ order: 'engage' }) } })
+    expect(kinds(result, 't1')).toEqual(['engage'])
+    rerender({ ops: { t1: op({ order: 'conceal' }) } })
+    expect(kinds(result, 't1')).toEqual(['conceal'])
+    rerender({ ops: { t1: op({ counteract: 2 }) } })
+    expect(kinds(result, 't1')).toEqual(['counteract'])
+  })
 })

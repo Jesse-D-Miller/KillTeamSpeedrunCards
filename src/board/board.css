@@ -913,3 +913,39 @@
     animation: token-fade 1s ease-in forwards;
   }
 }
+
+/* Order changed: Engage sends one orange ring out; Conceal closes a dashed ring in. */
+.token-event-order-ring {
+  fill: none;
+  animation: token-order-ring 0.9s ease-out forwards;
+}
+
+.token-event-engage .token-event-order-ring {
+  stroke: #ff8a3d;
+  stroke-width: 0.06;
+}
+
+.token-event-conceal .token-event-order-ring {
+  stroke: #9aa4b2;
+  stroke-width: 0.05;
+  stroke-dasharray: 0.16 0.1;
+  animation-duration: 0.7s;
+}
+
+@keyframes token-order-ring {
+  from {
+    transform: scale(var(--from));
+    opacity: 0.75;
+  }
+  to {
+    transform: scale(var(--to));
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .token-event-order-ring {
+    animation-name: token-fade;
+    transform: scale(var(--to));
+  }
+}

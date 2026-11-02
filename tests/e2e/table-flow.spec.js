@@ -928,6 +928,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(theynTag).toHaveAttribute('data-order-color', 'black')
   await a.locator('.map-stage [data-order-for="t1"]').click()
   await expect(theynTag).toHaveAttribute('data-order', 'engage')
+  // Going to Engage sends one orange ring out from the base.
+  await expect(table.locator('[data-events-for="t1"] [data-event="engage"]')).toHaveCount(1)
 
   // Equipment markers go on the killzone with no options shown. (Token is still on, so
   // its button reopens the last list used.)
