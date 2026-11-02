@@ -31,6 +31,7 @@ import { RailPhaseButton, RailStatus, TeamSectionButtons, TeamSectionPanel, View
 import UnitCardModal from './UnitCardModal.jsx'
 import BoardArranger from './BoardArranger.jsx'
 import WeaponChooser from './WeaponChooser.jsx'
+import StalwartPrompt from './StalwartPrompt.jsx'
 import { meleeWeaponsFor, rangedWeaponsFor } from '../rules/weaponRules.js'
 import AttackDrawer from './AttackDrawer.jsx'
 import ToolIcon from './ToolIcon.jsx'
@@ -590,7 +591,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       // ends the tool.
       if (!alive) leaveTool()
       else if (!shooter || tapped.seat === shooter.seat) ringFor(tapped.id)
-      else publish({ ...current, targetId: tapped.id })
+      // A free shot with a fixed target (Stalwart Defence) keeps it.
+      else if (!current.lockTarget) publish({ ...current, targetId: tapped.id })
       return
     }
   }
@@ -898,6 +900,18 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     }
   }
 
+  // A free Shoot action outside its own activation (Stalwart Defence): its target is fixed
+  // and it's limited to the weapons that ploy allows.
+  const startFreeShot = ({ shooterId, targetId }) => {
+    setRadial(null)
+    clearTool()
+    endPlacing()
+    setSelectedId(null)
+    setTool('attack')
+    publish({ tool: 'attack', mode: 'shoot', shooterId, targetId, point: null, weaponId: null, lockTarget: true, free: 'stalwart' })
+    setWeaponMenuOpen(true)
+  }
+
   // A move action picked from the operative's Move ring: Move on, aimed at it, with
   // that action's limit (Adjust only nudges a finished move).
   const startMove = (kind, token) => {
@@ -1126,7 +1140,15 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       <WeaponChooser
         mode={overlay.mode}
         operativeName={attacker.label}
-        weapons={overlay.mode === 'fight' ? meleeWeaponsFor(game, attacker) : rangedWeaponsFor(game, attacker)}
+        weapons={
+          overlay.mode === 'fight'
+            ? meleeWeaponsFor(game, attacker)
+            : rangedWeaponsFor(game, attacker).filter(
+                (weapon) =>
+                  overlay.free !== 'stalwart' ||
+                  (!/\b(frag|krak) grenade\b/i.test(weapon.name) && !weapon.rules?.blast && !weapon.rules?.devastating?.distance),
+              )
+        }
         selectedId={overlay.weaponId ?? null}
         onChoose={(weaponId) => {
           publish({ ...overlay, weaponId })
@@ -1464,6 +1486,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         ) : null}
       </div>
       {weaponMenu}
+      <StalwartPrompt onShoot={startFreeShot} />
       {cardToken ? <UnitCardModal token={cardToken} onClose={() => setCardFor(null)} /> : null}
       {arranging ? <BoardArranger onClose={() => setArranging(false)} /> : null}
       <AttackDrawer {...attack} />

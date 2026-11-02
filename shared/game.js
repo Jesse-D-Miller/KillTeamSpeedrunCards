@@ -46,6 +46,12 @@ export const resourcefulGain = (outsideControl) => (outsideControl >= 5 ? 2 : ou
 export const BONDS_THAT_BIND = 'VOT-HKY-T-BTB'
 export const BONDS_RANGE_IN = 3
 
+// Stalwart Defence (Yaegir firefight ploy): an enemy ends a move within control range of a
+// Yaegir; another Yaegir within 6" of that one (not itself within enemy control range)
+// shoots it for free, without grenades, Blast or x" Devastating weapons.
+export const STALWART_DEFENCE = 'VOT-HKY-T-SD'
+export const STALWART_RANGE_IN = 6
+
 // No Kin Left Behind (Yaegir firefight ploy): when a Yaegir is incapacitated, move the
 // Fallen Kin marker to where it fell.
 export const NO_KIN_LEFT_BEHIND = 'VOT-HKY-T-NKLB'

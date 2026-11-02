@@ -65,6 +65,22 @@ const tableActions = (table, actions) =>
     actions,
   )
 
+// The game as the projector sees it (test checks that need positions or unit state).
+const tableState = (table) =>
+  table.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const socket = new WebSocket(`ws://${window.location.host}/ws`)
+        socket.onopen = () => socket.send(JSON.stringify({ type: 'hello', role: 'table' }))
+        socket.onmessage = (event) => {
+          const message = JSON.parse(event.data)
+          if (message.type !== 'state') return
+          socket.close()
+          resolve(message.state)
+        }
+      }),
+  )
+
 const dragOnMap = async (page, from, to) => {
   const box = await page.locator('.map-stage svg').boundingBox()
   const at = (fx, fy) => [box.x + box.width * fx, box.y + box.height * fy]
@@ -1377,6 +1393,22 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await bondsPanel.getByRole('button', { name: 'Bonds That Bind: used, tap to undo' }).click()
   await expect(aliceBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText(String(cpBeforeBonds))
   await a.locator('.team-panel').getByRole('button', { name: 'Close' }).click()
+  // Stalwart Defence: an enemy ending a move within control range of a Yaegir has Alice's
+  // iPad offer the ploy with the Yaegirs that could shoot it (she passes; it's put back).
+  // (A Vespid is brought on for this, then taken off again.)
+  await tableActions(table, [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-VSS-7', maxWounds: 9, x: 28, y: 2, baseMm: 28.5, baseLocked: true }])
+  const stalwartState = await tableState(table)
+  const stalwartAlive = (token) => token.unitKey && !stalwartState.players[token.seat].unitState[token.unitKey]?.dead
+  const stalwartFriend = stalwartState.tokens.find((token) => token.seat === 'A' && token.id !== 't2' && stalwartAlive(token))
+  const stalwartEnemy = stalwartState.tokens.find((token) => token.unitKey === 'TAU-VESP-VSS-7')
+  await expect(table.locator(`[data-token-id="${stalwartEnemy.id}"]`)).toHaveCount(1)
+  await tableActions(table, [{ type: 'token/update', id: stalwartEnemy.id, x: stalwartFriend.x + 1.5, y: stalwartFriend.y }])
+  const stalwart = a.getByRole('dialog', { name: 'Stalwart Defence' })
+  await expect(stalwart).toContainText('moved into control range of')
+  await shot(a, '12s-stalwart-defence')
+  await stalwart.getByRole('button', { name: 'Not now' }).click()
+  await expect(stalwart).toHaveCount(0)
+  await tableActions(table, [{ type: 'token/remove', id: stalwartEnemy.id }])
   await openTab(a, 'Operatives')
   await bladeCard.locator('button.state-pill').click()
   await expect(bladeTag).toHaveAttribute('data-order-color', 'red')

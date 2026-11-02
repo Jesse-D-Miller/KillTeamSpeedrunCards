@@ -658,7 +658,7 @@ All of these were replaced in Approved Ops 2025.
     - In Position.
     - **Tough Survivalists:** while the ploy is active, a Yaegir that hasn't taken damage yet this turning point (the server records `damagedTp` whenever wounds go down) gets halved Hit and Crit buttons in its stats drawer (rounding up, minimum 2; only shown when that lowers the damage). Any damage, halved or not, uses up its first time.
     - Sturdy.
-    - Stalwart Defence.
+    - **Stalwart Defence:** when an enemy operative ends a move within control range of one of your Yaegirs during the firefight, your iPad's map offers the ploy with the Yaegirs that could shoot (within 6" of that one and not themselves within enemy control range; visibility isn't checked). Picking one spends the ploy (1CP) and starts its free Shoot without activating it: the target is fixed, and grenades, Blast and x" Devastating weapons aren't offered. Shown on the Map screen only.
     - The Fallen Kin marker within 3".
     - Pan Spectral Visor.
     - Tracker.
