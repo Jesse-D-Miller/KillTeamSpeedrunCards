@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
-import { NEXT_ACTIVATION, activePloyIds, aplBonus, createUnitState, initiativeBefore, otherSeat } from '../../../shared/game.js'
+import { HERNKYN_YAEGIRS, NEXT_ACTIVATION, activePloyIds, aplBonus, createUnitState, initiativeBefore, otherSeat, tokenRadiusIn } from '../../../shared/game.js'
+import { baseWithinRect } from '../../../shared/geometry.js'
+import { getLayout } from '../../board/boardData.js'
 import UnitCard from '../../components/UnitCard.jsx'
 import { seatColor } from '../../board/colors.js'
 import { formatCostLabel, isLegionaryUnit } from '../../rules/equipment.js'
@@ -17,7 +19,49 @@ import { byStatus, useRowDetails } from '../useRowDetails.js'
 // with initiative cards, the winner deciding who has initiative, the secret primary
 // op in turning point 1, then strategic ploys. It covers whichever tab is open until
 // both players have tapped Start firefight.
-export function StrategySheet() {
+// Hernkyn Yaegirs' Dauntless Explorers, a strategic gambit in turning point 1: each
+// Yaegir wholly within the drop zone can Reposition (on the map, with the sheet put aside),
+// ending wholly within 4" of the drop zone.
+function DauntlessGambit({ onAside }) {
+  const { state: game, seat, me, act } = usePlayer()
+  const drop = getLayout(game.table.mapId, game.table.arrangementId).zones[game.table.dropZones?.[seat]]?.drop ?? null
+  const eligible = game.tokens.filter(
+    (token) => token.seat === seat && token.unitKey && !me.unitState?.[token.unitKey]?.dead && baseWithinRect(token, tokenRadiusIn(token), drop),
+  )
+  const used = me.dauntless?.tp === game.battle.tp
+  return (
+    <section className="strategy-step strategy-gambit" data-gambit="dauntless">
+      <h4>
+        <span className="step-number">◆</span> Strategic gambit · Dauntless Explorers
+      </h4>
+      <p className="muted">
+        Each friendly Yaegir wholly within your drop zone can immediately Reposition. Each that does must end wholly within 4&quot; of
+        your drop zone.
+      </p>
+      {used ? (
+        <div className="row">
+          <button type="button" className="btn is-primary" onClick={onAside}>
+            Reposition on the map ({me.dauntless.tokenIds.length})
+          </button>
+          <button type="button" className="btn" onClick={() => act({ type: 'battle/dauntless', on: false })}>
+            Take back
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="btn"
+          disabled={!eligible.length}
+          onClick={() => act({ type: 'battle/dauntless', tokenIds: eligible.map((token) => token.id) })}
+        >
+          {eligible.length ? `Use · ${eligible.length} Yaegir${eligible.length === 1 ? '' : 's'} in your drop zone` : 'No Yaegirs wholly in your drop zone'}
+        </button>
+      )}
+    </section>
+  )
+}
+
+export function StrategySheet({ onAside }) {
   const { state: game, seat, opponentSeat, opponent, me, killteam, act } = usePlayer()
   const { tp, initiativeByTp, rollOffByTp } = game.battle
   const stratPloys = (killteam?.ploys ?? []).filter((ploy) => ploy.ployType === 'S')
@@ -138,6 +182,8 @@ export function StrategySheet() {
               />
             </section>
           ) : null}
+
+          {tp === 1 && me.killteamId === HERNKYN_YAEGIRS ? <DauntlessGambit onAside={onAside} /> : null}
 
           <section className={`strategy-step${initiative ? '' : ' is-locked'}`}>
             <h4>

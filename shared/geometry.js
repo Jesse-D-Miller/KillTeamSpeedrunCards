@@ -105,6 +105,15 @@ export const buildTerrain = (arrangement, pieceById) => {
   return { areas, walls, interiors, doors }
 }
 
+// A base (centre point, radius) wholly within a rect { x, y, w, h }, or within margin
+// inches of it (e.g. "wholly within 4\" of your drop zone").
+export const baseWithinRect = (point, radius, rect, margin = 0) =>
+  Boolean(rect) &&
+  point.x - radius >= rect.x - margin &&
+  point.x + radius <= rect.x + rect.w + margin &&
+  point.y - radius >= rect.y - margin &&
+  point.y + radius <= rect.y + rect.h + margin
+
 // Map 2 zone rects are authored in portrait (22x30); the board is always drawn landscape.
 export const resolveZoneRect = (zone, mapId) => {
   if (!zone) return null

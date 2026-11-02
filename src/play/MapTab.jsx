@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { adjustPath, clampWithin, distance, stepPath } from '../../shared/geometry.js'
+import { adjustPath, baseWithinRect, clampWithin, distance, stepPath } from '../../shared/geometry.js'
 import {
   BASE_SIZES_MM,
   DEFAULT_BASE_MM,
   MOVE_ADJUST_REACH,
-  RESOURCEFUL_KILLTEAM,
+  HERNKYN_YAEGIRS,
   VANTAGE_FLOORS,
   baseRadiusIn,
   tokenRadiusIn,
@@ -237,6 +237,11 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const steppedMoves = game.phase === 'battle'
   // Firefight phase: moving (or tapping) an operative activates it.
   const firefight = game.phase === 'battle' && game.battle.firefightTp === game.battle.tp
+  // Dauntless Explorers (Yaegirs, TP1 strategy phase): which operatives can Reposition,
+  // and the drop zone they must end wholly within 4" of.
+  const dauntless =
+    game.phase === 'battle' && !firefight && game.players[seat]?.dauntless?.tp === game.battle.tp ? new Set(game.players[seat].dauntless.tokenIds) : null
+  const myDrop = layout.zones[game.table.dropZones?.[seat]]?.drop ?? null
   const turn = turnState(game)
   // Operatives are only set up before the battle (core rules), so no Units tool after.
   const tools = TOOLS.filter(([id]) => id !== 'units' || game.phase !== 'battle')
@@ -304,13 +309,17 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const preview = { id: gesture.id, path: gesture.path, x: at.x, y: at.y }
     setDragPreview(preview)
     sendEphemeral({ tool: 'drag', ...preview })
-    const warning = moveWarning({
-      kind: gesture.kind,
-      mover: { ...gesture.token, ...end },
-      start: gesture.path[gesture.keep - 1],
-      enemies: enemiesOf(gesture.token),
-      radius: tokenRadiusIn,
-    })
+    const warning =
+      moveWarning({
+        kind: gesture.kind,
+        mover: { ...gesture.token, ...end },
+        start: gesture.path[gesture.keep - 1],
+        enemies: enemiesOf(gesture.token),
+        radius: tokenRadiusIn,
+      }) ??
+      (dauntless?.has(gesture.token.id) && !baseWithinRect(end, tokenRadiusIn(gesture.token), myDrop, 4)
+        ? 'Dauntless Explorers: end wholly within 4" of your drop zone.'
+        : null)
     setMoveStatus({
       label: MOVE_KINDS[gesture.kind]?.label ?? 'Free move',
       used: gesture.path.length - gesture.keep,
@@ -1346,7 +1355,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       ]
     }
     const legionary = isLegionaryUnit(roster.find((unit) => unit.key === radialToken.unitKey)?.opType)
-    const resourceful = game.phase === 'battle' && game.players[radialToken.seat]?.killteamId === RESOURCEFUL_KILLTEAM
+    const resourceful = game.phase === 'battle' && game.players[radialToken.seat]?.killteamId === HERNKYN_YAEGIRS
     const actions = radialIsOperative
       ? RADIAL_ACTIONS.filter(
           (action) => (!action.own || radialToken.seat === seat) && (!action.legionary || legionary) && (!action.resourceful || resourceful),
@@ -1386,6 +1395,15 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             <BaseSizer token={editing} onStep={(direction) => stepBase(editing, direction)} />
           ) : null}
         </BoardSvg>
+        {dauntless && !moveStatus ? (
+          <div className="move-status glass" role="status" data-dauntless>
+            <span className="move-status-label">Dauntless Explorers</span>
+            <span className="move-status-warning">
+              Reposition {dauntless.size === 1 ? 'the Yaegir' : `each of the ${dauntless.size} Yaegirs`} that started in your drop zone (once each),
+              ending wholly within 4&quot; of it. Then go back to the strategy phase.
+            </span>
+          </div>
+        ) : null}
         {moveStatus ? (
           <div className={`move-status glass${moveStatus.warning ? ' is-warning' : ''}`} role="status" data-move-status>
             <span className="move-status-label">{moveStatus.label}</span>

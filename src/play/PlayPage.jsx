@@ -72,6 +72,9 @@ function IncomingAttack() {
 function SeatScreen() {
   const { status, state, seat, takeover } = useGame()
   const [tab, setTab] = useState('main')
+  // The strategy sheet put aside to move operatives on the map (Dauntless Explorers),
+  // for this strategy phase only; coming back returns to the tab it was opened from.
+  const [aside, setAside] = useState(null)
   const rootRef = useRef(null)
   useKeyboardOverlay(rootRef)
   // The game ending opens the results, whichever tab was showing.
@@ -151,7 +154,27 @@ function SeatScreen() {
         ) : null}
         {activeTab !== 'map' ? <IncomingAttack /> : null}
         {/* The strategy phase covers every tab until both players start the firefight. */}
-        {state.phase === 'battle' && state.battle.firefightTp !== state.battle.tp ? <StrategySheet /> : null}
+        {state.phase === 'battle' && state.battle.firefightTp !== state.battle.tp ? (
+          aside?.tp === state.battle.tp ? (
+            <button
+              type="button"
+              className="btn is-primary strategy-return"
+              onClick={() => {
+                setTab(aside.tab)
+                setAside(null)
+              }}
+            >
+              Back to the strategy phase
+            </button>
+          ) : (
+            <StrategySheet
+              onAside={() => {
+                setAside({ tp: state.battle.tp, tab })
+                setTab('map')
+              }}
+            />
+          )
+        ) : null}
         <ErrorToast />
       </div>
     </RuleProvider>

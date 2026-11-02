@@ -39,7 +39,7 @@ export const otherSeat = (seat) => (seat === 'A' ? 'B' : 'A')
 // turning point. Each operative can spend 1 per activation: +1 APL until the end of its
 // activation, or regain D3+1 lost wounds when it's activated (both only outside enemy
 // control range).
-export const RESOURCEFUL_KILLTEAM = 'VOT-HKY'
+export const HERNKYN_YAEGIRS = 'VOT-HKY'
 export const resourcefulGain = (outsideControl) => (outsideControl >= 5 ? 2 : outsideControl >= 1 ? 1 : 0)
 // APL an operative has from spending Resourceful this activation.
 export const aplBonus = (unit) => (unit?.resourceful === 'apl' ? 1 : 0)

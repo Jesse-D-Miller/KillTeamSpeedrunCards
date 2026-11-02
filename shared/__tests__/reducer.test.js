@@ -850,3 +850,25 @@ describe('Hernkyn Yaegirs: Resourceful', () => {
     expect(() => spend(state, 'apl')).toThrow(/points/)
   })
 })
+
+describe('Hernkyn Yaegirs: Dauntless Explorers', () => {
+  const battle = () =>
+    run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'VOT-HKY' }, 'A'],
+      [{ type: 'setup/killteam', killteamId: 'TAU-VESP' }, 'B'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'VOT-HKY-WAR-0', maxWounds: 8, x: 2, y: 2 }, 'A'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-VSS-0', maxWounds: 9, x: 20, y: 20 }, 'B'],
+    ])
+  it('records the Yaegirs that can Reposition, only its own, in the TP1 strategy phase', () => {
+    const start = battle()
+    const [yaegir, vespid] = start.tokens.map((token) => token.id)
+    const state = applyAction(start, { type: 'battle/dauntless', tokenIds: [yaegir, vespid, 'nope'] }, 'A')
+    expect(state.players.A.dauntless).toEqual({ tp: 1, tokenIds: [yaegir] })
+    expect(applyAction(state, { type: 'battle/dauntless', on: false }, 'A').players.A.dauntless).toBeNull()
+    expect(() => applyAction(start, { type: 'battle/dauntless', tokenIds: [vespid] }, 'B')).toThrow(/Yaegirs/)
+    const tp2 = applyAction(start, { type: 'battle/nextTp' }, 'table')
+    expect(() => applyAction(tp2, { type: 'battle/dauntless', tokenIds: [yaegir] }, 'A')).toThrow(/turning point 1/)
+  })
+})

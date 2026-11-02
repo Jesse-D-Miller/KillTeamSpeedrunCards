@@ -2587,3 +2587,15 @@
   font-weight: 600;
 }
 
+
+/* The strategy sheet put aside (Dauntless Explorers): a button back to it, bottom centre
+   (clear of the map's move banner at the top). */
+.strategy-return {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  left: 50%;
+  z-index: 60;
+  transform: translateX(-50%);
+  min-height: 44px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}

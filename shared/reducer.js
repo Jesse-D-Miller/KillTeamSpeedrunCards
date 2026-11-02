@@ -10,7 +10,7 @@ import {
   PHASES,
   READY_CP,
   SCORE_CATEGORIES,
-  RESOURCEFUL_KILLTEAM,
+  HERNKYN_YAEGIRS,
   SEATS,
   VANTAGE_FLOORS,
   createGame,
@@ -726,7 +726,7 @@ const handlers = {
       next = updatePlayer(next, seat, (player) => ({
         cp: player.cp + READY_CP,
         // Yaegirs discard last turning point's Resourceful points and gain new ones.
-        ...(player.killteamId === RESOURCEFUL_KILLTEAM ? { sp: resourcefulGain(outsideEnemyControl(next, seat)) } : {}),
+        ...(player.killteamId === HERNKYN_YAEGIRS ? { sp: resourcefulGain(outsideEnemyControl(next, seat)) } : {}),
         initiativeCards: (player.initiativeCards ?? []).filter((card) => !card.used),
         unitState: Object.fromEntries(
           Object.entries(player.unitState).map(([key, unit]) => [
@@ -746,7 +746,7 @@ const handlers = {
     requirePhase(state, 'battle')
     const seat = resolveSeat(action, actor)
     const player = state.players[seat]
-    if (player.killteamId !== RESOURCEFUL_KILLTEAM) fail('Only Hernkyn Yaegirs are Resourceful.')
+    if (player.killteamId !== HERNKYN_YAEGIRS) fail('Only Hernkyn Yaegirs are Resourceful.')
     const use = action.use === 'heal' ? 'heal' : 'apl'
     const unitKey = String(action.unitKey ?? '')
     const unit = player.unitState[unitKey]
@@ -764,6 +764,24 @@ const handlers = {
       Object.assign(patch, { wounds: Math.min(maxWounds, unit.wounds + roll), lastHit: 'normal', resourcefulRoll: roll })
     }
     return updatePlayer(patchUnit(state, seat, unitKey, patch), seat, (current) => ({ sp: current.sp - 1 }))
+  },
+
+  // Hernkyn Yaegirs' Dauntless Explorers (faction rule): a STRATEGIC GAMBIT in the first
+  // turning point. Each friendly Yaegir wholly within your drop zone can immediately
+  // Reposition, ending wholly within 4" of the drop zone. The iPad lists which ones are in
+  // the drop zone (it knows the killzone); on: false takes it back.
+  'battle/dauntless': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const player = state.players[seat]
+    if (player.killteamId !== HERNKYN_YAEGIRS) fail('Only Hernkyn Yaegirs have Dauntless Explorers.')
+    if (state.battle.tp !== 1 || state.battle.firefightTp === state.battle.tp) fail('Dauntless Explorers is a strategic gambit in turning point 1.')
+    if (action.on === false) return updatePlayer(state, seat, { dauntless: null })
+    const ids = new Set((Array.isArray(action.tokenIds) ? action.tokenIds : []).map(String))
+    const tokenIds = state.tokens
+      .filter((token) => ids.has(token.id) && token.seat === seat && token.unitKey && !player.unitState[token.unitKey]?.dead)
+      .map((token) => token.id)
+    return updatePlayer(state, seat, { dauntless: { tp: state.battle.tp, tokenIds } })
   },
 
   // A player confirms (or takes back) ending turning point fromTp. It moves on once, when
