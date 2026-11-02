@@ -265,6 +265,7 @@ The working rules reference for this project: what the official rules say, in ou
 - **Garrisoned Stronghold:** inside an operative retaliates first.
 - **Door Fight (1AP):** fight across a door.
 - **Compound Siege upgrade:** stockades with breach points, and bunkers.
+- **App outlines (`src/data/terrainPieces.json`):** most pieces are rough rectangles. Pieces are being replaced with outlines traced from photos of the real models on an inch grid, so sightlines, cover and obscured match the table. Each tracing is centred in its old box so the killzone layouts still place it in the same spot. Traced so far: **L** (light rubble, 1.96" × 3.42", was a 2" × 4" box; 1 Nov 2026).
 
 ### Gallowdark and Tomb World (close quarters)
 
