@@ -13,10 +13,35 @@ const CRACKS = '0.34 0.05 0.16 0.07 0.42 0.04 0.22 0.08'
 const SPARK_PATH = 'M0 -0.07L0.018 -0.018L0.07 0L0.018 0.018L0 0.07L-0.018 0.018L-0.07 0L-0.018 -0.018Z'
 const SPARK_ANGLES = [0, 120, 240]
 
+// APL changed: a small tag on the left of the base (clear of the name, order tag, riders
+// and wound badge), ▲ green for more, ▼ red for less. Stunned counts as −1.
+const APL_TAG_ANGLE = 180
+const aplChange = (status) => (Number(status?.apl) || 0) + ((status?.statuses ?? []).includes('stunned') ? -1 : 0)
+
+function AplTag({ view, change }) {
+  const { x, cy, r, facing = 0 } = view
+  const angle = ((APL_TAG_ANGLE + facing) * Math.PI) / 180
+  const tx = x + Math.cos(angle) * (r + 0.3)
+  const ty = cy + Math.sin(angle) * (r + 0.3)
+  const up = change > 0
+  return (
+    <g className={`status-apl ${up ? 'is-up' : 'is-down'}`} data-status="apl" data-apl={change} transform={`translate(${tx} ${ty}) rotate(${facing})`}>
+      <g className="status-apl-in">
+        <rect x={-0.27} y={-0.13} width={0.54} height={0.26} rx={0.13} />
+        <text x={0} y={0.005} textAnchor="middle" dominantBaseline="central">
+          {up ? '▲' : '▼'}
+          {up ? `+${change}` : `−${-change}`}
+        </text>
+      </g>
+    </g>
+  )
+}
+
 function StatusRim({ token, view, status, maxWounds }) {
   const { x, cy, r } = view
   const injured = maxWounds && status?.wounds != null && isInjured(maxWounds, status.wounds)
   const stunned = (status?.statuses ?? []).includes('stunned')
+  const apl = aplChange(status)
   return (
     <g className="status-rim" data-status-for={token.id} aria-hidden="true">
       {injured ? <circle className="status-injured" data-status="injured" cx={x} cy={cy} r={r + 0.14} strokeDasharray={CRACKS} /> : null}
@@ -29,6 +54,7 @@ function StatusRim({ token, view, status, maxWounds }) {
           </g>
         </g>
       ) : null}
+      {apl ? <AplTag key={apl} view={view} change={apl} /> : null}
     </g>
   )
 }

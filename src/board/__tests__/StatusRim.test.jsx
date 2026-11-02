@@ -21,4 +21,13 @@ describe('status rim', () => {
     expect(rim({ wounds: 8, statuses: ['stunned'] }).querySelectorAll('[data-status="stunned"] .status-spark')).toHaveLength(3)
     expect(rim({ wounds: 8, statuses: [] }).querySelector('[data-status="stunned"]')).toBeNull()
   })
+
+  it('tags a changed APL, counting Stunned as −1', () => {
+    const tag = (status) => rim({ wounds: 8, ...status }).querySelector('[data-status="apl"]')
+    expect(tag({ apl: 1 }).getAttribute('data-apl')).toBe('1')
+    expect(tag({ apl: 1 }).textContent).toBe('▲+1')
+    expect(tag({ statuses: ['stunned'] }).textContent).toBe('▼−1')
+    expect(tag({ apl: 1, statuses: ['stunned'] })).toBeNull()
+    expect(tag({})).toBeNull()
+  })
 })

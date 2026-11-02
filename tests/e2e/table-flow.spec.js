@@ -516,6 +516,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await editRing.getByRole('menuitem', { name: 'Stunned' }).click()
   const sparks = table.locator(`[data-status-for="${sniper}"] [data-status="stunned"]`)
   await expect(sparks).toHaveCount(1)
+  // Stunned is APL −1, tagged ▼ beside the base.
+  await expect(table.locator(`[data-status-for="${sniper}"] [data-status="apl"]`)).toHaveText('▼−1')
   await ringAction(a, sniper, 'Edit')
   await expect(editRing.getByRole('menuitem', { name: 'Stunned' })).toHaveAttribute('aria-pressed', 'true')
   await editRing.getByRole('menuitem', { name: 'Stunned' }).click()

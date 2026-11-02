@@ -750,6 +750,53 @@
   }
 }
 
+/* APL changed: a small ▲/▼ tag that pops in (up) or sinks in (down) once. */
+.status-apl rect {
+  fill-opacity: 0.85;
+}
+
+.status-apl.is-up rect {
+  fill: #2f9e44;
+}
+
+.status-apl.is-down rect {
+  fill: #c92a2a;
+}
+
+.status-apl text {
+  fill: #fff;
+  font-size: 0.17px;
+  font-weight: 700;
+}
+
+.status-apl.is-up .status-apl-in {
+  animation: status-apl-pop 0.5s cubic-bezier(0.3, 1.6, 0.6, 1) both;
+}
+
+.status-apl.is-down .status-apl-in {
+  animation: status-apl-sink 0.5s ease-out both;
+}
+
+@keyframes status-apl-pop {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes status-apl-sink {
+  from {
+    transform: translateY(-0.2px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-apl .status-apl-in {
+    animation: none;
+  }
+}
+
 /* ---- Token events: one-off effects, about a second each (TokenEvents.jsx) ---- */
 .token-events {
   pointer-events: none;
