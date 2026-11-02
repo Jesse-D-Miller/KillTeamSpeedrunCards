@@ -691,6 +691,7 @@ All of these were replaced in Approved Ops 2025.
     - Warrior Instincts: off once a Communion point is spent.
     - Aerial Guidance: the shooter must be visible to and within 6" of a drone that can see the target.
     - Ocelli: +3" for Vantage, offered only when the operative used FLY this activation.
+    - **Darting Flight (firefight ploy):** on a Vespid's Move ring (1CP, once per turning point). `battle/dartingFlight` spends the ploy, marks the operative (`dartingTp`) and asks the player for the D3 on its ring; picking the number starts a Reposition that much longer (or a FLY set-up, if Fly is on). Its Shoot and Fight are greyed out ("Darting Flight") for the rest of the turning point.
     - **FLY:** a Vespid's Move ring has a Fly switch for the move picked next; the move record then includes `fly` (kept apart from the move actions, so Heavy isn't confused), the banner says FLY, a flying Charge gets no extra 2" (its Move stat, per FLY), and Razor Wire doesn't slow it (it's set up again, not moved across). Airborne Predators and Neutron Charge trigger on "moves or uses FLY", which any move already covers. The set-up itself still follows the dragged path; terrain isn't checked.
     - Neutron Overload.
     - Camouflaged, Ghost Rig and Evasive Drone.

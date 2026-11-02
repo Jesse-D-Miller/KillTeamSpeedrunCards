@@ -1218,6 +1218,10 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await stingerRing.getByRole('menuitem', { name: 'Move', exact: true }).click()
   await stingerRing.getByRole('menuitem', { name: 'Fly' }).click()
   await expect(stingerRing.getByRole('menuitem', { name: 'Fly' })).toHaveAttribute('aria-pressed', 'true')
+  // Darting Flight (1CP) turns the ring to dice for its D3 (given back here, unrolled).
+  await stingerRing.getByRole('menuitem', { name: 'Darting Flight' }).click()
+  await expect(b.locator(`.unit-radial[data-ring-for="${stinger}"][data-menu="roll"]`).getByRole('menuitem')).toHaveText(['1', '2', '3', 'Back'])
+  await tableActions(table, [{ type: 'battle/firefightPloy', seat: 'B', ployId: 'TAU-VESP-T-DFL', on: false }])
   await b.locator(`.map-stage [data-token-id="${stinger}"] .board-token-base`).click()
   await expect(stingerRing).toHaveCount(0)
   await tableActions(table, [

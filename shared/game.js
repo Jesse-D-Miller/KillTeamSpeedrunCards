@@ -148,6 +148,8 @@ export const clampAplChange = (change) => Math.max(-1, Math.min(1, change))
 // Kill teams that keep a tally of special points (Yaegirs' Resourceful points, the
 // Vespids' points) shown beside CP and VP.
 export const VESPID_STINGWINGS = 'TAU-VESP'
+// Vespid firefight ploy: a Reposition D3" further, then no Shoot or Fight this TP.
+export const DARTING_FLIGHT = 'TAU-VESP-T-DFL'
 // Vespid equipment: roll two D3 for Communion and keep one.
 export const NEUROSTIMULANT = 'TAU-VESP-NS'
 // Vespid equipment: once per turning point, a Pick Up or mission action without a point.

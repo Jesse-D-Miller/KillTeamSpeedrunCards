@@ -35,6 +35,7 @@ import {
   MINES_MARKER,
   SMOKE_MARKER,
   VESPID_STINGWINGS,
+  DARTING_FLIGHT,
   NEUROSTIMULANT,
   CONVERGENCE_STIMULANT,
   SMOKE_USES_KEY,
@@ -590,6 +591,10 @@ const ROLL_EFFECTS = {
       ),
     }
     return victim?.unitKey && extra ? hurt(noted, victim, extra) : noted
+  },
+  darting: (state, roll, value) => {
+    const token = state.tokens.find((candidate) => candidate.id === roll.tokenId)
+    return token?.unitKey ? patchUnit(state, token.seat, token.unitKey, { dartingBonus: value }, token.maxWounds) : state
   },
   communion: (state, roll, value) =>
     updatePlayer(state, roll.seat, (player) => ({ sp: (player.sp ?? 0) + value + (oversightDroneIn(state, roll.seat) ? 1 : 0) })),
@@ -1229,6 +1234,19 @@ const handlers = {
     if (!cache) fail('It must control one of your unused Ammo Cache markers.')
     const used = { ...state, markers: state.markers.map((marker) => (marker.id === cache.id ? { ...marker, usedTp: tp } : marker)) }
     return payForMissionAction(patchUnit(used, seat, token.unitKey, { resuppliedTp: tp }, token.maxWounds), seat, token)
+  },
+
+  // Darting Flight (Vespid firefight ploy) as an operative Repositions: spends the ploy,
+  // asks the player for the D3 (extra inches, `dartingBonus`), and the operative can't
+  // Shoot or Fight for the rest of the turning point (`dartingTp`).
+  'battle/dartingFlight': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const token = state.tokens.find((candidate) => candidate.id === String(action.tokenId ?? ''))
+    if (!token?.unitKey || state.players[token.seat]?.killteamId !== VESPID_STINGWINGS) fail('Pick one of your Vespids.')
+    if (isSeat(actor) && actor !== token.seat) fail('That operative isn’t yours.')
+    const spent = handlers['battle/firefightPloy'](state, { ployId: DARTING_FLIGHT, cost: action.cost ?? 1, seat: token.seat }, actor)
+    const marked = patchUnit(spent, token.seat, token.unitKey, { dartingTp: state.battle.tp, dartingBonus: null }, token.maxWounds)
+    return addRoll(marked, { kind: 'darting', die: 3, seat: token.seat, tokenId: token.id, label: `Darting Flight: ${token.label || 'it'} Repositions D3" further` })
   },
 
   // Stun Grenade thrown by tokenId at targetId: a stun test (D6, the thrower's player

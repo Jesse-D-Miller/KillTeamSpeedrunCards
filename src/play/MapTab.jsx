@@ -7,6 +7,8 @@ import {
   HERNKYN_YAEGIRS,
   MARKER_SPANS_IN,
   VESPID_STINGWINGS,
+  DARTING_FLIGHT,
+  ployUses,
   MINEFIELD,
   AMMO_CACHE_MARKER,
   SSSSHHHH,
@@ -238,6 +240,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // move picked (moveFly), so its rules (Ocelli) know it flew.
   const [flyNext, setFlyNext] = useState(false)
   const [moveFly, setMoveFly] = useState(false)
+  // Extra inches for the move picked (Darting Flight's D3 on a Reposition).
+  const [moveBonus, setMoveBonus] = useState(0)
   const [moveStatus, setMoveStatus] = useState(null)
   const moveStatusTimer = useRef(null)
   // The team section open beside the tool drawer (an id from TEAM_SECTIONS), or null.
@@ -350,7 +354,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       path,
       start: path,
       keep: path.length,
-      limit: moveLimitFor(token, kind, kind && moveFly),
+      limit: moveLimitFor(token, kind, kind && moveFly) + (kind ? moveBonus : 0),
       fly: Boolean(kind && moveFly),
       moved: false,
       screen,
@@ -1043,7 +1047,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
 
   // A move action picked from the operative's Move ring: Move on, aimed at it, with
   // that action's limit (Adjust only nudges a finished move).
-  const startMove = (kind, token) => {
+  const startMove = (kind, token, bonus = 0) => {
     if (kind !== 'adjust') activateByTap(token.id)
     setRadial(null)
     clearTool()
@@ -1053,8 +1057,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     setTool('move')
     setMoveKind(kind)
     setMoveFly(flyNext && kind !== 'adjust')
-    const limit = kind === 'adjust' ? MOVE_ADJUST_REACH : moveLimitFor(token, kind, flyNext)
-    setMoveStatus({ label: `${MOVE_KINDS[kind]?.label ?? 'Adjust'}${flyNext && kind !== 'adjust' ? ' · FLY' : ''}`, used: 0, limit, warning: null })
+    setMoveBonus(bonus)
+    const limit = kind === 'adjust' ? MOVE_ADJUST_REACH : moveLimitFor(token, kind, flyNext) + bonus
+    setMoveStatus({ label: `${MOVE_KINDS[kind]?.label ?? 'Adjust'}${flyNext && kind !== 'adjust' ? ' · FLY' : ''}${bonus ? ` · Darting Flight +${bonus}"` : ''}`, used: 0, limit, warning: null })
   }
 
   // Fix the base size of the unit just placed; from now on it can only be moved.
@@ -1425,6 +1430,23 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         ...(canFly
           ? [{ key: 'move-fly', label: 'Fly', text: 'FLY', caption: flyNext ? 'Flying' : 'Fly', selected: flyNext, run: () => setFlyNext((on) => !on) }]
           : []),
+        // Darting Flight (firefight ploy, 1CP): a Reposition D3" further, rolled by the
+        // player on the ring; then no Shoot or Fight this turning point.
+        ...(canFly && game.phase === 'battle'
+          ? [
+              {
+                key: 'move-darting',
+                label: 'Darting Flight',
+                text: '+D3',
+                caption: ployUses(game.players[seat], game.battle.tp, DARTING_FLIGHT) ? 'Used this TP' : (game.players[seat]?.cp ?? 0) < 1 ? 'No CP' : 'Darting · 1CP',
+                disabled: Boolean(ployUses(game.players[seat], game.battle.tp, DARTING_FLIGHT)) || (game.players[seat]?.cp ?? 0) < 1,
+                run: () => {
+                  act({ type: 'battle/dartingFlight', tokenId: radialToken.id })
+                  setRadial((current) => current && { ...current, menu: 'roll' })
+                },
+              },
+            ]
+          : []),
         ...Object.entries(MOVE_KINDS).map(([kind, { label }]) => ({
           key: `move-${kind}`,
           label,
@@ -1536,6 +1558,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           run: () => {
             act({ type: 'battle/roll', id: roll.id, value: index + 1 })
             setRadial(null)
+            // Darting Flight: straight into the Reposition, that much further.
+            if (roll.kind === 'darting') startMove('reposition', radialToken, index + 1)
           },
         })),
         back,
@@ -1735,12 +1759,18 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             (!action.datacard || hasActions),
         )
       : ITEM_ACTIONS.filter((action) => !action.marker || radialIsMarker)
-    return actions.map((action) => ({
-      key: action.id,
-      label: action.label,
-      icon: action.icon,
-      run: () => runAction(action.id, radialToken),
-    }))
+    // Darting Flight: no Shoot or Fight for the rest of the turning point.
+    const darted = radialIsOperative && game.players[radialToken.seat]?.unitState?.[radialToken.unitKey]?.dartingTp === game.battle.tp
+    return actions.map((action) => {
+      const grounded = darted && (action.id === 'shoot' || action.id === 'fight')
+      return {
+        key: action.id,
+        label: action.label,
+        icon: action.icon,
+        ...(grounded ? { caption: 'Darting Flight', disabled: true } : {}),
+        run: () => runAction(action.id, radialToken),
+      }
+    })
   }
   const radialItems = radial?.menu === 'name' ? [] : ringItems()
   const reach = radialReach(radialItems.length)

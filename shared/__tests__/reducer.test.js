@@ -1360,3 +1360,26 @@ describe('Vespid Stingwings: Communion points', () => {
     expect(applyAction(free, { type: 'battle/ammoResupply', tokenId: free.tokens[0].id }, 'B').players.B.convergenceTp).toBe(1)
   })
 })
+
+describe('Vespid Stingwings: Darting Flight', () => {
+  it('spends the ploy, asks for the D3, and grounds the operative for the turning point', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'VOT-HKY' }, 'A'],
+      [{ type: 'setup/killteam', killteamId: 'TAU-VESP' }, 'B'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-WAR-0', maxWounds: 9, x: 5, y: 15, baseMm: 28.5 }, 'B'],
+    ])
+    const id = state.tokens[0].id
+    state = applyAction(state, { type: 'battle/dartingFlight', tokenId: id }, 'B')
+    expect(state.players.B.cp).toBe(2)
+    expect(state.players.B.unitState['TAU-VESP-WAR-0'].dartingTp).toBe(1)
+    const roll = state.battle.rolls.find((candidate) => candidate.kind === 'darting')
+    expect(roll).toMatchObject({ die: 3, seat: 'B', tokenId: id })
+    state = applyAction(state, { type: 'battle/roll', id: roll.id, value: 2 }, 'B')
+    expect(state.players.B.unitState['TAU-VESP-WAR-0'].dartingBonus).toBe(2)
+    expect(() => applyAction(state, { type: 'battle/dartingFlight', tokenId: id }, 'B')).toThrow(/Already used/)
+    expect(() => applyAction(state, { type: 'battle/dartingFlight', tokenId: id }, 'A')).toThrow(/isn’t yours/)
+  })
+})
+
