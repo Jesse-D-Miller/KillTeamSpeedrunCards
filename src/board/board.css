@@ -273,6 +273,27 @@
   stroke-dasharray: none;
 }
 
+/* Razor Wire: a grey line with barbs zigzagging along it, so it reads as wire across
+   the floor (Obstructing: the move tool adds 1" to cross it). The disc in the middle
+   is the handle that moves it. */
+.board-wire line,
+.board-wire polyline {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.board-wire-core {
+  stroke: #9aa0a6;
+  stroke-width: 0.05;
+}
+
+.board-wire-barbs {
+  stroke: color-mix(in srgb, var(--token-color) 55%, #c4c7cc);
+  stroke-width: 0.025;
+}
+
 /* Engage / Conceal tag pointing out of an operative's base. */
 .board-order-tag-shape {
   stroke-linejoin: round;

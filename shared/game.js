@@ -33,6 +33,13 @@ export const equipmentOptionCount = (eqIds) => new Set((eqIds ?? []).map(equipme
 
 export const otherSeat = (seat) => (seat === 'A' ? 'B' : 'A')
 
+// Universal equipment: Razor Wire, a straight run of wire (Exposed and Obstructing:
+// crossing it costs an extra 1"). The rules give no size; 4" is a stand-in until the
+// real piece is measured. angle: degrees anticlockwise on the board (y up).
+export const RAZOR_WIRE_MARKER = 'razor-wire'
+export const RAZOR_WIRE_SPAN = 4
+export const MARKER_SPANS_IN = [2, 3, 4, 5, 6]
+
 // Universal equipment: Mines. The first time an operative is within a Mines marker's
 // control range, the marker goes and it takes D3+3 damage (the mine's owner rolls).
 export const MINES_MARKER = 'mines'

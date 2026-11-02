@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { distance, stepPath } from '../geometry.js'
-import { bendToward, capPath, concealedAndClear, moveLimit, moveStat, moveWarning } from '../movement.js'
+import { bendToward, capPath, concealedAndClear, markerSegment, moveLimit, moveStat, moveWarning, obstructedCrossings, obstructions } from '../movement.js'
 
 const length = (path) => path.slice(1).reduce((sum, point, index) => sum + distance(path[index], point), 0)
 const straight = (steps) => Array.from({ length: steps + 1 }, (_, x) => ({ x, y: 0 }))
@@ -96,3 +96,27 @@ describe('concealed and clear of enemies', () => {
     expect(concealedAndClear({ tokens, players }, 'A', 6).map((token) => token.id)).toEqual(['a'])
   })
 })
+
+describe('Razor Wire (Obstructing)', () => {
+  const wire = { id: 'm1', catalogId: 'razor-wire', x: 10, y: 10, span: 4, angle: 90 }
+  it('lies along its angle, centred on the marker', () => {
+    const { a, b } = markerSegment(wire)
+    expect(a.x).toBeCloseTo(10)
+    expect(a.y).toBeCloseTo(8)
+    expect(b.y).toBeCloseTo(12)
+    expect(obstructions([wire, { id: 'm2', x: 1, y: 1 }, { ...wire, id: 'm3', attachedTo: 't1' }])).toHaveLength(1)
+  })
+
+  it('counts each crossing of the new part of a path', () => {
+    const across = [{ x: 8, y: 10 }, { x: 9, y: 10 }, { x: 10.5, y: 10 }, { x: 11.5, y: 10 }]
+    const segments = obstructions([wire])
+    expect(obstructedCrossings(across, segments)).toBe(1)
+    // Already paid for in an earlier move (before `from`).
+    expect(obstructedCrossings(across, segments, 2)).toBe(0)
+    // Back over it again.
+    expect(obstructedCrossings([...across, { x: 9.5, y: 10 }], segments)).toBe(2)
+    // Past its end.
+    expect(obstructedCrossings([{ x: 8, y: 13 }, { x: 12, y: 13 }], segments)).toBe(0)
+  })
+})
+

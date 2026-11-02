@@ -1153,3 +1153,19 @@ describe('Universal equipment: Mines', () => {
     expect(state.battle.rolls ?? []).toHaveLength(0)
   })
 })
+
+describe('Universal equipment: Razor Wire', () => {
+  it('is placed 4" long and can be turned and resized', () => {
+    let state = applyAction(createGame(), { type: 'marker/add', catalogId: 'razor-wire', label: 'Razor Wire', x: 10, y: 10, radius: 0.3 }, 'A')
+    expect(state.markers[0]).toMatchObject({ span: 4, angle: 0 })
+    const id = state.markers[0].id
+    state = applyAction(state, { type: 'marker/update', id, angle: -15, span: 6 }, 'A')
+    expect(state.markers[0]).toMatchObject({ span: 6, angle: 345 })
+    // Only offered lengths.
+    expect(applyAction(state, { type: 'marker/update', id, span: 40 }, 'A').markers[0].span).toBe(4)
+    // Other markers don't get a length.
+    state = applyAction(state, { type: 'marker/add', catalogId: 'ammo-cache', x: 2, y: 2, radius: 0.4 }, 'A')
+    expect(applyAction(state, { type: 'marker/update', id: state.markers[1].id, span: 6 }, 'A').markers[1].span).toBeUndefined()
+  })
+})
+

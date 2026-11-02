@@ -1,4 +1,4 @@
-import { distance } from './geometry.js'
+import { distance, segmentIntersection } from './geometry.js'
 import { otherSeat, tokenRadiusIn } from './game.js'
 
 // The move actions picked from an operative's Move ring (core rules, Kill Team 2024):
@@ -66,6 +66,28 @@ export const bendToward = (path, target, keep = 1) => {
     }
   }
   return [...path.slice(0, base), ...chain]
+}
+
+// The straight line a long marker (e.g. Razor Wire) lies along, end to end.
+export const markerSegment = (marker) => {
+  const half = (marker.span ?? 0) / 2
+  const angle = ((marker.angle ?? 0) * Math.PI) / 180
+  const dx = Math.cos(angle) * half
+  const dy = Math.sin(angle) * half
+  return { a: { x: marker.x - dx, y: marker.y - dy }, b: { x: marker.x + dx, y: marker.y + dy } }
+}
+
+// Obstructing terrain (Razor Wire) on the killzone floor, as segments.
+export const obstructions = (markers = []) => markers.filter((marker) => marker.span && !marker.attachedTo).map(markerSegment)
+
+// Obstructing: each time a path crosses one, the move costs an extra 1". Counts the
+// crossings in the path's steps from index `from` on (the part not already paid for).
+export const obstructedCrossings = (path, segments, from = 0) => {
+  let count = 0
+  for (let i = Math.max(0, from); i < path.length - 1; i += 1) {
+    count += segments.filter(({ a, b }) => segmentIntersection(path[i], path[i + 1], a, b)).length
+  }
+  return count
 }
 
 // Gap between two bases (edge to edge), in inches. radius(token) gives a base radius.

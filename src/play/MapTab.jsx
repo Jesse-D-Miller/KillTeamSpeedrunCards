@@ -5,6 +5,7 @@ import {
   DEFAULT_BASE_MM,
   MOVE_ADJUST_REACH,
   HERNKYN_YAEGIRS,
+  MARKER_SPANS_IN,
   MINEFIELD,
   AMMO_CACHE_MARKER,
   SSSSHHHH,
@@ -15,7 +16,7 @@ import {
   turnState,
   vantageFloor,
 } from '../../shared/game.js'
-import { MOVE_KINDS, bendToward, capPath, inEnemyControl, moveLimit, moveStat, moveWarning } from '../../shared/movement.js'
+import { MOVE_KINDS, bendToward, capPath, inEnemyControl, moveLimit, moveStat, moveWarning, obstructedCrossings, obstructions } from '../../shared/movement.js'
 import { clampToBase, defaultShooterPoint, statusOf } from '../../shared/targeting.js'
 import { isInjured } from '../board/health.js'
 import BoardSvg from '../board/BoardSvg.jsx'
@@ -185,6 +186,9 @@ function BaseSizer({ token, onStep }) {
 // tabs / tabLabel / onSelectTab: the phase's views, so the rail can switch away from the map.
 // A roll the app is waiting for. The player who rolls taps it (or the operative) to
 // enter the result on the action ring; the other player sees what's being rolled.
+// Each Turn tap on a long marker (Razor Wire), in degrees.
+const WIRE_TURN = 15
+
 function RollPrompt({ roll, mine, token, onOpen }) {
   const what = `${roll.label} on ${token?.label || 'the operative'}`
   return mine ? (
@@ -328,6 +332,23 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     }
   }
 
+  // Obstructing terrain (Razor Wire): each crossing costs an extra 1", so the path gets
+  // one step shorter per crossing. Re-fitted until it settles, since a shorter path
+  // may no longer reach the wire.
+  const wires = obstructions(game.markers)
+  const crossingsOf = (gesture, path = gesture.path) => (wires.length ? obstructedCrossings(path, wires, gesture.keep - 1) : 0)
+  const fitPath = (gesture, path) => {
+    let fitted = capPath(path, gesture.keep, gesture.limit)
+    if (!wires.length || !Number.isFinite(gesture.limit)) return fitted
+    for (let pass = 0; pass < 3; pass += 1) {
+      const next = capPath(path, gesture.keep, Math.max(0, gesture.limit - crossingsOf(gesture, fitted)))
+      if (next.length === fitted.length) break
+      fitted = next
+    }
+    return fitted
+  }
+  const moveCost = (gesture) => gesture.path.length - gesture.keep + crossingsOf(gesture)
+
   // Show where a stepped drag has got to: the preview on both screens and the banner.
   // Past its limit the operative stays at the end of its path instead of the finger.
   const showDrag = (gesture) => {
@@ -347,9 +368,10 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       (dauntless?.has(gesture.token.id) && !baseWithinRect(end, tokenRadiusIn(gesture.token), myDrop, 4)
         ? 'Dauntless Explorers: end wholly within 4" of your drop zone.'
         : null)
+    const crossings = crossingsOf(gesture)
     setMoveStatus({
-      label: MOVE_KINDS[gesture.kind]?.label ?? 'Free move',
-      used: gesture.path.length - gesture.keep,
+      label: `${MOVE_KINDS[gesture.kind]?.label ?? 'Free move'}${crossings ? ` · razor wire +${crossings}"` : ''}`,
+      used: moveCost(gesture),
       limit: gesture.limit,
       warning,
     })
@@ -364,7 +386,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     if (!gesture.overSince || Date.now() - gesture.overSince < BEND_AFTER_MS) return
     const end = gesture.path.at(-1)
     const target = { x: end.x + (gesture.finger.x - end.x) * BEND_PULL, y: end.y + (gesture.finger.y - end.y) * BEND_PULL }
-    gesture.path = bendToward(gesture.path, target, gesture.keep)
+    gesture.path = fitPath(gesture, bendToward(gesture.path, target, gesture.keep))
     showDrag(gesture)
   }
 
@@ -675,9 +697,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     } else if (gesture.type === 'drag-token') {
       gesture.moved = true
       gesture.finger = point
-      gesture.path = capPath(stepPath(gesture.path, point, 1, gesture.keep), gesture.keep, gesture.limit)
+      gesture.path = fitPath(gesture, stepPath(gesture.path, point, 1, gesture.keep))
       // At the limit with the finger well past the end: after a moment the path bends.
-      const atLimit = gesture.path.length - gesture.keep >= gesture.limit
+      const atLimit = moveCost(gesture) >= gesture.limit
       gesture.beyond = atLimit && distance(gesture.path.at(-1), point) > 0.75
       if (gesture.beyond) {
         gesture.overSince ??= Date.now()
@@ -1534,6 +1556,14 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
               },
             ]
           : []),
+        // A long marker (Razor Wire): turned 15° a tap either way, and its length.
+        ...(radialIsMarker && radialToken.span
+          ? [
+              { key: 'turn-left', label: 'Turn left', text: '↺', caption: 'Turn 15°', run: () => updateRadial({ angle: (radialToken.angle ?? 0) + WIRE_TURN }) },
+              { key: 'turn-right', label: 'Turn right', text: '↻', caption: 'Turn 15°', run: () => updateRadial({ angle: (radialToken.angle ?? 0) - WIRE_TURN }) },
+              { key: 'span', label: 'Length', text: `${radialToken.span}"`, caption: 'Length', run: openMenu('span') },
+            ]
+          : []),
         // Yaegir Ironbraek: turn one of your flipped Minefield markers face down again.
         ...(radialIsMarker && radialToken.catalogId === MINEFIELD && radialToken.seat === seat && radialToken.minefield?.flipped
           ? [
@@ -1553,6 +1583,21 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       ]
     }
     const backToEdit = { ...back, run: openMenu('edit') }
+    if (radial.menu === 'span' && radialIsMarker) {
+      return [
+        ...MARKER_SPANS_IN.map((inches) => ({
+          key: `span-${inches}`,
+          label: `${inches} inches`,
+          text: `${inches}"`,
+          selected: radialToken.span === inches,
+          run: () => {
+            updateRadial({ span: inches })
+            setRadial((current) => current && { ...current, menu: 'edit' })
+          },
+        })),
+        backToEdit,
+      ]
+    }
     // Markers and tokens are discs sized in mm across.
     if (radial.menu === 'base' && radialIsMarker) {
       const current = radialToken.radius * 2 * MM_PER_IN

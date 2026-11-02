@@ -33,6 +33,9 @@ import {
   AMMO_CACHE_MARKER,
   MINES_DAMAGE,
   MINES_MARKER,
+  MARKER_SPANS_IN,
+  RAZOR_WIRE_MARKER,
+  RAZOR_WIRE_SPAN,
   MINEFIELD,
   MINEFIELD_COUNTS,
   NO_KIN_LEFT_BEHIND,
@@ -455,6 +458,9 @@ const MAX_SHOTS = 12
 const emptyShot = () => ({ toggles: { A: {}, B: {} }, spent: { A: {}, B: {} } })
 
 const sanitizeRing = (value) => clamp(toNumber(value), 0, 12)
+// A long marker's length (inches, one of the offered sizes) and its turn (degrees).
+const sanitizeSpan = (value) => (MARKER_SPANS_IN.includes(toNumber(value)) ? toNumber(value) : RAZOR_WIRE_SPAN)
+const sanitizeAngle = (value) => ((Math.round(toNumber(value)) % 360) + 360) % 360
 
 const sanitizeHost = (state, value) => {
   if (value == null) return null
@@ -1295,6 +1301,7 @@ const handlers = {
       ring: sanitizeRing(action.ring),
       attachedTo: sanitizeHost(state, action.attachedTo),
       ...sanitizePoint(action),
+      ...(action.catalogId === RAZOR_WIRE_MARKER ? { span: sanitizeSpan(action.span), angle: sanitizeAngle(action.angle) } : {}),
     }
     return { ...state, markers: [...state.markers, marker], nextId: state.nextId + 1 }
   },
@@ -1308,6 +1315,9 @@ const handlers = {
     if (action.short != null) patch.short = String(action.short).slice(0, 6)
     if (action.radius != null) patch.radius = clamp(toNumber(action.radius, 0.5), 0.1, 6)
     if (action.ring != null) patch.ring = sanitizeRing(action.ring)
+    const current = state.markers.find((marker) => marker.id === id)
+    if (current?.span && action.span != null) patch.span = sanitizeSpan(action.span)
+    if (current?.span && action.angle != null) patch.angle = sanitizeAngle(action.angle)
     return {
       ...state,
       markers: state.markers.map((marker) => (marker.id === id ? { ...marker, ...patch } : marker)),

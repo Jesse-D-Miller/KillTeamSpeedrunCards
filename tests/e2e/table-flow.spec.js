@@ -1458,6 +1458,37 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(table.locator('[data-catalog-id="mines"]')).toHaveCount(0)
   await expect(a.locator('[data-roll-prompt]')).toHaveCount(0)
   await tableActions(table, [{ type: 'token/remove', id: minesVespid.id }])
+  // Razor Wire (universal equipment): a 4" run of wire across Bladekyn's way, turned on its
+  // Edit ring; crossing it costs an extra 1" in the move banner.
+  const wireBlade = (await tableState(table)).tokens.find((token) => token.id === 't2')
+  await tableActions(table, [{ type: 'marker/add', catalogId: 'razor-wire', label: 'Razor Wire', short: 'WIRE', x: wireBlade.x + 1.5, y: wireBlade.y, radius: 0.25 }])
+  const wire = table.locator('[data-catalog-id="razor-wire"] .board-wire')
+  await expect(wire).toHaveAttribute('data-span', '4')
+  const wireId = await table.locator('[data-catalog-id="razor-wire"]').getAttribute('data-marker-id')
+  await a.locator(`.map-stage [data-marker-id="${wireId}"] circle`).click()
+  await a.locator(`.unit-radial[data-ring-for="${wireId}"]`).getByRole('menuitem', { name: 'Edit', exact: true }).click()
+  for (let turn = 0; turn < 6; turn += 1) await a.locator(`.unit-radial[data-ring-for="${wireId}"]`).getByRole('menuitem', { name: 'Turn left' }).click()
+  await expect(wire).toHaveAttribute('data-angle', '90')
+  await shot(table, '17-razor-wire-table')
+  // Tapping the wire again closes its ring.
+  await a.locator(`.map-stage [data-marker-id="${wireId}"] circle`).click()
+  await expect(a.locator('.unit-radial')).toHaveCount(0)
+  await ringAction(a, 't2', 'Move')
+  await a.locator('.unit-radial[data-ring-for="t2"]').getByRole('menuitem', { name: 'Move', exact: true }).click()
+  const wireBase = a.locator('.map-stage [data-token-id="t2"] .board-token-base')
+  const wireBox = await wireBase.boundingBox()
+  const wirePx = wireBox.width / (2 * Number(await wireBase.getAttribute('r')))
+  const [wx, wy] = [wireBox.x + wireBox.width / 2, wireBox.y + wireBox.height / 2]
+  await a.mouse.move(wx, wy)
+  await a.mouse.down()
+  for (let i = 1; i <= 12; i += 1) await a.mouse.move(wx + (3.2 * wirePx * i) / 12, wy)
+  await expect(a.locator('[data-move-status]')).toContainText('razor wire +1"')
+  await expect(a.locator('[data-move-status] .move-status-inches')).toHaveText(/^4 \//)
+  await a.mouse.up()
+  await tableActions(table, [
+    { type: 'token/update', id: 't2', x: wireBlade.x, y: wireBlade.y },
+    { type: 'marker/remove', id: wireId },
+  ])
   await openTab(a, 'Operatives')
   await bladeCard.locator('button.state-pill').click()
   await expect(bladeTag).toHaveAttribute('data-order-color', 'red')
