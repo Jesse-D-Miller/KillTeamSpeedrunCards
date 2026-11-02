@@ -814,6 +814,13 @@ describe('Hernkyn Yaegirs: Resourceful', () => {
     expect(nextTp(six).players.B.sp).toBe(0)
   })
 
+  it("adds 1 for the Theyn's Veteran Adventurer when it's clear of enemy control range", () => {
+    const withTheyn = (y) =>
+      applyAction(battle(1), { type: 'token/add', seat: 'A', unitKey: 'VOT-HKY-THEYN-0', maxWounds: 9, x: 20, y, baseMm: 28.5 }, 'A')
+    // One Yaegir (in control range of the Vespid) and the Theyn clear of it: 1 + 1.
+    expect(nextTp(withTheyn(12)).players.A.sp).toBe(2)
+  })
+
   it('discards unspent points at the end of the turning point', () => {
     // 2 gained, 1 spent, 1 left over: the next turning point starts from its own gain.
     const spent = spend(activate(nextTp(battle(6))), 'apl')
@@ -984,5 +991,22 @@ describe('Limited weapons', () => {
     state = applyAction(state, { type: 'unit/weaponUse', unitKey: 'u-1', weapon: 'Throwing hatchet', on: false }, 'A')
     state = applyAction(state, { type: 'unit/weaponUse', unitKey: 'u-1', weapon: 'Throwing hatchet', on: false }, 'A')
     expect(state.players.A.unitState['u-1'].weaponUses).toEqual({ 'Throwing hatchet': 0 })
+  })
+})
+
+describe('Hernkyn Yaegirs: Outright Conviction', () => {
+  it("leaves the Theyn on 1 wound the first time it would be incapacitated, not after", () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'VOT-HKY' }, 'A'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+    ])
+    const hit = (unitKey) => applyAction(state, { type: 'unit/update', unitKey, maxWounds: 9, patch: { wounds: 0, dead: true } }, 'A')
+    state = hit('VOT-HKY-THEYN-0')
+    expect(state.players.A.unitState['VOT-HKY-THEYN-0']).toMatchObject({ wounds: 1, dead: false, outrightConviction: true })
+    state = hit('VOT-HKY-THEYN-0')
+    expect(state.players.A.unitState['VOT-HKY-THEYN-0']).toMatchObject({ wounds: 0, dead: true })
+    // Only the Theyn has it.
+    expect(hit('VOT-HKY-WAR-0').players.A.unitState['VOT-HKY-WAR-0'].dead).toBe(true)
   })
 })

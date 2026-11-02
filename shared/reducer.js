@@ -296,6 +296,19 @@ const returnToStart = (state, token) => {
   return state
 }
 
+// Yaegir Theyn's Veteran Adventurer: 1 more Resourceful point in the Ready step if it's in
+// the killzone and not within control range of enemy operatives.
+const veteranAdventurer = (state, seat) =>
+  state.tokens.some(
+    (token) =>
+      token.seat === seat &&
+      /^VOT-HKY-THEYN-/.test(token.unitKey ?? '') &&
+      !state.players[seat].unitState[token.unitKey]?.dead &&
+      !inEnemyControl(state, token),
+  )
+    ? 1
+    : 0
+
 const clearAuto = (state) => (state.battle.lastAuto ? { ...state, battle: { ...state.battle, lastAuto: null } } : state)
 
 // Rules like "until the end of the turning point, if it moved" need to know when an
@@ -732,8 +745,9 @@ const handlers = {
     SEATS.forEach((seat) => {
       next = updatePlayer(next, seat, (player) => ({
         cp: player.cp + READY_CP,
-        // Yaegirs discard last turning point's Resourceful points and gain new ones.
-        ...(player.killteamId === HERNKYN_YAEGIRS ? { sp: resourcefulGain(outsideEnemyControl(next, seat)) } : {}),
+        // Yaegirs discard last turning point's Resourceful points and gain new ones (the
+        // Theyn's Veteran Adventurer adds 1).
+        ...(player.killteamId === HERNKYN_YAEGIRS ? { sp: resourcefulGain(outsideEnemyControl(next, seat)) + veteranAdventurer(next, seat) } : {}),
         initiativeCards: (player.initiativeCards ?? []).filter((card) => !card.used),
         unitState: Object.fromEntries(
           Object.entries(player.unitState).map(([key, unit]) => [
@@ -944,6 +958,18 @@ const handlers = {
     if ('wounds' in patch && !('lastHit' in patch)) patch.lastHit = 'normal'
     // Rules like Tough Survivalists need the first time it took damage this turning point.
     const before = state.players[seat]?.unitState?.[unitKey]
+    // Yaegir Theyn's Outright Conviction: the first time it would be incapacitated in the
+    // battle, it isn't: it's left on 1 wound.
+    const fatal = patch.dead === true || patch.wounds === 0
+    if (
+      state.phase === 'battle' &&
+      fatal &&
+      state.players[seat]?.killteamId === HERNKYN_YAEGIRS &&
+      /^VOT-HKY-THEYN-/.test(unitKey) &&
+      !before?.outrightConviction
+    ) {
+      Object.assign(patch, { wounds: 1, dead: false, outrightConviction: true })
+    }
     if (state.phase === 'battle' && 'wounds' in patch && before && patch.wounds < before.wounds) patch.damagedTp = state.battle.tp
     let next = clearAuto(state)
     // Activating an operative by hand also ends the activation in progress.

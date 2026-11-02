@@ -666,7 +666,9 @@ All of these were replaced in Approved Ops 2025.
     - Weavewërke Cloak.
     - Firestorm and Stabilised Bolt Shells.
     - KV-Ceramide Undersuit: re-roll vs Blast/Torrent, and no x" Devastating splash.
-    - Outright Conviction, Brazen Killer and Concealed Position, as notes.
+    - **Outright Conviction (Theyn) is automated:** the first time the Theyn would be incapacitated in the battle (wounds to 0), the server leaves it on 1 wound instead (`outrightConviction` on its unit state). Discarding the remaining attack dice is left to the players.
+    - **Veteran Adventurer (Theyn):** +1 Resourceful point in each Ready step after the first while the Theyn is in the killzone and not within enemy control range.
+    - Brazen Killer and Concealed Position, as notes.
   - **Vespid Stingwings:**
     - Airborne Predators.
     - Aerial Agility.
