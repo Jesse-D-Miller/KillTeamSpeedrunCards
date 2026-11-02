@@ -291,7 +291,7 @@
 
 .board-wire-barbs {
   stroke: color-mix(in srgb, var(--token-color) 55%, #c4c7cc);
-  stroke-width: 0.025;
+  stroke-width: 0.035;
 }
 
 /* Engage / Conceal tag pointing out of an operative's base. */
