@@ -951,3 +951,28 @@ describe('Hernkyn Yaegirs: Bonds That Bind', () => {
     expect(turnState(expendFirst(state)).nextSeat).toBe('B')
   })
 })
+
+describe('Hernkyn Yaegirs: No Kin Left Behind', () => {
+  it('moves the Fallen Kin marker to where an incapacitated Yaegir fell, for 1CP', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'VOT-HKY' }, 'A'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'VOT-HKY-WAR-0', maxWounds: 8, x: 5, y: 6 }, 'A'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'VOT-HKY-WAR-1', maxWounds: 8, x: 9, y: 9 }, 'A'],
+    ])
+    const [first, second] = state.tokens
+    const cp = state.players.A.cp
+    const fall = (unitKey) => applyAction(state, { type: 'unit/update', unitKey, maxWounds: 8, patch: { wounds: 0, dead: true } }, 'A')
+    expect(() => applyAction(state, { type: 'battle/noKinLeftBehind', tokenId: first.id }, 'A')).toThrow(/incapacitated/)
+    state = fall('VOT-HKY-WAR-0')
+    state = applyAction(state, { type: 'battle/noKinLeftBehind', tokenId: first.id }, 'A')
+    expect(state.players.A.cp).toBe(cp - 1)
+    expect(state.markers.filter((marker) => marker.catalogId === 'vot-hky-fallen-kin')).toMatchObject([{ seat: 'A', x: 5, y: 6 }])
+    // Once per turning point; next turning point the marker moves to the newly fallen.
+    state = fall('VOT-HKY-WAR-1')
+    expect(() => applyAction(state, { type: 'battle/noKinLeftBehind', tokenId: second.id }, 'A')).toThrow(/Already/)
+    state = applyAction(applyAction(state, { type: 'battle/nextTp' }, 'table'), { type: 'battle/noKinLeftBehind', tokenId: second.id }, 'A')
+    expect(state.markers.filter((marker) => marker.catalogId === 'vot-hky-fallen-kin')).toMatchObject([{ x: 9, y: 9 }])
+  })
+})

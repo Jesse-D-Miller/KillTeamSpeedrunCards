@@ -46,6 +46,13 @@ export const resourcefulGain = (outsideControl) => (outsideControl >= 5 ? 2 : ou
 export const BONDS_THAT_BIND = 'VOT-HKY-T-BTB'
 export const BONDS_RANGE_IN = 3
 
+// No Kin Left Behind (Yaegir firefight ploy): when a Yaegir is incapacitated, move the
+// Fallen Kin marker to where it fell.
+export const NO_KIN_LEFT_BEHIND = 'VOT-HKY-T-NKLB'
+export const FALLEN_KIN = 'vot-hky-fallen-kin'
+// Markers are 20mm across.
+export const FALLEN_KIN_RADIUS_IN = 20 / 25.4 / 2
+
 // Tough Survivalists (Yaegir strategy ploy): the first damage each Yaegir takes in the
 // turning point can be halved, rounding up, to a minimum of 2. null when halving
 // wouldn't lower it.

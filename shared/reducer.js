@@ -27,6 +27,9 @@ import {
   tokenRadiusIn,
   BONDS_RANGE_IN,
   BONDS_THAT_BIND,
+  FALLEN_KIN,
+  FALLEN_KIN_RADIUS_IN,
+  NO_KIN_LEFT_BEHIND,
 } from './game.js'
 import { adjustPath, clampWithin, distance } from './geometry.js'
 import { ARRANGEMENT_OPTIONS, CRIT_OP_IDS, pickRandom } from './rolls.js'
@@ -811,6 +814,34 @@ const handlers = {
     if (distance(first, second) - tokenRadiusIn(first) - tokenRadiusIn(second) > BONDS_RANGE_IN) fail('It must be within 3".')
     const used = spendPloy(true)
     return { ...used, battle: { ...used.battle, chain: { tp: state.battle.tp, seat, after: active.unitKey, next: second.unitKey } } }
+  },
+
+  // Hernkyn Yaegirs' No Kin Left Behind (firefight ploy, 1CP): one of your Yaegirs was
+  // incapacitated; your Fallen Kin marker (if any) comes off the killzone and goes where it
+  // fell (within its control range).
+  'battle/noKinLeftBehind': (state, action, actor, random) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const player = state.players[seat]
+    if (player.killteamId !== HERNKYN_YAEGIRS) fail('Only Hernkyn Yaegirs have No Kin Left Behind.')
+    const fallen = state.tokens.find((token) => token.id === String(action.tokenId ?? ''))
+    if (!fallen || fallen.seat !== seat || !fallen.unitKey || !player.unitState[fallen.unitKey]?.dead) fail('Pick one of your incapacitated operatives.')
+    const spent = handlers['battle/firefightPloy'](state, { ployId: NO_KIN_LEFT_BEHIND, cost: action.cost ?? 1, seat }, actor, random)
+    const marker = {
+      id: `m${spent.nextId}`,
+      seat,
+      kind: 'marker',
+      catalogId: FALLEN_KIN,
+      label: 'Fallen Kin',
+      short: 'FK',
+      radius: FALLEN_KIN_RADIUS_IN,
+      ring: 0,
+      attachedTo: null,
+      x: fallen.x,
+      y: fallen.y,
+    }
+    const others = spent.markers.filter((candidate) => !(candidate.catalogId === FALLEN_KIN && candidate.seat === seat))
+    return { ...spent, markers: [...others, marker], nextId: spent.nextId + 1 }
   },
 
   // A player confirms (or takes back) ending turning point fromTp. It moves on once, when

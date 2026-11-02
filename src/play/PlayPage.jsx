@@ -7,6 +7,7 @@ import MapTab from './MapTab.jsx'
 import OpponentTab from './OpponentTab.jsx'
 import { RuleProvider } from './RuleText.jsx'
 import BattleStep, { StrategySheet } from './steps/BattleStep.jsx'
+import NoKinPrompt from './NoKinPrompt.jsx'
 import { ViewRail } from './RailParts.jsx'
 import DeployStep from './steps/DeployStep.jsx'
 import LobbyStep from './steps/LobbyStep.jsx'
@@ -175,6 +176,7 @@ function SeatScreen() {
             />
           )
         ) : null}
+        <NoKinPrompt />
         <ErrorToast />
       </div>
     </RuleProvider>

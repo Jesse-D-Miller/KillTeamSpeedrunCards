@@ -1277,6 +1277,13 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(badge).toHaveCount(0)
   await expect(theynToken).toHaveClass(/is-dead/)
   await expect(theynToken.locator('.board-token-skull')).toHaveCount(1)
+  // Alice's iPad offers No Kin Left Behind for the fallen Yaegir (she passes this time).
+  const noKin = a.getByRole('dialog', { name: 'No Kin Left Behind' })
+  await expect(noKin).toContainText('is down.')
+  await expect(noKin.getByRole('button', { name: 'Use · 1CP' })).toBeEnabled()
+  await shot(a, '10b4-no-kin-prompt')
+  await noKin.getByRole('button', { name: 'Not now' }).click()
+  await expect(noKin).toHaveCount(0)
   // Dead operatives lose their order tag, rings and riding tokens.
   await expect(theynTag).toHaveCount(0)
   await expect(stun).toHaveCount(0)
