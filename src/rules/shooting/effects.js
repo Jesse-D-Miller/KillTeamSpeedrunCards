@@ -173,6 +173,8 @@ export const listModifiers = (list, ctx, saved) =>
         spentHere,
         // Used up this turning point by another shot or fight.
         used: Boolean(modifier.limit) && uses >= modifier.limit && !spentHere,
+        // Uses left this turning point (counting this one if it's on here).
+        usesLeft: modifier.limit ? Math.max(0, modifier.limit - uses) : null,
       }
     })
     .sort((a, b) => MODE_ORDER[a.mode] - MODE_ORDER[b.mode])
