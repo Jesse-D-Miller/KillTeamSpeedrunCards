@@ -40,6 +40,10 @@ export const RAZOR_WIRE_MARKER = 'razor-wire'
 export const RAZOR_WIRE_SPAN = 4
 export const MARKER_SPANS_IN = [2, 3, 4, 5, 6]
 
+// Universal equipment: Smoke Grenade. In the next Ready step its owner rolls a D3; the
+// marker goes after that many activations, or at the end of that turning point.
+export const SMOKE_MARKER = 'smoke-grenade'
+
 // Universal equipment: Mines. The first time an operative is within a Mines marker's
 // control range, the marker goes and it takes D3+3 damage (the mine's owner rolls).
 export const MINES_MARKER = 'mines'

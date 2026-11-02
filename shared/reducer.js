@@ -33,6 +33,7 @@ import {
   AMMO_CACHE_MARKER,
   MINES_DAMAGE,
   MINES_MARKER,
+  SMOKE_MARKER,
   MARKER_SPANS_IN,
   RAZOR_WIRE_MARKER,
   RAZOR_WIRE_SPAN,
@@ -419,14 +420,68 @@ const triggerMines = (state) => {
       seat: marker.seat ?? otherSeat(victim.seat),
       tokenId: victim.id,
       markerId: marker.id,
-      label: `Mines: D3 + ${MINES_DAMAGE} damage`,
+      label: `Mines: D3 + ${MINES_DAMAGE} damage on ${victim.label || 'the operative'}`,
     })
   })
   return next
 }
 
+// Smoke Grenade, in the Ready step: smoke thrown last turning point asks its owner for
+// a D3 (activations it lasts); older smoke has had its turning point and goes.
+//   marker.smoke: { tp (thrown in), left (activations to go, once rolled) }
+const smokeReadyStep = (state, fromTp) => {
+  const markers = state.markers.filter((marker) => !(marker.smoke && marker.smoke.tp < fromTp))
+  const ids = new Set(markers.map((marker) => marker.id))
+  let next = {
+    ...state,
+    markers,
+    battle: { ...state.battle, rolls: (state.battle.rolls ?? []).filter((roll) => roll.kind !== 'smoke' || ids.has(roll.markerId)) },
+  }
+  markers
+    .filter((marker) => marker.smoke?.tp === fromTp && marker.seat)
+    .forEach((marker) => {
+      next = addRoll(next, {
+        kind: 'smoke',
+        die: 3,
+        seat: marker.seat,
+        tokenId: marker.id,
+        markerId: marker.id,
+        label: `Smoke Grenade: it lasts that many activations`,
+      })
+    })
+  return next
+}
+
+// Activations completed (operatives expended) between two states, for Smoke.
+const expendedCount = (state) =>
+  SEATS.reduce((sum, seat) => sum + Object.values(state.players[seat]?.unitState ?? {}).filter((unit) => unit.activation === 'expended').length, 0)
+const countDownSmoke = (before, next) => {
+  const done = expendedCount(next) - expendedCount(before)
+  if (done <= 0 || !next.markers.some((marker) => marker.smoke?.left != null)) return next
+  return {
+    ...next,
+    markers: next.markers.flatMap((marker) => {
+      if (marker.smoke?.left == null) return [marker]
+      const left = marker.smoke.left - done
+      return left > 0 ? [{ ...marker, smoke: { ...marker.smoke, left } }] : []
+    }),
+  }
+}
+
 // What each kind of roll does with the result.
 const ROLL_EFFECTS = {
+  // Counted from the start of the turning point, in case the roll is entered after
+  // some activations are already done.
+  smoke: (state, roll, value) => {
+    const left = value - expendedCount(state)
+    return {
+      ...state,
+      markers: state.markers.flatMap((marker) => {
+        if (marker.id !== roll.markerId) return [marker]
+        return left > 0 ? [{ ...marker, smoke: { ...marker.smoke, left } }] : []
+      }),
+    }
+  },
   mines: (state, roll, value) => {
     const victim = state.tokens.find((token) => token.id === roll.tokenId)
     const cleared = { ...state, markers: state.markers.filter((marker) => marker.id !== roll.markerId) }
@@ -891,7 +946,7 @@ const handlers = {
         ),
       }))
     })
-    return next
+    return smokeReadyStep(next, state.battle.tp)
   },
 
   // Yaegirs spend a Resourceful point on the operative in its activation (or
@@ -1292,7 +1347,8 @@ const handlers = {
     if (action.catalogId === MINEFIELD) return addMinefield(state, action, actor, random)
     const marker = {
       id: `m${state.nextId}`,
-      seat: isSeat(actor) ? actor : null,
+      // The projector can place one for a player.
+      seat: isSeat(actor) ? actor : isSeat(action.seat) ? action.seat : null,
       kind: String(action.kind ?? 'marker').slice(0, 24),
       catalogId: action.catalogId ? String(action.catalogId).slice(0, 48) : null,
       label: String(action.label ?? '').slice(0, 24),
@@ -1302,6 +1358,7 @@ const handlers = {
       attachedTo: sanitizeHost(state, action.attachedTo),
       ...sanitizePoint(action),
       ...(action.catalogId === RAZOR_WIRE_MARKER ? { span: sanitizeSpan(action.span), angle: sanitizeAngle(action.angle) } : {}),
+      ...(action.catalogId === SMOKE_MARKER && state.phase === 'battle' ? { smoke: { tp: state.battle.tp, left: null } } : {}),
     }
     return { ...state, markers: [...state.markers, marker], nextId: state.nextId + 1 }
   },
@@ -1335,7 +1392,7 @@ export const ACTION_TYPES = Object.keys(handlers)
 export const applyAction = (state, action, actor, random = Math.random) => {
   const handler = handlers[action?.type]
   if (!handler) fail(`Unknown action: ${action?.type}`)
-  const next = handler(state, action, actor, random)
+  const next = state.phase === 'battle' ? countDownSmoke(state, handler(state, action, actor, random)) : handler(state, action, actor, random)
   if (!MOVING_ACTIONS.has(action.type)) return next
   const minefields = next.markers?.some((marker) => marker.catalogId === MINEFIELD) ? triggerMinefields(next, random) : next
   return minefields.markers?.some((marker) => marker.catalogId === MINES_MARKER) ? triggerMines(minefields) : minefields

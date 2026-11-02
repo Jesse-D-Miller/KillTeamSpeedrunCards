@@ -36,6 +36,12 @@ function MarkerDisc({ marker, x, cy, riding, facing = 0, labelId, highlighted, o
     >
       {marker.span && !riding ? <Wire marker={marker} x={x} cy={cy} /> : null}
       <circle cx={x} cy={cy} r={marker.radius} />
+      {/* Smoke: activations left before it clears, once its D3 is rolled. */}
+      {marker.smoke?.left != null ? (
+        <text className="board-marker-count" data-smoke-left={marker.smoke.left} x={x} y={cy} textAnchor="middle" dominantBaseline="central" transform={facing ? `rotate(${facing} ${x} ${cy})` : undefined}>
+          {marker.smoke.left}
+        </text>
+      ) : null}
       {text ? (
         <g
           className="board-marker-name"

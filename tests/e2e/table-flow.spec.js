@@ -1329,6 +1329,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(b.locator('.map-stage [data-token-id="t1"]')).toHaveCount(0)
   await openTab(b, 'Operatives')
 
+  // Smoke thrown this turning point (by Alice) lasts into the next one.
+  await tableActions(table, [{ type: 'marker/add', kind: 'marker', catalogId: 'smoke-grenade', label: 'Smoke Grenade', seat: 'A', radius: 20 / 25.4 / 2, x: 20, y: 3 }])
   // Next TP asks for confirmation and explains what happens; the turning point moves on
   // once both players have confirmed (and only once).
   await a.locator('.rail-phase').getByRole('button', { name: 'Next TP' }).click()
@@ -1371,6 +1373,16 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await b.getByRole('button', { name: 'Start firefight' }).click()
   await expect(a.locator('.strategy-sheet')).toHaveCount(0)
   await bladeCard.locator('button.state-pill').click()
+  // Smoke Grenade: in the Ready step Alice is asked for a D3 (she enters 2 from the
+  // smoke's ring); it clears after that many activations.
+  await openTab(a, 'Map')
+  await a.locator('[data-roll-prompt="smoke"]').click()
+  const smokeRing = a.locator('.unit-radial[data-menu="roll"]')
+  await expect(smokeRing.getByRole('menuitem')).toHaveText(['1', '2', '3', 'Back'])
+  await smokeRing.getByRole('menuitem', { name: 'Rolled 2' }).click()
+  await expect(table.locator('[data-catalog-id="smoke-grenade"] [data-smoke-left]')).toHaveText('2')
+  const smokeMarker = (await tableState(table)).markers.find((marker) => marker.catalogId === 'smoke-grenade')
+  await tableActions(table, [{ type: 'marker/remove', id: smokeMarker.id }])
   // Bladekyn is active: spend a Resourceful point on +1 APL from its ring (once per
   // activation), and the board tags it ▲+1.
   await openTab(a, 'Map')

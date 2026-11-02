@@ -1169,3 +1169,46 @@ describe('Universal equipment: Razor Wire', () => {
   })
 })
 
+describe('Universal equipment: Smoke Grenade', () => {
+  it('asks its owner for a D3 in the next Ready step, then clears after that many activations', () => {
+    const update = (state, unitKey, patch, seat = 'A') => applyAction(state, { type: 'unit/update', seat, unitKey, maxWounds: 8, patch }, seat)
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'marker/add', catalogId: 'smoke-grenade', label: 'Smoke Grenade', x: 10, y: 10, radius: 0.4 }, 'A'],
+    ])
+    expect(state.markers[0].smoke).toEqual({ tp: 1, left: null })
+    state = applyAction(state, { type: 'battle/nextTp', fromTp: 1 }, 'table')
+    const [roll] = state.battle.rolls
+    expect(roll).toMatchObject({ kind: 'smoke', die: 3, seat: 'A', tokenId: state.markers[0].id })
+    state = applyAction(state, { type: 'battle/roll', id: roll.id, value: 2 }, 'A')
+    expect(state.markers[0].smoke.left).toBe(2)
+    state = update(state, 'VOT-HKY-WAR-0', { activation: 'expended' })
+    expect(state.markers[0].smoke.left).toBe(1)
+    state = update(state, 'TAU-VESP-VSS-0', { activation: 'expended' }, 'B')
+    expect(state.markers).toHaveLength(0)
+  })
+
+  it('counts activations from the start of the turning point when the roll comes late', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'marker/add', catalogId: 'smoke-grenade', seat: 'A', x: 10, y: 10, radius: 0.4 }, 'table'],
+      [{ type: 'battle/nextTp', fromTp: 1 }, 'table'],
+      [{ type: 'unit/update', seat: 'B', unitKey: 'TAU-VESP-VSS-0', maxWounds: 9, patch: { activation: 'expended' } }, 'B'],
+    ])
+    state = applyAction(state, { type: 'battle/roll', id: state.battle.rolls[0].id, value: 3 }, 'A')
+    expect(state.markers[0].smoke.left).toBe(2)
+  })
+
+  it('clears at the end of that turning point, even if the roll was never entered', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'marker/add', catalogId: 'smoke-grenade', label: 'Smoke Grenade', x: 10, y: 10, radius: 0.4 }, 'A'],
+      [{ type: 'battle/nextTp', fromTp: 1 }, 'table'],
+    ])
+    expect(state.markers).toHaveLength(1)
+    state = applyAction(state, { type: 'battle/nextTp', fromTp: 2 }, 'table')
+    expect(state.markers).toHaveLength(0)
+    expect(state.battle.rolls).toHaveLength(0)
+  })
+})
+

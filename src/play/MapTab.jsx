@@ -190,7 +190,7 @@ function BaseSizer({ token, onStep }) {
 const WIRE_TURN = 15
 
 function RollPrompt({ roll, mine, token, onOpen }) {
-  const what = `${roll.label} on ${token?.label || 'the operative'}`
+  const what = roll.label
   return mine ? (
     <button type="button" className="move-status glass is-roll" data-roll-prompt={roll.kind} onClick={() => token && onOpen(token)}>
       <span className="move-status-label">Roll a D{roll.die}</span>
