@@ -702,42 +702,42 @@
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.2, 7.62],
               [4.67, 7.61]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [4.67, 7.61],
               [4.57, 7.7]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [4.57, 7.7],
               [3.94, 7.7]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [3.94, 7.7],
               [3.86, 7.62]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [3.86, 7.62],
               [3.43, 7.6]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [3.43, 7.6],
               [3.34, 7.63]
@@ -1325,42 +1325,42 @@
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.11, 7.42],
               [4.69, 7.41]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [4.69, 7.41],
               [4.59, 7.33]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [4.59, 7.33],
               [3.96, 7.33]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [3.96, 7.33],
               [3.87, 7.41]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [3.87, 7.41],
               [3.35, 7.41]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [3.35, 7.41],
               [3.35, 7.31]
@@ -1427,13 +1427,6 @@
             "segment": [
               [0.64, 7.2],
               [0.63, 7.09]
-            ]
-          },
-          {
-            "type": "door",
-            "segment": [
-              [5.5, 7.52],
-              [3.5, 7.52]
             ]
           }
         ]
@@ -1939,14 +1932,14 @@
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.56, 0.32],
               [6.37, 0.26]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [6.37, 0.26],
               [7.25, 0.32]
@@ -2450,7 +2443,7 @@
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.56, 0.5],
               [7.25, 0.5]
@@ -2552,13 +2545,6 @@
             "segment": [
               [7.33, 7.32],
               [7.24, 7.5]
-            ]
-          },
-          {
-            "type": "door",
-            "segment": [
-              [4.5, 0.4],
-              [6.5, 0.4]
             ]
           }
         ]
@@ -2729,28 +2715,28 @@
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.77, 0.6],
               [5.85, 1.84]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.85, 1.84],
               [5.77, 1.94]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.77, 1.94],
               [5.76, 2.37]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.76, 2.37],
               [5.77, 2.45]
@@ -2827,42 +2813,42 @@
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.58, 2.46],
               [5.58, 1.93]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.58, 1.93],
               [5.49, 1.83]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.49, 1.83],
               [5.49, 1.2]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.49, 1.2],
               [5.57, 1.11]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.57, 1.11],
               [5.59, 0.69]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [5.59, 0.69],
               [5.58, 0.6]
@@ -3014,13 +3000,6 @@
               [0.56, 0.14],
               [0.73, 0]
             ]
-          },
-          {
-            "type": "door",
-            "segment": [
-              [5.54, 0.5],
-              [5.54, 2.5]
-            ]
           }
         ]
       }
@@ -3130,35 +3109,35 @@
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [0.6, 0.22],
               [0.69, 0.24]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [0.69, 0.24],
               [1.11, 0.21]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [1.11, 0.21],
               [1.2, 0.14]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [1.2, 0.14],
               [2.45, 0.22]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [2.45, 0.22],
               [2.47, 0.13]
@@ -3340,42 +3319,42 @@
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [2.46, 0.41],
               [2.37, 0.4]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [2.37, 0.4],
               [1.94, 0.41]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [1.94, 0.41],
               [1.84, 0.5]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [1.84, 0.5],
               [1.21, 0.5]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [1.21, 0.5],
               [1.11, 0.41]
             ]
           },
           {
-            "type": "heavy",
+            "type": "door",
             "segment": [
               [1.11, 0.41],
               [0.6, 0.41]
@@ -3463,13 +3442,6 @@
             "segment": [
               [0.14, 3.01],
               [0, 2.83]
-            ]
-          },
-          {
-            "type": "door",
-            "segment": [
-              [0.5, 0.45],
-              [2.5, 0.45]
             ]
           }
         ]
