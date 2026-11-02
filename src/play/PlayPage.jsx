@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { seatColor } from '../board/colors.js'
 import { GameProvider } from '../net/GameProvider.jsx'
 import { useGame } from '../net/gameContext.js'
@@ -78,13 +78,21 @@ function SeatScreen() {
   const [aside, setAside] = useState(null)
   const rootRef = useRef(null)
   useKeyboardOverlay(rootRef)
-  // The game ending opens the results, whichever tab was showing.
+  // The game ending opens the results, whichever tab was showing. A new game (only a
+  // reset goes back to the lobby), from either iPad or the projector, sends this iPad to
+  // the opening screen.
   const phaseNow = state?.phase
   const [lastPhase, setLastPhase] = useState(phaseNow)
+  const [newGame, setNewGame] = useState(false)
   if (lastPhase !== phaseNow) {
     setLastPhase(phaseNow)
     if (phaseNow === 'results') setTab('main')
+    if (phaseNow === 'lobby' && lastPhase) setNewGame(true)
   }
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (newGame) navigate('/')
+  }, [newGame, navigate])
 
   if (status === 'seat_taken') {
     return (

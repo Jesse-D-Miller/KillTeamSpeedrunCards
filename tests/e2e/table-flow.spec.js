@@ -1567,14 +1567,22 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   expect(await boardOverflows(table)).toEqual([])
   await shot(table, '16-portrait-combat')
 
-  // New game (tapped twice) resets the table and takes that iPad back to the opening
+  // New game (tapped twice) resets the table and takes both iPads back to the opening
   // screen; the projector is back to the join codes.
   await openTab(a, 'Results')
   await a.getByRole('button', { name: 'New game' }).click()
   await a.getByRole('button', { name: 'Tap again to start a new game' }).click()
   await expect(a).toHaveURL(/\/$/)
   await expect(a.getByRole('link', { name: 'Stats' })).toBeVisible()
+  await expect(b).toHaveURL(/\/$/)
   await expect(table.locator('.join-overlay')).toBeVisible()
+  // The projector's ☰ New game does the same once a game is under way.
+  await b.goto('/play?seat=B')
+  await expect(b.locator('.rail-phase')).toBeVisible()
+  await tableActions(table, [{ type: 'phase/set', phase: 'setup' }])
+  await expect(b.locator('.rail-phase')).toBeVisible()
+  await tableActions(table, [{ type: 'game/reset' }])
+  await expect(b).toHaveURL(/\/$/)
 })
 
 test('projector calibration warps the board and persists on the server', async ({ browser }) => {
