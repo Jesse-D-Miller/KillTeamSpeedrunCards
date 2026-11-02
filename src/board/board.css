@@ -697,3 +697,33 @@
     display: none;
   }
 }
+
+/* ---- Status rim: quiet, lasting indicators around a base (StatusRim.jsx) ---- */
+.status-rim {
+  pointer-events: none;
+}
+
+/* Injured: a cracked red ring breathing slowly between faint and a little less faint. */
+.status-injured {
+  fill: none;
+  stroke: #e5484d;
+  stroke-width: 0.04;
+  animation: status-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes status-breathe {
+  0%,
+  100% {
+    stroke-opacity: 0.25;
+  }
+  50% {
+    stroke-opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-injured {
+    animation: none;
+    stroke-opacity: 0.45;
+  }
+}

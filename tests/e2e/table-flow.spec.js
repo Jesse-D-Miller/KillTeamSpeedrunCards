@@ -1230,6 +1230,9 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(badge).toHaveClass(/is-injured/)
   await expect(badge).toHaveText('4/9')
   await expect(badge.locator('.board-token-wounds-glow')).toHaveCount(1)
+  // Injured operatives also get a faint cracked ring round the base.
+  const theynRim = table.locator('[data-status-for="t1"]')
+  await expect(theynRim.locator('[data-status="injured"]')).toHaveCount(1)
   await shot(table, '10b2-injured-badge')
   // Regaining one (a tap on the empty end of the bar) twirls green leaves round it.
   await healthBar.click({ position: { x: barBox.width - 2, y: barBox.height / 2 } })

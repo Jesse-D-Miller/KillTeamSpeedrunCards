@@ -9,6 +9,7 @@ import { isInjured } from './health.js'
 import { SKULL_PATH } from './icons.js'
 import { NEUTRAL_COLOR, seatColor, zoneOwner } from './colors.js'
 import { useWoundFx } from './useWoundFx.js'
+import StatusRim from './StatusRim.jsx'
 import MarkerDisc from './MarkerDisc.jsx'
 import OrderTag from './OrderTag.jsx'
 import Overlay, { MoveCount } from './Overlay.jsx'
@@ -501,6 +502,9 @@ function BoardSvg({
           fx={woundFx[token.id] ?? null}
         />
       ))}
+      {tokenViews.map(({ token, view, status }) =>
+        token.unitKey && !view.dead ? <StatusRim key={token.id} token={token} view={view} status={status} maxWounds={maxWoundsOf(token)} /> : null,
+      )}
       {tokenViews.map(({ token, view, status }) => {
         if (!token.unitKey || view.dead) return null
         return (
