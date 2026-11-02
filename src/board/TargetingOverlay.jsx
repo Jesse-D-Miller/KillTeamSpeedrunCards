@@ -132,6 +132,37 @@ const shooterChipsOf = (shot) =>
 // relative to the shooter; without it the lines start at the shooter's edge closest
 // to each target).
 // payload.tool 'target' (Sightline) or 'attack' (Shoot/Fight, with mode and weaponId).
+// While a shot's attack screens are open, the target shows how it's protected: a grey
+// shield sliding in on its rim when it's in cover, a faint fog ring drifting round it
+// when it's obscured. Quiet on purpose: the side bars and drawers carry the numbers.
+const SHIELD_PATH = 'M0 -0.17L0.14 -0.11V0.01C0.14 0.1 0.07 0.15 0 0.19C-0.07 0.15 -0.14 0.1 -0.14 0.01V-0.11Z'
+const SHIELD_ANGLE = -45
+
+export function TargetProtection({ token, state }) {
+  const r = tokenRadiusIn(token)
+  const cx = token.x
+  const cy = toSvgY(token.y)
+  const angle = (SHIELD_ANGLE * Math.PI) / 180
+  return (
+    <g className="target-protection" aria-hidden="true">
+      {state.obscured ? (
+        <g className="target-fog" data-target-state="obscured" transform={`translate(${cx} ${cy})`}>
+          <circle className="target-fog-ring" r={r + 0.2} />
+        </g>
+      ) : null}
+      {state.cover ? (
+        <g
+          className="target-shield"
+          data-target-state="cover"
+          transform={`translate(${cx + Math.cos(angle) * (r + 0.24)} ${cy + Math.sin(angle) * (r + 0.24)})`}
+        >
+          <path className="target-shield-icon" d={SHIELD_PATH} />
+        </g>
+      ) : null}
+    </g>
+  )
+}
+
 function TargetingOverlay({ game, layout, payload }) {
   if (payload.tool === 'attack' && payload.mode === 'fight') return <FightOverlay game={game} layout={layout} payload={payload} />
   return <ShootOverlay game={game} layout={layout} payload={payload} />
@@ -302,6 +333,7 @@ function ShootOverlay({ game, layout, payload }) {
       ) : (
         <circle className="target-shooter-ring" cx={shooter.x} cy={toSvgY(shooter.y)} r={tokenRadiusIn(shooter) + 0.15} />
       )}
+      {shooting && target && shot?.valid ? <TargetProtection token={target} state={shot.state} /> : null}
       {target ? <Chips token={target} chips={targetChips} /> : null}
       <Chips token={shooter} chips={shooterChips} />
     </g>

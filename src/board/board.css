@@ -1043,3 +1043,54 @@
     animation: token-fade 0.8s ease-in forwards;
   }
 }
+
+/* A shot's target: a grey shield slides in on the rim in cover; a fog ring drifts round
+   it when obscured (TargetingOverlay). */
+.target-protection {
+  pointer-events: none;
+}
+
+.target-shield-icon {
+  fill: #adb5bd;
+  fill-opacity: 0.85;
+  stroke: #1c1e22;
+  stroke-width: 0.025;
+}
+
+.target-shield {
+  animation: target-shield-in 0.45s ease-out both;
+}
+
+@keyframes target-shield-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.target-shield-icon {
+  animation: target-shield-slide 0.45s ease-out both;
+}
+
+@keyframes target-shield-slide {
+  from {
+    transform: translate(0.25px, -0.25px);
+  }
+}
+
+.target-fog-ring {
+  fill: none;
+  stroke: #ced4da;
+  stroke-opacity: 0.22;
+  stroke-width: 0.18;
+  stroke-dasharray: 0.35 0.12 0.2 0.16;
+  stroke-linecap: round;
+  animation: status-orbit 16s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .target-shield,
+  .target-shield-icon,
+  .target-fog-ring {
+    animation: none;
+  }
+}
