@@ -1439,6 +1439,25 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect.poll(async () => (await tableState(table)).players.A.unitState['VOT-HKY-BLD-0'].resuppliedTp).toBe(2)
   expect((await tableState(table)).markers.find((marker) => marker.id === cache.id).usedTp).toBe(2)
   await tableActions(table, [{ type: 'token/update', id: 't2', x: blade.x, y: blade.y }])
+  // Mines (universal equipment): a Vespid walks into them. The app doesn't roll: Alice's
+  // map asks for a D3, Bob's says he's waiting, and the die she enters deals D3+3.
+  await tableActions(table, [
+    { type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-VSS-7', maxWounds: 9, x: 28, y: 2, baseMm: 28.5, baseLocked: true },
+    { type: 'marker/add', catalogId: 'mines', label: 'Mines', short: 'MINE', x: 28, y: 6, radius: 0.4 },
+  ])
+  const minesState = await tableState(table)
+  const minesVespid = minesState.tokens.find((token) => token.unitKey === 'TAU-VESP-VSS-7')
+  // (It's the Vespid from Stalwart Defence, which may already have lost wounds.)
+  const minesWounds = minesState.players.B.unitState['TAU-VESP-VSS-7']?.wounds ?? 9
+  await tableActions(table, [{ type: 'token/update', id: minesVespid.id, x: 28, y: 5 }])
+  await openTab(b, 'Map')
+  await expect(b.locator('[data-roll-waiting="mines"]')).toBeVisible()
+  await a.locator('[data-roll-prompt="mines"]').click()
+  await a.locator(`.unit-radial[data-ring-for="${minesVespid.id}"][data-menu="roll"]`).getByRole('menuitem', { name: 'Rolled 3' }).click()
+  await expect.poll(async () => (await tableState(table)).players.B.unitState['TAU-VESP-VSS-7']?.wounds).toBe(Math.max(0, minesWounds - 6))
+  await expect(table.locator('[data-catalog-id="mines"]')).toHaveCount(0)
+  await expect(a.locator('[data-roll-prompt]')).toHaveCount(0)
+  await tableActions(table, [{ type: 'token/remove', id: minesVespid.id }])
   await openTab(a, 'Operatives')
   await bladeCard.locator('button.state-pill').click()
   await expect(bladeTag).toHaveAttribute('data-order-color', 'red')

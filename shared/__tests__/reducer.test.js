@@ -1118,3 +1118,35 @@ describe('Universal equipment: Ammo Resupply', () => {
     expect(() => applyAction(state, { type: 'battle/ammoResupply', tokenId: far.id }, 'A')).toThrow(/unused/)
   })
 })
+
+describe('Universal equipment: Mines', () => {
+  const battle = () =>
+    run(createGame(), [
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'VOT-HKY-WAR-0', maxWounds: 8, x: 2, y: 2, baseMm: 28.5 }, 'A'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-VSS-0', maxWounds: 9, x: 20, y: 20, baseMm: 28.5 }, 'B'],
+      [{ type: 'marker/add', catalogId: 'mines', label: 'Mines', x: 10, y: 10, radius: 0.4 }, 'A'],
+    ])
+  const vespid = (state) => state.tokens.find((token) => token.unitKey === 'TAU-VESP-VSS-0')
+
+  it("asks the mine's owner for a D3 when an operative comes within control range, then deals D3+3 and removes it", () => {
+    let state = applyAction(battle(), { type: 'token/update', id: vespid(battle()).id, x: 10, y: 10.9 }, 'B')
+    expect(state.players.B.unitState['TAU-VESP-VSS-0']?.wounds ?? 9).toBe(9)
+    const [roll] = state.battle.rolls
+    expect(roll).toMatchObject({ kind: 'mines', die: 3, seat: 'A', tokenId: vespid(state).id })
+    // Moving again doesn't ask twice.
+    state = applyAction(state, { type: 'token/update', id: vespid(state).id, x: 10.2, y: 10.9 }, 'B')
+    expect(state.battle.rolls).toHaveLength(1)
+    expect(() => applyAction(state, { type: 'battle/roll', id: roll.id, value: 2 }, 'B')).toThrow(/other player/)
+    expect(() => applyAction(state, { type: 'battle/roll', id: roll.id, value: 4 }, 'A')).toThrow(/1 to 3/)
+    state = applyAction(state, { type: 'battle/roll', id: roll.id, value: 2 }, 'A')
+    expect(state.players.B.unitState['TAU-VESP-VSS-0'].wounds).toBe(4)
+    expect(state.markers.some((marker) => marker.catalogId === 'mines')).toBe(false)
+    expect(state.battle.rolls).toHaveLength(0)
+  })
+
+  it('stays put while nobody comes close', () => {
+    const state = applyAction(battle(), { type: 'token/update', id: vespid(battle()).id, x: 14, y: 14 }, 'B')
+    expect(state.battle.rolls ?? []).toHaveLength(0)
+  })
+})

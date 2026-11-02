@@ -183,6 +183,23 @@ function BaseSizer({ token, onStep }) {
 }
 
 // tabs / tabLabel / onSelectTab: the phase's views, so the rail can switch away from the map.
+// A roll the app is waiting for. The player who rolls taps it (or the operative) to
+// enter the result on the action ring; the other player sees what's being rolled.
+function RollPrompt({ roll, mine, token, onOpen }) {
+  const what = `${roll.label} on ${token?.label || 'the operative'}`
+  return mine ? (
+    <button type="button" className="move-status glass is-roll" data-roll-prompt={roll.kind} onClick={() => token && onOpen(token)}>
+      <span className="move-status-label">Roll a D{roll.die}</span>
+      <span className="move-status-warning">{what}. Tap here or the operative to enter it.</span>
+    </button>
+  ) : (
+    <div className="move-status glass" role="status" data-roll-waiting={roll.kind}>
+      <span className="move-status-label">Waiting for a D{roll.die}</span>
+      <span className="move-status-warning">{what}: your opponent is rolling.</span>
+    </div>
+  )
+}
+
 function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const { state: game, seat, killteam, roster, ephemerals, act, sendEphemeral } = usePlayer()
   const svgRef = useRef(null)
@@ -385,6 +402,11 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     }, 2500)
   }
 
+  // Rolls the app is waiting for (it never rolls for players): mine to enter, and the
+  // other player's, so both iPads say what's holding things up.
+  const rolls = game.battle.rolls ?? []
+  const rollFor = (tokenId) => rolls.find((roll) => roll.seat === seat && roll.tokenId === tokenId) ?? null
+
   // Open the action ring around an operative (or a marker or token), kept fully on
   // screen and clear of the tool drawer on the left.
   const openRadial = (token) => {
@@ -396,7 +418,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const room = RADIAL_ROOM
     setRadial({
       tokenId: token.id,
-      menu: 'main',
+      // A roll this player owes for it (e.g. Mines) comes first, as dice faces.
+      menu: rollFor(token.id) ? 'roll' : 'main',
       x: clamp(offX + (token.x - viewRef.current.x) * scale - stageRect.left, railRight + room, stageRect.width - room),
       y: clamp(offY + (toSvgY(token.y) - viewRef.current.y) * scale - stageRect.top, room, stageRect.height - room),
     })
@@ -1404,6 +1427,22 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         { ...back, run: openMenu('actions') },
       ]
     }
+    if (radial.menu === 'roll') {
+      const roll = rollFor(radialToken.id)
+      if (!roll) return [back]
+      return [
+        ...Array.from({ length: roll.die }, (_, index) => ({
+          key: `roll-${index + 1}`,
+          label: `Rolled ${index + 1}`,
+          text: String(index + 1),
+          run: () => {
+            act({ type: 'battle/roll', id: roll.id, value: index + 1 })
+            setRadial(null)
+          },
+        })),
+        back,
+      ]
+    }
     if (radial.menu === 'resourceful') {
       // Why a point can't be spent now (the server checks the same), shown on the buttons.
       const player = game.players[radialToken.seat]
@@ -1625,6 +1664,14 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
               ending wholly within 4&quot; of it. Then go back to the strategy phase.
             </span>
           </div>
+        ) : null}
+        {rolls.length && !moveStatus ? (
+          <RollPrompt
+            roll={rolls.find((roll) => roll.seat === seat) ?? rolls[0]}
+            mine={rolls.some((roll) => roll.seat === seat)}
+            token={itemById((rolls.find((roll) => roll.seat === seat) ?? rolls[0]).tokenId)}
+            onOpen={openRadial}
+          />
         ) : null}
         {moveStatus ? (
           <div className={`move-status glass${moveStatus.warning ? ' is-warning' : ''}`} role="status" data-move-status>

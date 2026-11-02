@@ -31,6 +31,8 @@ import {
   FALLEN_KIN_RADIUS_IN,
   HY_PEX_DAMAGE,
   AMMO_CACHE_MARKER,
+  MINES_DAMAGE,
+  MINES_MARKER,
   MINEFIELD,
   MINEFIELD_COUNTS,
   NO_KIN_LEFT_BEHIND,
@@ -382,6 +384,54 @@ const triggerMinefields = (state, random) => {
     }
   })
   return next
+}
+
+// ---- Rolls the players make ----
+// The app doesn't roll dice: a rule that needs one adds a pending roll, the player who
+// rolls enters the result from the action ring of the operative (or marker) it's about,
+// and battle/roll applies it.
+//   roll: { id, kind, die: 3 | 6, seat (who rolls), tokenId (what it's about), label, ... }
+const addRoll = (state, roll) => ({
+  ...state,
+  battle: { ...state.battle, rolls: [...(state.battle.rolls ?? []), { id: `r${state.nextId}`, ...roll }] },
+  nextId: state.nextId + 1,
+})
+
+// Universal equipment, Mines: the first time a Mines marker is within an operative's control
+// range, it's set off: its owner rolls a D3 for D3+3 damage on that operative.
+// Only in the battle: setting up operatives near your own mines isn't moving into them.
+const triggerMines = (state) => {
+  if (state.phase !== 'battle') return state
+  let next = state
+  state.markers.forEach((marker) => {
+    if (marker.catalogId !== MINES_MARKER || marker.triggered || marker.attachedTo) return
+    const victim = next.tokens.find(
+      (token) => token.unitKey && token.seat && !next.players[token.seat]?.unitState?.[token.unitKey]?.dead && touchingMarker(token, marker),
+    )
+    if (!victim) return
+    next = { ...next, markers: next.markers.map((candidate) => (candidate.id === marker.id ? { ...candidate, triggered: victim.id } : candidate)) }
+    next = addRoll(next, {
+      kind: 'mines',
+      die: 3,
+      seat: marker.seat ?? otherSeat(victim.seat),
+      tokenId: victim.id,
+      markerId: marker.id,
+      label: `Mines: D3 + ${MINES_DAMAGE} damage`,
+    })
+  })
+  return next
+}
+
+// What each kind of roll does with the result.
+const ROLL_EFFECTS = {
+  mines: (state, roll, value) => {
+    const victim = state.tokens.find((token) => token.id === roll.tokenId)
+    const cleared = { ...state, markers: state.markers.filter((marker) => marker.id !== roll.markerId) }
+    if (!victim?.unitKey) return cleared
+    const unit = cleared.players[victim.seat].unitState[victim.unitKey] ?? seedUnitState(victim.maxWounds)
+    const wounds = Math.max(0, (unit.wounds ?? victim.maxWounds ?? 0) - MINES_DAMAGE - value)
+    return patchUnit(cleared, victim.seat, victim.unitKey, { wounds, dead: wounds === 0, lastHit: 'normal', damagedTp: cleared.battle.tp }, victim.maxWounds)
+  },
 }
 
 // Actions that can bring an operative within a marker's control range.
@@ -1005,6 +1055,17 @@ const handlers = {
     return patchUnit(used, seat, token.unitKey, { resuppliedTp: tp }, token.maxWounds)
   },
 
+  // A player enters a roll the app asked for (see addRoll): value on that die.
+  'battle/roll': (state, action, actor) => {
+    const roll = (state.battle.rolls ?? []).find((candidate) => candidate.id === String(action.id ?? ''))
+    if (!roll) fail('That roll is already done.')
+    if (isSeat(actor) && actor !== roll.seat) fail('That roll is the other player’s.')
+    const value = Math.round(toNumber(action.value))
+    if (value < 1 || value > roll.die) fail(`Enter 1 to ${roll.die}.`)
+    const done = { ...state, battle: { ...state.battle, rolls: state.battle.rolls.filter((candidate) => candidate.id !== roll.id) } }
+    return ROLL_EFFECTS[roll.kind] ? ROLL_EFFECTS[roll.kind](done, roll, value, action) : done
+  },
+
   // A player confirms (or takes back) ending turning point fromTp. It moves on once, when
   // the second player confirms; a confirmation for a turning point that's already over
   // is ignored, so two players confirming never skips one.
@@ -1265,5 +1326,7 @@ export const applyAction = (state, action, actor, random = Math.random) => {
   const handler = handlers[action?.type]
   if (!handler) fail(`Unknown action: ${action?.type}`)
   const next = handler(state, action, actor, random)
-  return MOVING_ACTIONS.has(action.type) && next.markers?.some((marker) => marker.catalogId === MINEFIELD) ? triggerMinefields(next, random) : next
+  if (!MOVING_ACTIONS.has(action.type)) return next
+  const minefields = next.markers?.some((marker) => marker.catalogId === MINEFIELD) ? triggerMinefields(next, random) : next
+  return minefields.markers?.some((marker) => marker.catalogId === MINES_MARKER) ? triggerMines(minefields) : minefields
 }

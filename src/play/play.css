@@ -2600,6 +2600,22 @@
   font-weight: 600;
 }
 
+/* A roll the app is waiting for: the roller's banner is a button that opens the dice. */
+.move-status.is-roll {
+  pointer-events: auto;
+  min-height: 44px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-color: var(--seat-color);
+}
+
+.move-status.is-roll .move-status-warning,
+.move-status[data-roll-waiting] .move-status-warning {
+  color: inherit;
+  font-weight: 500;
+}
+
 
 /* The strategy sheet put aside (Dauntless Explorers): a button back to it, bottom centre
    (clear of the map's move banner at the top). */

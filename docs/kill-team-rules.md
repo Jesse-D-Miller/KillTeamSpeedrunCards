@@ -325,7 +325,7 @@ Setup rules:
 **In the app (Nov 2026):** dice are rolled by the players; where a rule needs a roll, the app asks for the result on the action ring.
 
 - **Ammo Cache:** Ammo Resupply is on an operative's Actions ring while your kill team has Ammo Cache markers. The server checks the operative controls one of your markers (within 1") that hasn't been used this turning point, and isn't within enemy control range; it then records `resuppliedTp`, and its shots with datacard weapons get the one attack die re-roll in the stats drawer until the next turning point.
-
+- **Mines:** in the battle, the first time a living operative (either side) is within a Mines marker's control range after a move, the server records a pending roll (`battle.rolls`) for the mine's owner (the marker's seat; for a marker the projector placed, the other player) and marks the marker as set off. The owner's map shows "Roll a D3"; tapping it (or the operative) opens the ring as dice faces 1–3, and `battle/roll` deals D3+3 damage and removes the marker. The other player's map says they're waiting. Placing or deploying near a mine before the battle doesn't set it off. Placement limits (your territory, more than 2" from other markers and access points) are a separate task.
 
 ## 8. Approved Ops 2025: game sequence
 

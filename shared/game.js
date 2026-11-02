@@ -33,6 +33,11 @@ export const equipmentOptionCount = (eqIds) => new Set((eqIds ?? []).map(equipme
 
 export const otherSeat = (seat) => (seat === 'A' ? 'B' : 'A')
 
+// Universal equipment: Mines. The first time an operative is within a Mines marker's
+// control range, the marker goes and it takes D3+3 damage (the mine's owner rolls).
+export const MINES_MARKER = 'mines'
+export const MINES_DAMAGE = 3
+
 // Universal equipment: Ammo Cache markers, and the Ammo Resupply mission action (0AP).
 export const AMMO_CACHE_MARKER = 'ammo-cache'
 
