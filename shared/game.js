@@ -46,6 +46,12 @@ export const resourcefulGain = (outsideControl) => (outsideControl >= 5 ? 2 : ou
 export const BONDS_THAT_BIND = 'VOT-HKY-T-BTB'
 export const BONDS_RANGE_IN = 3
 
+// Yaegir Ironbraek's Minefield: five face-down Minefield markers, three HY-Pex mines and
+// two blanks (which is which stays hidden until one flips).
+export const MINEFIELD = 'vot-hky-minefield'
+export const MINEFIELD_COUNTS = { mines: 3, blanks: 2 }
+export const HY_PEX_DAMAGE = 3
+
 // Stalwart Defence (Yaegir firefight ploy): an enemy ends a move within control range of a
 // Yaegir; another Yaegir within 6" of that one (not itself within enemy control range)
 // shoots it for free, without grenades, Blast or x" Devastating weapons.

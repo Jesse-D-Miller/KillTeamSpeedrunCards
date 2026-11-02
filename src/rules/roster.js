@@ -158,6 +158,12 @@ export const maxWoundsFor = (opType) => {
   return Number.isNaN(parsed) ? 0 : parsed
 }
 
+// '4+' -> 4 (null if it isn't a plain save).
+export const saveFor = (opType) => {
+  const parsed = Number.parseInt(opType?.SAVE, 10)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
 export const unitDisplayName = (unit) =>
   unit.instance ? `${unit.opType.opTypeName} ${unit.instance}` : unit.opType.opTypeName
 

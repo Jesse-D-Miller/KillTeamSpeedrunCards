@@ -26,13 +26,19 @@ const redactPlayer = (player, phase) => {
   return redacted
 }
 
+// A face-down Minefield marker (Yaegirs) hides whether it's a HY-Pex mine from everyone,
+// its owner included, until it flips.
+const redactMarker = (marker) =>
+  marker.minefield && !marker.minefield.flipped ? { ...marker, minefield: { flipped: false } } : marker
+
 export const viewFor = (state, role) => {
   const players = {}
   SEATS.forEach((seat) => {
     players[seat] =
       seat === role ? state.players[seat] : redactPlayer(state.players[seat], state.phase)
   })
-  return { ...state, players }
+  const markers = (state.markers ?? []).map(redactMarker)
+  return { ...state, players, markers }
 }
 
 export const isHidden = (value) => Boolean(value && value.hidden === true)

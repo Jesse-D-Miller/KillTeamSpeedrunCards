@@ -1412,7 +1412,20 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await shot(a, '12s-stalwart-defence')
   await stalwart.getByRole('button', { name: 'Not now' }).click()
   await expect(stalwart).toHaveCount(0)
-  await tableActions(table, [{ type: 'token/remove', id: stalwartEnemy.id }])
+  // The Ironbraek's Minefield: a face-down marker flips when the Vespid comes within its
+  // control range (no Yaegir near it): a HY-Pex mine or a blank, drawn at random.
+  await tableActions(table, [{ type: 'marker/add', seat: 'A', catalogId: 'vot-hky-minefield', x: 26, y: 16, radius: 0.4 }])
+  const minefield = table.locator('.board-marker', { hasText: 'Minefield' })
+  await expect(minefield).toHaveCount(1)
+  await tableActions(table, [{ type: 'token/update', id: stalwartEnemy.id, x: 26, y: 17 }])
+  await expect(table.locator('.board-marker', { hasText: /^(HY-Pex mine|Blank)$/ })).toHaveCount(1)
+  const flippedState = await tableState(table)
+  const flipped = flippedState.markers.find((marker) => marker.catalogId === 'vot-hky-minefield')
+  expect(flipped.minefield.flipped).toBe(true)
+  await tableActions(table, [
+    { type: 'marker/remove', id: flipped.id },
+    { type: 'token/remove', id: stalwartEnemy.id },
+  ])
   await openTab(a, 'Operatives')
   await bladeCard.locator('button.state-pill').click()
   await expect(bladeTag).toHaveAttribute('data-order-color', 'red')

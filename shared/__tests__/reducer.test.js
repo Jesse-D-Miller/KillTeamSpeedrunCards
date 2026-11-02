@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { COMMAND_REROLL, canToughOut, createGame, musterBlocker, toughSurvivalistsDamage, turnState, vantageFloor } from '../game.js'
 import { ActionError, applyAction } from '../reducer.js'
+import { viewFor } from '../views.js'
 
 const run = (state, steps) =>
   steps.reduce((current, [action, actor]) => applyAction(current, action, actor), state)
@@ -1008,5 +1009,61 @@ describe('Hernkyn Yaegirs: Outright Conviction', () => {
     expect(state.players.A.unitState['VOT-HKY-THEYN-0']).toMatchObject({ wounds: 0, dead: true })
     // Only the Theyn has it.
     expect(hit('VOT-HKY-WAR-0').players.A.unitState['VOT-HKY-WAR-0'].dead).toBe(true)
+  })
+})
+
+describe('Hernkyn Yaegirs: Minefield and HY-Pex mines', () => {
+  const battle = () =>
+    run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'VOT-HKY' }, 'A'],
+      [{ type: 'setup/killteam', killteamId: 'TAU-VESP' }, 'B'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'VOT-HKY-IRN-0', maxWounds: 8, x: 2, y: 2, baseMm: 28.5 }, 'A'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-VSS-0', maxWounds: 9, save: 5, x: 20, y: 20, baseMm: 28.5 }, 'B'],
+    ])
+  const mine = (state, x, roll) =>
+    applyAction(state, { type: 'marker/add', catalogId: MINEFIELD_ID, x, y: 10, radius: 0.4 }, 'A', () => roll)
+  const MINEFIELD_ID = 'vot-hky-minefield'
+  const vespid = (state) => state.tokens.find((token) => token.unitKey === 'TAU-VESP-VSS-0')
+  const moveVespid = (state, x, y, roll = 0.5) => applyAction(state, { type: 'token/update', id: vespid(state).id, x, y }, 'B', () => roll)
+
+  it('draws three HY-Pex mines and two blanks, no more than five, hidden from every screen', () => {
+    let state = battle()
+    // A low draw is a mine while mines are left.
+    for (const x of [4, 8, 12, 16, 20]) state = mine(state, x, 0)
+    const markers = state.markers.filter((marker) => marker.catalogId === MINEFIELD_ID)
+    expect(markers.map((marker) => marker.minefield.mine)).toEqual([true, true, true, false, false])
+    expect(() => mine(state, 24, 0)).toThrow(/five/)
+    for (const role of ['A', 'B', 'table']) expect(viewFor(state, role).markers.every((marker) => marker.minefield.mine === undefined)).toBe(true)
+  })
+
+  it('flips under an enemy (not with a friend close): a HY-Pex mine does 3, plus a D6 under its Save', () => {
+    let state = mine(battle(), 10, 0)
+    // Roll 0.5 → 4, under Save 5: 3 + 4 = 7 damage.
+    state = moveVespid(state, 10, 10.9)
+    const marker = state.markers.find((candidate) => candidate.catalogId === MINEFIELD_ID)
+    expect(marker.minefield).toMatchObject({ flipped: true, mine: true, result: { damage: 7, roll: 4 } })
+    expect(marker.short).toBe('HYPX')
+    expect(state.players.B.unitState['TAU-VESP-VSS-0'].wounds).toBe(2)
+    expect(viewFor(state, 'B').markers[0].minefield.mine).toBe(true)
+  })
+
+  it("doesn't flip while a friendly operative is within its control range", () => {
+    let state = mine(battle(), 2.5, 0)
+    state = applyAction(state, { type: 'token/update', id: state.tokens[0].id, x: 2.5, y: 9 }, 'A')
+    state = moveVespid(state, 3.6, 10.9)
+    expect(state.markers[0].minefield.flipped).toBe(false)
+  })
+
+  it('lets the Ironbraek turn a flipped marker face down again, once per turning point', () => {
+    let state = moveVespid(mine(battle(), 10, 0.99), 10, 10.9)
+    expect(state.markers[0].minefield).toMatchObject({ flipped: true, mine: false })
+    state = moveVespid(state, 20, 20)
+    const ironbraek = state.tokens[0].id
+    expect(() => applyAction(state, { type: 'battle/resetMinefield', id: state.markers[0].id }, 'A')).toThrow(/Ironbraek/)
+    state = applyAction(state, { type: 'token/update', id: ironbraek, x: 10, y: 9 }, 'A')
+    state = applyAction(state, { type: 'battle/resetMinefield', id: state.markers[0].id }, 'A')
+    expect(state.markers[0].minefield).toEqual({ mine: false, flipped: false })
   })
 })

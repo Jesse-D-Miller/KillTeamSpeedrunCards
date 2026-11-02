@@ -1,5 +1,5 @@
 import { boardLayoutFor, isBoardPiece, isBoardShape, placePiece } from './boardLayout.js'
-import { inEnemyControl, isMoveKind, outsideEnemyControl } from './movement.js'
+import { CONTROL_RANGE_IN, inEnemyControl, isMoveKind, outsideEnemyControl } from './movement.js'
 import {
   DEFAULT_BASE_MM,
   MAX_CATEGORY_VP,
@@ -29,6 +29,9 @@ import {
   BONDS_THAT_BIND,
   FALLEN_KIN,
   FALLEN_KIN_RADIUS_IN,
+  HY_PEX_DAMAGE,
+  MINEFIELD,
+  MINEFIELD_COUNTS,
   NO_KIN_LEFT_BEHIND,
 } from './game.js'
 import { adjustPath, clampWithin, distance } from './geometry.js'
@@ -308,6 +311,74 @@ const veteranAdventurer = (state, seat) =>
   )
     ? 1
     : 0
+
+// ---- Yaegir Ironbraek's Minefield ----
+// A Minefield marker is drawn face down from what's left of the five (three HY-Pex mines,
+// two blanks); which it is stays secret (views.js) until it flips.
+const addMinefield = (state, action, actor, random) => {
+  const seat = isSeat(actor) ? actor : resolveSeat(action, actor)
+  const placed = state.markers.filter((marker) => marker.catalogId === MINEFIELD && marker.seat === seat)
+  const mines = MINEFIELD_COUNTS.mines - placed.filter((marker) => marker.minefield?.mine).length
+  const blanks = MINEFIELD_COUNTS.blanks - placed.filter((marker) => !marker.minefield?.mine).length
+  if (mines + blanks <= 0) fail('All five Minefield markers are set up.')
+  const marker = {
+    id: `m${state.nextId}`,
+    seat,
+    kind: 'marker',
+    catalogId: MINEFIELD,
+    label: 'Minefield',
+    short: 'MINE',
+    radius: clamp(toNumber(action.radius, 0.5), 0.1, 6),
+    ring: 0,
+    attachedTo: null,
+    ...sanitizePoint(action),
+    minefield: { mine: random() * (mines + blanks) < mines, flipped: false },
+  }
+  return { ...state, markers: [...state.markers, marker], nextId: state.nextId + 1 }
+}
+
+// After anything moves: a face-down Minefield marker within an enemy operative's control
+// range and not within a friendly operative's flips. A blank does nothing; a HY-Pex mine
+// inflicts 3 damage, then D6: under the enemy's Save, that much more (its Save comes with
+// its token; without one the roll is only recorded). The marker stays.
+const touchingMarker = (token, marker) => distance(token, marker) - tokenRadiusIn(token) - marker.radius <= CONTROL_RANGE_IN
+const triggerMinefields = (state, random) => {
+  let next = state
+  state.markers.forEach((marker) => {
+    // (An iPad's copy doesn't know what a face-down marker is, so only the server flips it.)
+    if (marker.catalogId !== MINEFIELD || marker.minefield?.mine == null || marker.minefield.flipped || marker.attachedTo) return
+    const living = (token) => token.unitKey && !next.players[token.seat]?.unitState?.[token.unitKey]?.dead
+    if (next.tokens.some((token) => token.seat === marker.seat && living(token) && touchingMarker(token, marker))) return
+    const enemy = next.tokens.find((token) => token.seat && token.seat !== marker.seat && living(token) && touchingMarker(token, marker))
+    if (!enemy) return
+    let result = { tokenId: enemy.id, damage: 0, roll: null }
+    if (marker.minefield.mine) {
+      const roll = Math.floor(random() * 6) + 1
+      const extra = enemy.save && roll < enemy.save ? roll : 0
+      const unit = next.players[enemy.seat].unitState[enemy.unitKey] ?? seedUnitState(enemy.maxWounds)
+      const wounds = Math.max(0, (unit.wounds ?? enemy.maxWounds ?? 0) - HY_PEX_DAMAGE - extra)
+      next = patchUnit(next, enemy.seat, enemy.unitKey, { wounds, dead: wounds === 0, lastHit: 'normal', damagedTp: next.battle.tp }, enemy.maxWounds)
+      result = { tokenId: enemy.id, damage: HY_PEX_DAMAGE + extra, roll, saveKnown: Boolean(enemy.save) }
+    }
+    next = {
+      ...next,
+      markers: next.markers.map((candidate) =>
+        candidate.id === marker.id
+          ? {
+              ...candidate,
+              label: candidate.minefield.mine ? 'HY-Pex mine' : 'Blank',
+              short: candidate.minefield.mine ? 'HYPX' : 'BLNK',
+              minefield: { ...candidate.minefield, flipped: true, result },
+            }
+          : candidate,
+      ),
+    }
+  })
+  return next
+}
+
+// Actions that can bring an operative within a marker's control range.
+const MOVING_ACTIONS = new Set(['token/update', 'token/move', 'token/adjust', 'token/undoMove', 'token/undoStep'])
 
 const clearAuto = (state) => (state.battle.lastAuto ? { ...state, battle: { ...state.battle, lastAuto: null } } : state)
 
@@ -871,6 +942,28 @@ const handlers = {
     return patchUnit(state, seat, unitKey, { weaponUses: { ...unit?.weaponUses, [weapon]: next } }, action.maxWounds)
   },
 
+  // Yaegir Ironbraek: as it's readied, if it's not within enemy control range, it can turn
+  // one flipped Minefield marker within its control range face down again (once per
+  // turning point).
+  'battle/resetMinefield': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const marker = state.markers.find((candidate) => candidate.id === String(action.id ?? ''))
+    if (!marker || marker.catalogId !== MINEFIELD || marker.seat !== seat || !marker.minefield?.flipped) fail('Pick one of your flipped Minefield markers.')
+    const player = state.players[seat]
+    if (player.minefieldResetTp === state.battle.tp) fail('Already reset one this turning point.')
+    const ironbraek = state.tokens.find(
+      (token) => token.seat === seat && /^VOT-HKY-IRN-/.test(token.unitKey ?? '') && !player.unitState[token.unitKey]?.dead,
+    )
+    if (!ironbraek || !touchingMarker(ironbraek, marker) || inEnemyControl(state, ironbraek)) {
+      fail('Your Ironbraek must be within its control range, clear of enemy operatives.')
+    }
+    const reset = state.markers.map((candidate) =>
+      candidate.id === marker.id ? { ...candidate, label: 'Minefield', short: 'MINE', minefield: { mine: candidate.minefield.mine, flipped: false } } : candidate,
+    )
+    return updatePlayer({ ...state, markers: reset }, seat, { minefieldResetTp: state.battle.tp })
+  },
+
   // A player confirms (or takes back) ending turning point fromTp. It moves on once, when
   // the second player confirms; a confirmation for a turning point that's already over
   // is ignored, so two players confirming never skips one.
@@ -994,6 +1087,8 @@ const handlers = {
       // False while the base size is being picked during placement (the on-token − / +).
       baseLocked: Boolean(action.baseLocked),
       ring: sanitizeRing(action.ring),
+      // Its Save stat (e.g. 4 for 4+), for rules the server resolves (HY-Pex mines).
+      save: action.unitKey && action.save != null ? clamp(Math.round(toNumber(action.save)), 2, 6) : null,
     }
     return { ...state, tokens: [...state.tokens, token], nextId: state.nextId + 1 }
   },
@@ -1085,7 +1180,8 @@ const handlers = {
 
   // Markers sit on the killzone; tokens (kind 'token') can ride on an operative
   // (attachedTo: token id) and follow it around.
-  'marker/add': (state, action, actor) => {
+  'marker/add': (state, action, actor, random) => {
+    if (action.catalogId === MINEFIELD) return addMinefield(state, action, actor, random)
     const marker = {
       id: `m${state.nextId}`,
       seat: isSeat(actor) ? actor : null,
@@ -1127,5 +1223,6 @@ export const ACTION_TYPES = Object.keys(handlers)
 export const applyAction = (state, action, actor, random = Math.random) => {
   const handler = handlers[action?.type]
   if (!handler) fail(`Unknown action: ${action?.type}`)
-  return handler(state, action, actor, random)
+  const next = handler(state, action, actor, random)
+  return MOVING_ACTIONS.has(action.type) && next.markers?.some((marker) => marker.catalogId === MINEFIELD) ? triggerMinefields(next, random) : next
 }

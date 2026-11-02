@@ -5,6 +5,7 @@ import {
   DEFAULT_BASE_MM,
   MOVE_ADJUST_REACH,
   HERNKYN_YAEGIRS,
+  MINEFIELD,
   VANTAGE_FLOORS,
   baseRadiusIn,
   tokenRadiusIn,
@@ -19,7 +20,7 @@ import { dragOverlays } from '../board/dragOverlays.js'
 import { baseSizeMm } from '../data/baseSizes.js'
 import { BOARD, getLayout, toSvgY } from '../board/boardData.js'
 import { MARKER_SIZES_MM, categoriesFor, radiusFor } from '../data/tokenCatalog.js'
-import { maxWoundsFor, tokenLabelFor } from '../rules/roster.js'
+import { maxWoundsFor, saveFor, tokenLabelFor } from '../rules/roster.js'
 import { isLegionaryUnit } from '../rules/equipment.js'
 import { LEGIONARY_MARKS } from '../rules/legionary.js'
 import { engageOnlyInBattle } from '../rules/orders.js'
@@ -519,6 +520,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         unitKey: activeUnit.key,
         baseMm: baseSizeMm(activeUnit.opType),
         maxWounds: maxWoundsFor(activeUnit.opType),
+        save: saveFor(activeUnit.opType),
         baseLocked: false,
       })
       setPendingUnit(null)
@@ -1067,6 +1069,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         unitKey: unit.key,
         baseMm: baseSizeMm(unit.opType),
         maxWounds: maxWoundsFor(unit.opType),
+        save: saveFor(unit.opType),
         baseLocked: true,
       })
     })
@@ -1328,6 +1331,20 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
                 icon: 'back',
                 run: () => {
                   detachMarker(radialToken)
+                  setRadial(null)
+                },
+              },
+            ]
+          : []),
+        // Yaegir Ironbraek: turn one of your flipped Minefield markers face down again.
+        ...(radialIsMarker && radialToken.catalogId === MINEFIELD && radialToken.seat === seat && radialToken.minefield?.flipped
+          ? [
+              {
+                key: 'face-down',
+                label: 'Face down',
+                icon: 'back',
+                run: () => {
+                  act({ type: 'battle/resetMinefield', id: radialToken.id })
                   setRadial(null)
                 },
               },
