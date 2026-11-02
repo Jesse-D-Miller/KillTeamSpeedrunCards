@@ -760,6 +760,7 @@ All of these were replaced in Approved Ops 2025.
 - **Wounds corrected (31 Oct 2026),** checked against Wahapedia's current datacards (`wahapedia.ru/kill-team3/kill-teams/<slug>/`, lowercase slug):
   - **Raveners** (Aug 2026 dataslate): Ravener Prime 21 → **19**; Felltalon, Tremorscythe, Venomspitter, Warrior and Wrecker 20 → **18**. APL, Move and Save already matched.
   - **Canoptek Tomb Crawler** (Apr 2026 dataslate): 21 → **18**. The rest of Canoptek Circle matched.
+- **Legionaries checked (2 Nov 2026)** against Wahapedia's current team page: every datacard's APL, Move, Save and Wounds, every weapon profile and its rules (the data's abbreviations, e.g. "Prc1", read the same), every ability (Grisly Mark 2AP), all eight ploys and the four faction equipment items match. No change needed.
   - **Rules text from the same dataslates (Aug 2026):**
     - **Felltalon's Toxic Lunge:** the target must be visible, and an enemy within control range must be picked first.
     - **Whipcord Emergence:** on your TUNNEL, re-roll only defence dice results of one (was any). Also fixed the data's "f that" typos. The text reader labels it "Re-roll defence dice showing 1".
