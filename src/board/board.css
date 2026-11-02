@@ -65,8 +65,10 @@
   stroke-width: 0.16;
 }
 
+/* Dark letters: on the projector they're left unlit, so they read faintly without
+   drawing the eye off the operatives. */
 .board-vantage {
-  fill: rgba(255, 255, 255, 0.55);
+  fill: rgba(0, 0, 0, 0.7);
   font-size: 0.32px;
   letter-spacing: 0.02px;
 }

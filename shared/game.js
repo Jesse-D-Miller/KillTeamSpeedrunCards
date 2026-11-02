@@ -66,6 +66,8 @@ export const DEFAULT_SETTINGS = {
   calibration: null,
   showGrid: true,
   showTerrain: true,
+  // The letter and Vantage height written on each terrain piece.
+  showTerrainLabels: true,
   showZones: true,
   showObjectives: true,
   showPanels: true,

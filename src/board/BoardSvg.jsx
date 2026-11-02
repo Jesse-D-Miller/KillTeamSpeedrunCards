@@ -249,6 +249,7 @@ function BoardSvg({
   const flags = {
     grid: settings?.showGrid ?? true,
     terrain: settings?.showTerrain ?? true,
+    terrainLabels: settings?.showTerrainLabels ?? true,
     zones: settings?.showZones ?? true,
     objectives: settings?.showObjectives ?? true,
     ...show,
@@ -405,7 +406,7 @@ function BoardSvg({
               )),
           )}
           {layout.areas.map((area) =>
-            area.centroid && area.vantage ? (
+            flags.terrainLabels && area.centroid && area.vantage ? (
               <text
                 key={`${area.id}-v`}
                 className="board-vantage"

@@ -157,6 +157,12 @@ describe('applyAction', () => {
     expect(state.settings.showGrid).toBe(false)
     expect(state.settings).not.toHaveProperty('junk')
   })
+
+  it('terrain labels can be hidden from the projector menu', () => {
+    const state = applyAction(createGame(), { type: 'settings/update', patch: { showTerrainLabels: false } }, 'table')
+    expect(createGame().settings.showTerrainLabels).toBe(true)
+    expect(state.settings.showTerrainLabels).toBe(false)
+  })
 })
 
 describe('scoring', () => {

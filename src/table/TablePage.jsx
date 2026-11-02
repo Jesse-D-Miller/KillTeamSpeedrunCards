@@ -97,6 +97,7 @@ function TableMenu({ game, onClose, onCalibrate }) {
   const toggles = [
     ['showGrid', 'Grid'],
     ['showTerrain', 'Terrain outlines'],
+    ['showTerrainLabels', 'Terrain labels'],
     ['showZones', 'Zones'],
     ['showObjectives', 'Objectives'],
     ['showPanels', 'Side panels'],

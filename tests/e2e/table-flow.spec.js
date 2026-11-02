@@ -359,6 +359,16 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await table.waitForTimeout(17000)
   await expect(table.locator('.overlay-measure')).toHaveCount(1)
   await shot(table, '06-map-table')
+  // The projector's menu hides the terrain labels, and brings them back.
+  const labels = table.locator('.table-board .board-vantage')
+  expect(await labels.count()).toBeGreaterThan(0)
+  await table.locator('.table-menu-button').click()
+  const labelToggle = table.locator('.table-menu-toggle', { hasText: 'Terrain labels' }).locator('input')
+  await labelToggle.uncheck()
+  await expect(labels).toHaveCount(0)
+  await labelToggle.check()
+  await expect(labels.first()).toBeVisible()
+  await table.locator('.table-menu-head').getByRole('button', { name: 'Close' }).click()
   // With Measure on, tapping an operative closes it (the ruler goes) and opens the
   // operative's action ring.
   await a.locator(`.map-stage [data-token-id="${deployId}"] .board-token-base`).click()
