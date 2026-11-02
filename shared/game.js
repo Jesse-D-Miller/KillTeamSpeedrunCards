@@ -41,6 +41,11 @@ export const otherSeat = (seat) => (seat === 'A' ? 'B' : 'A')
 // control range).
 export const HERNKYN_YAEGIRS = 'VOT-HKY'
 export const resourcefulGain = (outsideControl) => (outsideControl >= 5 ? 2 : outsideControl >= 1 ? 1 : 0)
+// Bonds That Bind (Yaegir firefight ploy): when a Yaegir is activated, pick another ready
+// Yaegir visible to and within 3" of it to activate straight after it.
+export const BONDS_THAT_BIND = 'VOT-HKY-T-BTB'
+export const BONDS_RANGE_IN = 3
+
 // Tough Survivalists (Yaegir strategy ploy): the first damage each Yaegir takes in the
 // turning point can be halved, rounding up, to a minimum of 2. null when halving
 // wouldn't lower it.
@@ -237,16 +242,32 @@ export const turnState = (state) => {
   const ready = Object.fromEntries(SEATS.map((seat) => [seat, readyUnitKeys(state.players[seat]).length]))
   const done = !active && SEATS.every((seat) => ready[seat] === 0)
   let nextSeat = null
+  // A chained activation (Bonds That Bind): once the first operative is expended, the
+  // chosen second one activates before the opponent.
+  const chain = state.battle.chain?.tp === tp ? state.battle.chain : null
+  const chainUnit = (key) => state.players[chain.seat]?.unitState?.[key]
+  const chainedUnitKey =
+    chain && chainUnit(chain.after)?.activation === 'expended' && (chainUnit(chain.next)?.activation ?? 'ready') === 'ready' && !chainUnit(chain.next)?.dead
+      ? chain.next
+      : null
   if (!active && !done) {
     const last = state.battle.lastActivatedByTp?.[tp] ?? null
     const preferred = last ? otherSeat(last) : state.battle.initiativeByTp?.[tp] ?? null
-    if (preferred) nextSeat = ready[preferred] > 0 ? preferred : otherSeat(preferred)
+    if (chainedUnitKey) nextSeat = chain.seat
+    else if (preferred) nextSeat = ready[preferred] > 0 ? preferred : otherSeat(preferred)
   }
   const counteractSeat =
     SEATS.find((seat) =>
       (state.players[seat]?.units ?? []).some((unitKey) => canCounteract(state, seat, unitKey)),
     ) ?? null
-  return { activeSeat: active?.seat ?? null, activeUnitKey: active?.unitKey ?? null, nextSeat, counteractSeat, done }
+  return {
+    activeSeat: active?.seat ?? null,
+    activeUnitKey: active?.unitKey ?? null,
+    nextSeat,
+    chainedUnitKey: active ? null : chainedUnitKey,
+    counteractSeat,
+    done,
+  }
 }
 
 // VP come from three ops, max 6 each. The primary op adds half (rounded up) of

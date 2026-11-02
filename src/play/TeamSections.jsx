@@ -1,4 +1,6 @@
-import { COMMAND_REROLL, ployUses } from '../../shared/game.js'
+import { useState } from 'react'
+import { BONDS_RANGE_IN, BONDS_THAT_BIND, COMMAND_REROLL, ployUses, tokenRadiusIn, turnState } from '../../shared/game.js'
+import { distance } from '../../shared/geometry.js'
 import { isHidden } from '../../shared/views.js'
 import TacOpCard from '../components/TacOpCard.jsx'
 import { primaryOpCard } from '../rules/cards.js'
@@ -15,10 +17,96 @@ const COMMAND_REROLL_PLOY = {
   description: 'Use this firefight ploy after rolling your attack or defence dice. You can re-roll one of those dice.',
 }
 
+// Bonds That Bind (Yaegirs): used as one of your Yaegirs is activated, picking another
+// ready Yaegir within 3" of it to activate straight after it (the turn order follows).
+function BondsThatBind({ ploy }) {
+  const { state: game, seat, me, act } = usePlayer()
+  const [picking, setPicking] = useState(false)
+  const cost = ploy.CP ?? 1
+  const turn = turnState(game)
+  const used = ployUses(me, game.battle.tp, ploy.ployId) > 0
+  const first = turn.activeSeat === seat ? game.tokens.find((token) => token.seat === seat && token.unitKey === turn.activeUnitKey) : null
+  const choices = first
+    ? game.tokens.filter((token) => {
+        const unit = me.unitState?.[token.unitKey]
+        return (
+          token.seat === seat &&
+          token.unitKey &&
+          token.id !== first.id &&
+          !unit?.dead &&
+          (unit?.activation ?? 'ready') === 'ready' &&
+          distance(first, token) - tokenRadiusIn(first) - tokenRadiusIn(token) <= BONDS_RANGE_IN
+        )
+      })
+    : []
+  const chained = game.battle.chain?.seat === seat && game.battle.chain.tp === game.battle.tp ? game.battle.chain : null
+  const nameOf = (unitKey) => game.tokens.find((token) => token.seat === seat && token.unitKey === unitKey)?.label || unitKey
+  const stop = (handler) => (event) => {
+    event.preventDefault()
+    handler()
+  }
+  if (used) {
+    return (
+      <span className="ploy-use-group">
+        {chained ? <span className="ploy-use-note">Next: {nameOf(chained.next)}</span> : null}
+        <button
+          type="button"
+          className="ploy-use is-used"
+          aria-pressed="true"
+          onClick={stop(() => act({ type: 'battle/bondsThatBind', on: false, cost }))}
+          aria-label={`${ploy.ployName}: used, tap to undo`}
+        >
+          Used ✓
+        </button>
+      </span>
+    )
+  }
+  if (picking && first) {
+    return (
+      <span className="ploy-use-group is-picking" data-bonds-pick>
+        {choices.map((token) => (
+          <button
+            key={token.id}
+            type="button"
+            className="ploy-use"
+            onClick={stop(() => {
+              act({ type: 'battle/bondsThatBind', tokenId: token.id, cost })
+              setPicking(false)
+            })}
+          >
+            {token.label || token.unitKey}
+          </button>
+        ))}
+        <button type="button" className="ploy-use is-undo" onClick={stop(() => setPicking(false))}>
+          Cancel
+        </button>
+      </span>
+    )
+  }
+  const reason = !first ? 'Activate a Yaegir first' : !choices.length ? 'No ready Yaegir within 3"' : null
+  return (
+    <button
+      type="button"
+      className="ploy-use"
+      disabled={Boolean(reason) || me.cp < cost}
+      title={reason ?? undefined}
+      onClick={stop(() => setPicking(true))}
+      aria-label={`Use ${ploy.ployName}`}
+    >
+      {reason ?? `Use · ${cost}CP`}
+    </button>
+  )
+}
+
 // Play a firefight ploy from here (one used in a shot or fight is switched on in the
 // stats drawer instead; both count the same use). Each is once per turning point,
 // except Command Re-roll.
 function PloyUse({ ploy }) {
+  if (ploy.ployId === BONDS_THAT_BIND) return <BondsThatBind ploy={ploy} />
+  return <PlainPloyUse ploy={ploy} />
+}
+
+function PlainPloyUse({ ploy }) {
   const { state: game, me, act } = usePlayer()
   const { tp } = game.battle
   const uses = ployUses(me, tp, ploy.ployId)

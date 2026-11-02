@@ -897,3 +897,57 @@ describe('Hernkyn Yaegirs: Tough Survivalists', () => {
     expect(canToughOut(state.players.A, unit(), 2)).toBe(false)
   })
 })
+
+describe('Hernkyn Yaegirs: Bonds That Bind', () => {
+  // Yaegirs at x=2 and x=4 (close) and x=12 (far); a Vespid far away. Alice has initiative.
+  const battle = () => {
+    const state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'VOT-HKY' }, 'A'],
+      [{ type: 'setup/killteam', killteamId: 'TAU-VESP' }, 'B'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      ...['VOT-HKY-WAR-0', 'VOT-HKY-WAR-1', 'VOT-HKY-WAR-2'].map((unitKey, i) => [
+        { type: 'token/add', seat: 'A', unitKey, maxWounds: 8, x: [2, 4, 12][i], y: 2, baseMm: 28.5 },
+        'A',
+      ]),
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-VSS-0', maxWounds: 9, x: 20, y: 20, baseMm: 28.5 }, 'B'],
+      [{ type: 'battle/rollOff', winner: 'A' }, 'table'],
+      [{ type: 'battle/initiative', seat: 'A' }, 'A'],
+    ])
+    return run(
+      { ...state, players: { ...state.players, A: { ...state.players.A, units: ['VOT-HKY-WAR-0', 'VOT-HKY-WAR-1', 'VOT-HKY-WAR-2'] }, B: { ...state.players.B, units: ['TAU-VESP-VSS-0'] } } },
+      [[{ type: 'unit/update', unitKey: 'VOT-HKY-WAR-0', maxWounds: 8, patch: { activation: 'active' } }, 'A']],
+    )
+  }
+  const tokenOf = (state, unitKey) => state.tokens.find((token) => token.unitKey === unitKey).id
+  const expendFirst = (state) => applyAction(state, { type: 'unit/update', unitKey: 'VOT-HKY-WAR-0', maxWounds: 8, patch: { activation: 'expended' } }, 'A')
+
+  it('lets the named Yaegir activate straight after the first, then the opponent', () => {
+    let state = battle()
+    const cp = state.players.A.cp
+    state = applyAction(state, { type: 'battle/bondsThatBind', tokenId: tokenOf(state, 'VOT-HKY-WAR-1') }, 'A')
+    expect(state.players.A.cp).toBe(cp - 1)
+    state = expendFirst(state)
+    expect(turnState(state)).toMatchObject({ nextSeat: 'A', chainedUnitKey: 'VOT-HKY-WAR-1' })
+    state = applyAction(state, { type: 'unit/update', unitKey: 'VOT-HKY-WAR-1', maxWounds: 8, patch: { activation: 'active' } }, 'A')
+    state = applyAction(state, { type: 'unit/update', unitKey: 'VOT-HKY-WAR-1', maxWounds: 8, patch: { activation: 'expended' } }, 'A')
+    expect(turnState(state)).toMatchObject({ nextSeat: 'B', chainedUnitKey: null })
+  })
+
+  it('needs another ready Yaegir within 3" of the active one', () => {
+    const state = battle()
+    expect(() => applyAction(state, { type: 'battle/bondsThatBind', tokenId: tokenOf(state, 'VOT-HKY-WAR-2') }, 'A')).toThrow(/3"/)
+    expect(() => applyAction(state, { type: 'battle/bondsThatBind', tokenId: tokenOf(state, 'VOT-HKY-WAR-0') }, 'A')).toThrow(/another/)
+    expect(() => applyAction(expendFirst(state), { type: 'battle/bondsThatBind', tokenId: tokenOf(state, 'VOT-HKY-WAR-1') }, 'A')).toThrow(/activated/)
+  })
+
+  it('takes it back, refunding the CP and the chain', () => {
+    let state = battle()
+    const cp = state.players.A.cp
+    state = applyAction(state, { type: 'battle/bondsThatBind', tokenId: tokenOf(state, 'VOT-HKY-WAR-1') }, 'A')
+    state = applyAction(state, { type: 'battle/bondsThatBind', on: false }, 'A')
+    expect(state.players.A.cp).toBe(cp)
+    expect(state.battle.chain).toBeNull()
+    expect(turnState(expendFirst(state)).nextSeat).toBe('B')
+  })
+})

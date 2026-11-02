@@ -24,8 +24,11 @@ import {
   otherSeat,
   ployUses,
   resourcefulGain,
+  tokenRadiusIn,
+  BONDS_RANGE_IN,
+  BONDS_THAT_BIND,
 } from './game.js'
-import { adjustPath, clampWithin } from './geometry.js'
+import { adjustPath, clampWithin, distance } from './geometry.js'
 import { ARRANGEMENT_OPTIONS, CRIT_OP_IDS, pickRandom } from './rolls.js'
 
 // applyAction(state, action, actor, random) -> next state
@@ -719,6 +722,7 @@ const handlers = {
         shots: {},
         tpReady: { A: false, B: false },
         firefightReady: { A: false, B: false },
+        chain: null,
       },
       tokens: state.tokens.map((token) => (token.lastMove ? { ...token, lastMove: null } : token)),
     }
@@ -782,6 +786,31 @@ const handlers = {
       .filter((token) => ids.has(token.id) && token.seat === seat && token.unitKey && !player.unitState[token.unitKey]?.dead)
       .map((token) => token.id)
     return updatePlayer(state, seat, { dauntless: { tp: state.battle.tp, tokenIds } })
+  },
+
+  // Hernkyn Yaegirs' Bonds That Bind (firefight ploy, 1CP): used as a Yaegir activates,
+  // naming another ready Yaegir within 3" (visibility isn't checked) to activate straight
+  // after it. on: false takes it back (refunding the CP).
+  'battle/bondsThatBind': (state, action, actor, random) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const player = state.players[seat]
+    if (player.killteamId !== HERNKYN_YAEGIRS) fail('Only Hernkyn Yaegirs have Bonds That Bind.')
+    const spendPloy = (on) => handlers['battle/firefightPloy'](state, { ployId: BONDS_THAT_BIND, cost: action.cost ?? 1, on, seat }, actor, random)
+    if (action.on === false) {
+      const refunded = spendPloy(false)
+      return state.battle.chain?.seat === seat ? { ...refunded, battle: { ...refunded.battle, chain: null } } : refunded
+    }
+    const active = activeUnit(state)
+    if (!active || active.seat !== seat) fail('Use it as one of your Yaegirs is activated.')
+    const first = state.tokens.find((token) => token.seat === seat && token.unitKey === active.unitKey)
+    const second = state.tokens.find((token) => token.id === String(action.tokenId ?? ''))
+    if (!first || !second || second.seat !== seat || !second.unitKey || second.unitKey === active.unitKey) fail('Pick another of your operatives.')
+    const unit = player.unitState[second.unitKey]
+    if (unit?.dead || (unit?.activation ?? 'ready') !== 'ready') fail('That operative isn’t ready.')
+    if (distance(first, second) - tokenRadiusIn(first) - tokenRadiusIn(second) > BONDS_RANGE_IN) fail('It must be within 3".')
+    const used = spendPloy(true)
+    return { ...used, battle: { ...used.battle, chain: { tp: state.battle.tp, seat, after: active.unitKey, next: second.unitKey } } }
   },
 
   // A player confirms (or takes back) ending turning point fromTp. It moves on once, when
