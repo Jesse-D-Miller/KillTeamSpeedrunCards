@@ -77,6 +77,10 @@ const GENERAL = [
   token('counter', 'Counter', '#'),
 ]
 
+// Mission markers and crit op tokens (an operative carrying one shows it on the board).
+const MISSION_IDS = new Set([...MISSION_COMMON, ...Object.values(CRIT_OP_TOKENS).flat()].map((entry) => entry.id))
+export const isMissionMarker = (catalogId) => MISSION_IDS.has(catalogId)
+
 export const radiusFor = (entry) =>
   entry.radius ?? (entry.kind === 'token' ? TOKEN_RADIUS_IN : MARKER_RADIUS_IN)
 

@@ -60,4 +60,16 @@ describe('status rim', () => {
     expect(mark.querySelectorAll('.status-mark-glyph')).toHaveLength(6)
     expect(rim({ wounds: 8, mark: null }).querySelector('[data-status="mark"]')).toBeNull()
   })
+
+  it('orbits a diamond round an operative carrying a mission marker', () => {
+    const carrying = (riders) =>
+      render(
+        <svg>
+          <StatusRim token={{ id: 't1' }} view={view} status={{ wounds: 8 }} maxWounds={8} riders={riders} />
+        </svg>,
+      ).container.querySelector('[data-status="carrying"]')
+    expect(carrying([{ catalogId: 'pick-up' }])).not.toBeNull()
+    expect(carrying([{ catalogId: 'orb' }])).not.toBeNull()
+    expect(carrying([{ catalogId: 'guard' }])).toBeNull()
+  })
 })

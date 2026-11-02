@@ -1,3 +1,4 @@
+import { isMissionMarker } from '../data/tokenCatalog.js'
 import { isInjured } from './health.js'
 
 // Quiet indicators around an operative's base for states that last: small, faint and on
@@ -41,6 +42,10 @@ const MARK_GLYPHS = {
 }
 const MARK_ANGLES = [30, 90, 150, 210, 270, 330]
 
+// Carrying a mission marker (objective, Pick Up, Orb…): a small diamond orbits the base
+// slowly, so it's clear at a glance who has it.
+const CARRY_PATH = 'M0 -0.13L0.095 0L0 0.13L-0.095 0Z'
+
 // APL changed: a small tag on the left of the base (clear of the name, order tag, riders
 // and wound badge), ▲ green for more, ▼ red for less. Stunned counts as −1.
 const APL_TAG_ANGLE = 180
@@ -73,6 +78,7 @@ function StatusRim({ token, view, status, maxWounds, riders = [] }) {
   const poisoned = riders.some(isPoison)
   const guarding = riders.some(isGuard)
   const mark = MARK_GLYPHS[status?.mark] ?? null
+  const carrying = riders.some((marker) => isMissionMarker(marker.catalogId))
   return (
     <g className="status-rim" data-status-for={token.id} aria-hidden="true">
       {injured ? <circle className="status-injured" data-status="injured" cx={x} cy={cy} r={r + 0.14} strokeDasharray={CRACKS} /> : null}
@@ -105,6 +111,14 @@ function StatusRim({ token, view, status, maxWounds, riders = [] }) {
               <path className="status-mark-glyph" d={mark.d} />
             </g>
           ))}
+        </g>
+      ) : null}
+      {carrying ? (
+        <g className="status-carry" data-status="carrying" transform={`translate(${x} ${cy})`}>
+          <g className="status-carry-orbit">
+            <circle className="status-carry-track" r={r + 0.2} />
+            <path className="status-carry-icon" d={CARRY_PATH} transform={`translate(0 ${-(r + 0.2)})`} />
+          </g>
         </g>
       ) : null}
       {apl ? <AplTag key={apl} view={view} change={apl} /> : null}

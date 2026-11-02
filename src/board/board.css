@@ -852,6 +852,32 @@
   }
 }
 
+/* Carrying a mission marker: a gold diamond on a faint dotted track, a turn every 10s. */
+.status-carry-track {
+  fill: none;
+  stroke: #f0c75e;
+  stroke-opacity: 0.25;
+  stroke-width: 0.02;
+  stroke-dasharray: 0.03 0.09;
+}
+
+.status-carry-icon {
+  fill: #f0c75e;
+  fill-opacity: 0.85;
+  stroke: #1c1e22;
+  stroke-width: 0.015;
+}
+
+.status-carry-orbit {
+  animation: status-orbit 10s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-carry-orbit {
+    animation: none;
+  }
+}
+
 /* APL changed: a small ▲/▼ tag that pops in (up) or sinks in (down) once. */
 .status-apl rect {
   fill-opacity: 0.85;
