@@ -1211,6 +1211,15 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await tableActions(table, [{ type: 'unit/update', seat: 'A', unitKey: 'VOT-HKY-WAR-9', maxWounds: 8, patch: { wounds: 6 } }])
   await expect(aliceBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText(String(aliceCp))
   await expect(aliceDrawer).toHaveCount(0)
+  // A Vespid's Move ring has a Fly switch for the move picked next (unit tests cover the
+  // move record; picking a move here would move it).
+  await b.locator(`.map-stage [data-token-id="${stinger}"] .board-token-base`).click()
+  const stingerRing = b.locator(`.unit-radial[data-ring-for="${stinger}"]`)
+  await stingerRing.getByRole('menuitem', { name: 'Move', exact: true }).click()
+  await stingerRing.getByRole('menuitem', { name: 'Fly' }).click()
+  await expect(stingerRing.getByRole('menuitem', { name: 'Fly' })).toHaveAttribute('aria-pressed', 'true')
+  await b.locator(`.map-stage [data-token-id="${stinger}"] .board-token-base`).click()
+  await expect(stingerRing).toHaveCount(0)
   await tableActions(table, [
     { type: 'token/remove', id: stinger },
     { type: 'token/remove', id: mark },

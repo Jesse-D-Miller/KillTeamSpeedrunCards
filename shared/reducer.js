@@ -1432,7 +1432,8 @@ const handlers = {
     // every action this movement has used so far ('free' for a drag with none picked),
     // for rules like Heavy (Dash only).
     const kind = isMoveKind(action.kind) ? action.kind : null
-    const kinds = [...new Set([...(token.lastMove?.kinds ?? []), kind ?? 'free'])]
+    // 'fly' joins the record when the move used FLY (Vespids), for rules like Ocelli.
+    const kinds = [...new Set([...(token.lastMove?.kinds ?? []), kind ?? 'free', ...(action.fly ? ['fly'] : [])])]
     const moved = setMovePath(state, id, from, [from, ...steps], { prevMovedTp, kind, kinds })
     // Back-tracking all the way to where it started undoes the move and its activation.
     if (!steps.length) return returnToStart(restoreMovedTp(moved, token), token)

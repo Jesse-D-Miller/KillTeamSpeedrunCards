@@ -328,15 +328,17 @@ describe('Vespid Stingwings', () => {
     expect(far.modifiers.attack.some((modifier) => modifier.id === 'TAU-VESP-communion-target' && /more than 8"/.test(modifier.text))).toBe(true)
   })
 
-  it('Ocelli: Vantage benefits as if 3" higher', () => {
-    const game = vespidShot({
-      tokens: [op('s', 'A', WARRIOR, 2, 5, { lastMove: { from: { x: 0, y: 5 }, path: [], inches: 2 } }), op('t', 'B', THEYN, 7)],
-      units: { A: { [WARRIOR]: { order: 'engage', activation: 'active' } }, B: engage(THEYN) },
-      shots: toggled('A', { 'TAU-VESP-T-OCL': true, 'TAU-VESP-warrior-instincts': false }),
-    })
-    const shot = shoot(game, 'TAU-VESP-WAR-NB-0')
+  it('Ocelli: Vantage benefits as if 3" higher, only after using FLY', () => {
+    const game = (kinds) =>
+      vespidShot({
+        tokens: [op('s', 'A', WARRIOR, 2, 5, { lastMove: { from: { x: 0, y: 5 }, path: [], inches: 2, kinds } }), op('t', 'B', THEYN, 7)],
+        units: { A: { [WARRIOR]: { order: 'engage', activation: 'active' } }, B: engage(THEYN) },
+        shots: toggled('A', { 'TAU-VESP-T-OCL': true, 'TAU-VESP-warrior-instincts': false }),
+      })
+    const shot = shoot(game(['reposition', 'fly']), 'TAU-VESP-WAR-NB-0')
     expect(find(shot, 'attack', 'Vantage').text).toMatch(/Accurate 1/)
     expect(shot.attack.dice.auto).toBe(1)
+    expect(find(shoot(game(['reposition']), 'TAU-VESP-WAR-NB-0'), 'attack', 'Ocelli')).toMatchObject({ mode: 'inactive' })
   })
 
   it('Aerial Guidance: Lethal 5+ and Saturate when a guiding Oversight Drone is near', () => {

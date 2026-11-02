@@ -234,6 +234,10 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // The move action picked from an operative's Move ring (MOVE_KINDS or 'adjust'); null
   // is a free move. moveStatus: the banner while moving { label, used, limit, warning }.
   const [moveKind, setMoveKind] = useState(null)
+  // Vespid FLY: switched on the Move ring for the next move (flyNext), then kept for the
+  // move picked (moveFly), so its rules (Ocelli) know it flew.
+  const [flyNext, setFlyNext] = useState(false)
+  const [moveFly, setMoveFly] = useState(false)
   const [moveStatus, setMoveStatus] = useState(null)
   const moveStatusTimer = useRef(null)
   // The team section open beside the tool drawer (an id from TEAM_SECTIONS), or null.
@@ -323,12 +327,13 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
 
   // The living operative whose base is under this point, if any.
   // How far one of my operatives can go with a move action (Infinity for a free move).
-  const moveLimitFor = (token, kind) => {
+  // FLY gains no extra distance on a Charge: its Move stat.
+  const moveLimitFor = (token, kind, fly = false) => {
     const unit = roster.find((candidate) => candidate.key === token.unitKey)
     if (!MOVE_KINDS[kind] || !unit) return Infinity
     const max = maxWoundsFor(unit.opType)
     const wounds = game.players[token.seat]?.unitState?.[token.unitKey]?.wounds ?? max
-    return moveLimit(kind, moveStat(unit.opType.MOVE), isInjured(max, wounds))
+    return moveLimit(fly && kind === 'charge' ? 'reposition' : kind, moveStat(unit.opType.MOVE), isInjured(max, wounds))
   }
   const enemiesOf = (token) =>
     tokens.filter((other) => other.unitKey && other.seat && other.seat !== token.seat && !statusOf(game.players, other).dead)
@@ -345,7 +350,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       path,
       start: path,
       keep: path.length,
-      limit: moveLimitFor(token, kind),
+      limit: moveLimitFor(token, kind, kind && moveFly),
+      fly: Boolean(kind && moveFly),
       moved: false,
       screen,
       // With Move on, a tap (no drag) goes back to the operative's action ring.
@@ -357,7 +363,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // one step shorter per crossing. Re-fitted until it settles, since a shorter path
   // may no longer reach the wire.
   const wires = obstructions(game.markers)
-  const crossingsOf = (gesture, path = gesture.path) => (wires.length ? obstructedCrossings(path, wires, gesture.keep - 1) : 0)
+  // (Flying isn't moving across: it's set up again, so wire doesn't slow it.)
+  const crossingsOf = (gesture, path = gesture.path) => (wires.length && !gesture.fly ? obstructedCrossings(path, wires, gesture.keep - 1) : 0)
   const fitPath = (gesture, path) => {
     let fitted = capPath(path, gesture.keep, gesture.limit)
     if (!wires.length || !Number.isFinite(gesture.limit)) return fitted
@@ -402,7 +409,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         : null)
     const crossings = crossingsOf(gesture)
     setMoveStatus({
-      label: `${MOVE_KINDS[gesture.kind]?.label ?? 'Free move'}${crossings ? ` · razor wire +${crossings}"` : ''}${nearLadder(gesture) ? ' · ladder: a climb here counts as 1"' : ''}${communionCharge(gesture) ? ' · Communion: end by the closest enemy you can, or spend 1 SP' : ''}`,
+      label: `${MOVE_KINDS[gesture.kind]?.label ?? 'Free move'}${gesture.fly ? ' · FLY' : ''}${crossings ? ` · razor wire +${crossings}"` : ''}${nearLadder(gesture) ? ' · ladder: a climb here counts as 1"' : ''}${communionCharge(gesture) ? ' · Communion: end by the closest enemy you can, or spend 1 SP' : ''}`,
       used: moveCost(gesture),
       limit: gesture.limit,
       warning,
@@ -491,6 +498,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const railRight = railRect ? Math.max(0, railRect.right - stageRect.left) : 0
     const { scale, offX, offY } = viewMetrics(svgRect, viewRef.current)
     const room = RADIAL_ROOM
+    setFlyNext(false)
     setRadial({
       tokenId: token.id,
       // A roll this player owes for it (e.g. Mines) comes first, as dice faces.
@@ -844,7 +852,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       if (moveStatusTimer.current) window.clearTimeout(moveStatusTimer.current)
       moveStatusTimer.current = window.setTimeout(() => setMoveStatus(null), 4000)
       if (gesture.moved && changed) {
-        act({ type: 'token/move', id: gesture.id, path: gesture.path, kind: gesture.kind, maxWounds: maxWoundsOf(gesture.id) })
+        act({ type: 'token/move', id: gesture.id, path: gesture.path, kind: gesture.kind, fly: gesture.fly, maxWounds: maxWoundsOf(gesture.id) })
         // Snap to the last locked inch, and hold that until the server echoes it.
         setDragPreview({ id: gesture.id, path: gesture.path })
         window.setTimeout(() => setDragPreview(null), 400)
@@ -1044,8 +1052,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     setSelectedId(token.id)
     setTool('move')
     setMoveKind(kind)
-    const limit = kind === 'adjust' ? MOVE_ADJUST_REACH : moveLimitFor(token, kind)
-    setMoveStatus({ label: MOVE_KINDS[kind]?.label ?? 'Adjust', used: 0, limit, warning: null })
+    setMoveFly(flyNext && kind !== 'adjust')
+    const limit = kind === 'adjust' ? MOVE_ADJUST_REACH : moveLimitFor(token, kind, flyNext)
+    setMoveStatus({ label: `${MOVE_KINDS[kind]?.label ?? 'Adjust'}${flyNext && kind !== 'adjust' ? ' · FLY' : ''}`, used: 0, limit, warning: null })
   }
 
   // Fix the base size of the unit just placed; from now on it can only be moved.
@@ -1409,11 +1418,17 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       const radialOrder = game.players[radialToken.seat]?.unitState?.[radialToken.unitKey]?.order ?? 'conceal'
       const radialOpType = roster.find((unit) => unit.key === radialToken.unitKey)?.opType
       const noCharge = radialOrder === 'conceal' && !chargeOnConceal(radialOpType)
+      // Vespid Stingwings (every operative in the team) can FLY on any move: set up within
+      // the distance instead of moving.
+      const canFly = game.players[radialToken.seat]?.killteamId === VESPID_STINGWINGS
       return [
+        ...(canFly
+          ? [{ key: 'move-fly', label: 'Fly', text: 'FLY', caption: flyNext ? 'Flying' : 'Fly', selected: flyNext, run: () => setFlyNext((on) => !on) }]
+          : []),
         ...Object.entries(MOVE_KINDS).map(([kind, { label }]) => ({
           key: `move-${kind}`,
           label,
-          text: `${moveLimitFor(radialToken, kind)}"`,
+          text: `${moveLimitFor(radialToken, kind, canFly && flyNext)}"`,
           caption: kind === 'charge' && noCharge ? 'Conceal order' : label,
           disabled: kind === 'charge' && noCharge,
           run: () => startMove(kind, radialToken),

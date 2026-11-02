@@ -690,7 +690,8 @@ All of these were replaced in Approved Ops 2025.
     - **Communion points (automated):** in each Ready step (TP1 included) the Vespid player is asked for a D3, tapped on the strategy sheet (or the map banner); it's added to SP, plus 1 while a friendly Oversight Drone is on the board. Points carry over: the rule never discards them. Neurostimulant changes the prompt to "roll two D3 and keep one". Ammo Resupply (a mission action) costs a Stingwing (not the drone) 1 point, except once per turning point with Convergence Stimulant (`convergenceTp`); other Pick Up and mission actions aren't actions in the app, so the player takes the point off SP from the drawer. A Charge's banner reminds that it must end by the closest enemy it can unless a point is spent (from the drawer).
     - Warrior Instincts: off once a Communion point is spent.
     - Aerial Guidance: the shooter must be visible to and within 6" of a drone that can see the target.
-    - Ocelli: +3" for Vantage.
+    - Ocelli: +3" for Vantage, offered only when the operative used FLY this activation.
+    - **FLY:** a Vespid's Move ring has a Fly switch for the move picked next; the move record then includes `fly` (kept apart from the move actions, so Heavy isn't confused), the banner says FLY, a flying Charge gets no extra 2" (its Move stat, per FLY), and Razor Wire doesn't slow it (it's set up again, not moved across). Airborne Predators and Neutron Charge trigger on "moves or uses FLY", which any move already covers. The set-up itself still follows the dragged path; terrain isn't checked.
     - Neutron Overload.
     - Camouflaged, Ghost Rig and Evasive Drone.
     - Skytorch: only operatives in the torch zone between the start and end of its move; no cover or obscured.

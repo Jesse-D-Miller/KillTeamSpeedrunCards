@@ -144,20 +144,13 @@ export const attack = (ctx) => {
       }),
     )
   }
+  // Ocelli: only after using FLY this activation (the Fly switch on its Move ring).
   if (ctx.inBattle && ctx.movedThisActivation && weapon.atk != null) {
+    const base = { id: PLOYS.ocelli, owner, source: 'firefight', name: 'Ocelli' }
     mods.push(
-      mod({
-        id: PLOYS.ocelli,
-        owner,
-        source: 'firefight',
-        name: 'Ocelli',
-        mode: 'toggle',
-        cost: 1,
-        limit: 1,
-        text: 'Used FLY this activation: Vantage benefits, counting 3" higher',
-        effect: { vantageBonus: 3 },
-        tone: 'good',
-      }),
+      ctx.usedFly
+        ? mod({ ...base, mode: 'toggle', cost: 1, limit: 1, text: 'Used FLY this activation: Vantage benefits, counting 3" higher', effect: { vantageBonus: 3 }, tone: 'good' })
+        : mod({ ...base, mode: 'inactive', text: 'It moved without FLY this activation' }),
     )
   }
   if (ctx.inBattle && isNeutron(weapon) && ctx.movedThisActivation && ctx.gap <= 4 && weapon.atk != null) {

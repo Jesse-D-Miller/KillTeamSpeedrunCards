@@ -108,7 +108,10 @@ export const buildShotContext = ({ game, layout, shooterToken, targetToken, weap
     counteracting,
     movedThisActivation,
     // The move actions it used this activation ('free' for a drag with none picked).
-    moveKinds: movedThisActivation ? shooterToken.lastMove.kinds ?? ['free'] : [],
+    // The move actions it made this activation; FLY is kept apart (usedFly), since it's
+    // how it moved, not another move.
+    moveKinds: movedThisActivation ? (shooterToken.lastMove.kinds ?? ['free']).filter((kind) => kind !== 'fly') : [],
+    usedFly: movedThisActivation && (shooterToken.lastMove.kinds ?? []).includes('fly'),
     // The same for either operative in a fight (it moved this activation or counteraction).
     moveKindsOf: (token, operative) =>
       inBattle && token?.lastMove && (operative.activation === 'active' || (operative.activation === 'expended' && operative.counteractedTp === tp))

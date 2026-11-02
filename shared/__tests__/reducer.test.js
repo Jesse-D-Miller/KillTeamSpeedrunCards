@@ -763,6 +763,17 @@ describe('ending a turning point', () => {
   })
 })
 
+describe('FLY', () => {
+  it('joins the move record when a move used FLY', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-WAR-0', maxWounds: 9, x: 5, y: 5, baseMm: 28.5 }, 'B'],
+    ])
+    state = applyAction(state, { type: 'token/move', id: state.tokens[0].id, path: [{ x: 5, y: 5 }, { x: 6, y: 5 }], kind: 'reposition', fly: true }, 'B')
+    expect(state.tokens[0].lastMove.kinds).toEqual(['reposition', 'fly'])
+  })
+})
+
 describe('nudging a finished move', () => {
   const moved = () =>
     run(createGame(), [
