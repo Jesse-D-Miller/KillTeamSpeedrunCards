@@ -104,6 +104,12 @@
   fill-opacity: 0.45;
   stroke: var(--token-color);
   stroke-width: 0.08;
+  /* Activation changes (ready, active, expended) fade rather than snap. */
+  transition:
+    fill 0.4s ease,
+    fill-opacity 0.4s ease,
+    stroke 0.4s ease,
+    stroke-opacity 0.4s ease;
 }
 
 .board-token-ring {
@@ -179,11 +185,13 @@
   stroke-width: 0.1;
 }
 
-/* Expended: greyed out with a dashed rim, so it reads as done from across the table. */
+/* Expended: greyed out with a dashed grey rim (fading in over 0.4s), so it reads as
+   done from across the table until the next turning point. */
 .board-token.is-expended .board-token-base {
   fill: #2b2e33;
   fill-opacity: 0.85;
-  stroke-opacity: 0.6;
+  stroke: #8a8f98;
+  stroke-opacity: 0.7;
   stroke-dasharray: 0.18 0.12;
 }
 
