@@ -412,6 +412,7 @@ function BoardSvg({
                 <line
                   key={wall.id}
                   className={`board-wall is-${type}`}
+                  style={wall.width ? { strokeWidth: wall.width } : undefined}
                   x1={wall.start.x}
                   y1={toSvgY(wall.start.y)}
                   x2={wall.end.x}

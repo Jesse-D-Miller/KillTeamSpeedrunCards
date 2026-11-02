@@ -65,9 +65,12 @@
   stroke-width: 0.1;
 }
 
+/* A solid band across the wall's thickness (its width comes from the data), ending
+   square at the door panel's edges. */
 .board-wall.is-door {
   stroke: #ffd166;
   stroke-width: 0.16;
+  stroke-linecap: butt;
 }
 
 /* Dark letters: on the projector they're left unlit, so they read faintly without

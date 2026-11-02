@@ -87,6 +87,8 @@ export const buildTerrain = (arrangement, pieceById) => {
         id: `${entry.id || piece.id}-wall-${index}`,
         featureId: entry.id || piece.id,
         type: getSegmentType(segment),
+        // A door's band covers the wall's whole thickness (inches); other walls use the CSS width.
+        width: segment?.width ?? null,
         start: transformPoint(segmentPoints[0], placement),
         end: transformPoint(segmentPoints[1], placement),
       })
