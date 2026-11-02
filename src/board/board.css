@@ -822,6 +822,36 @@
   }
 }
 
+/* Mark of Chaos: small glyphs in the god's colour, breathing like the injured ring. */
+.status-mark-glyph {
+  fill: none;
+  stroke: var(--mark-color);
+  stroke-width: 0.025;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.status-mark {
+  animation: status-mark-breathe 4.5s ease-in-out infinite;
+}
+
+@keyframes status-mark-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-mark {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
 /* APL changed: a small ▲/▼ tag that pops in (up) or sinks in (down) once. */
 .status-apl rect {
   fill-opacity: 0.85;

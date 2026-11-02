@@ -53,4 +53,11 @@ describe('status rim', () => {
     expect(guard([{ catalogId: 'guard' }])).not.toBeNull()
     expect(guard([{ catalogId: 'apl-plus' }])).toBeNull()
   })
+
+  it("rings a marked legionary with its god's glyphs", () => {
+    const mark = rim({ wounds: 8, mark: 'NURGLE' }).querySelector('[data-status="mark"]')
+    expect(mark.getAttribute('data-mark')).toBe('NURGLE')
+    expect(mark.querySelectorAll('.status-mark-glyph')).toHaveLength(6)
+    expect(rim({ wounds: 8, mark: null }).querySelector('[data-status="mark"]')).toBeNull()
+  })
 })

@@ -30,6 +30,17 @@ const guardArc = (radius) => {
   return `M${-radius * Math.sin(half)} ${radius * Math.cos(half)}A${radius} ${radius} 0 0 0 ${radius * Math.sin(half)} ${radius * Math.cos(half)}`
 }
 
+// Mark of Chaos (legionaries): six small glyphs round the base in the god's colour, each
+// god with its own shape so it reads without colour too, breathing slowly.
+const MARK_GLYPHS = {
+  KHORNE: { color: '#e03131', d: 'M-0.05 -0.05L0.05 0.05M0.05 -0.05L-0.05 0.05' },
+  NURGLE: { color: '#82c91e', d: 'M0.05 0A0.05 0.05 0 1 1 -0.05 0A0.05 0.05 0 1 1 0.05 0Z' },
+  SLAANESH: { color: '#e64980', d: 'M0 -0.06L0.05 0L0 0.06L-0.05 0Z' },
+  TZEENTCH: { color: '#4dabf7', d: 'M0 -0.055L0.055 0.045L-0.055 0.045Z' },
+  UNDIVIDED: { color: '#c9a86a', d: 'M0 -0.06V0.06M-0.06 0H0.06M-0.042 -0.042L0.042 0.042M0.042 -0.042L-0.042 0.042' },
+}
+const MARK_ANGLES = [30, 90, 150, 210, 270, 330]
+
 // APL changed: a small tag on the left of the base (clear of the name, order tag, riders
 // and wound badge), ▲ green for more, ▼ red for less. Stunned counts as −1.
 const APL_TAG_ANGLE = 180
@@ -61,6 +72,7 @@ function StatusRim({ token, view, status, maxWounds, riders = [] }) {
   const apl = aplChange(status)
   const poisoned = riders.some(isPoison)
   const guarding = riders.some(isGuard)
+  const mark = MARK_GLYPHS[status?.mark] ?? null
   return (
     <g className="status-rim" data-status-for={token.id} aria-hidden="true">
       {injured ? <circle className="status-injured" data-status="injured" cx={x} cy={cy} r={r + 0.14} strokeDasharray={CRACKS} /> : null}
@@ -84,6 +96,15 @@ function StatusRim({ token, view, status, maxWounds, riders = [] }) {
       {guarding ? (
         <g className="status-guard" data-status="guard" transform={`translate(${x} ${cy}) rotate(${view.facing ?? 0})`}>
           <path className="status-guard-arc" d={guardArc(r + 0.32)} />
+        </g>
+      ) : null}
+      {mark ? (
+        <g className="status-mark" data-status="mark" data-mark={status.mark} transform={`translate(${x} ${cy})`} style={{ '--mark-color': mark.color }}>
+          {MARK_ANGLES.map((angle) => (
+            <g key={angle} transform={`rotate(${angle}) translate(0 ${-(r + 0.26)})`}>
+              <path className="status-mark-glyph" d={mark.d} />
+            </g>
+          ))}
         </g>
       ) : null}
       {apl ? <AplTag key={apl} view={view} change={apl} /> : null}
