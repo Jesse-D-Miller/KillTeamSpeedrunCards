@@ -16,7 +16,7 @@ import {
   turnState,
   vantageFloor,
 } from '../../shared/game.js'
-import { CONTROL_RANGE_IN, MOVE_KINDS, bendToward, capPath, inEnemyControl, moveLimit, moveStat, moveWarning, obstructedCrossings, obstructions } from '../../shared/movement.js'
+import { CONTROL_RANGE_IN, MOVE_KINDS, bendToward, capPath, inEnemyControl, moveLimit, moveStat, moveWarning, obstructedCrossings, obstructions, supportBonus } from '../../shared/movement.js'
 import { clampToBase, defaultShooterPoint, statusOf } from '../../shared/targeting.js'
 import { isInjured } from '../board/health.js'
 import BoardSvg from '../board/BoardSvg.jsx'
@@ -1423,7 +1423,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     }
     if (radial.menu === 'support') {
       // SUPPORT: another friendly operative within 6" (excluding Bomb Squigs) gets +1 APL
-      // until the end of its next activation (visibility isn't checked).
+      // until the end of its next activation (visibility isn't checked); 9" while it
+      // controls a Comms Device.
+      const reachIn = 6 + supportBonus(game, radialToken)
       const choices = tokens.filter(
         (token) =>
           token.seat === radialToken.seat &&
@@ -1431,7 +1433,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           token.unitKey &&
           !/-SQUIG-/.test(token.unitKey) &&
           !game.players[token.seat]?.unitState?.[token.unitKey]?.dead &&
-          distance(token, radialToken) - tokenRadiusIn(token) - tokenRadiusIn(radialToken) <= 6,
+          distance(token, radialToken) - tokenRadiusIn(token) - tokenRadiusIn(radialToken) <= reachIn,
       )
       return [
         ...choices.map((token) => ({

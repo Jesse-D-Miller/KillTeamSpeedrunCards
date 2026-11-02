@@ -1,6 +1,7 @@
 import { tokenRadiusIn } from '../../../../shared/game.js'
 import { analyseTarget, defaultShooterPoint } from '../../../../shared/targeting.js'
 import { distance } from '../../../../shared/geometry.js'
+import { supportBonus } from '../../../../shared/movement.js'
 import { keywordsOf } from '../../weaponRules.js'
 import { CONTROL_RANGE, abilityNamed, gapBetween, operativeOf } from '../context.js'
 import { mod } from '../effects.js'
@@ -37,11 +38,12 @@ const communionSpendReason = (ctx) => {
 }
 
 // Aerial Guidance (SUPPORT) needs a friendly Oversight Drone that the shooter is
-// visible to and within 6" of, that can see the target, and isn't engaged.
+// visible to and within 6" of (9" while the drone controls a Comms Device), that can
+// see the target, and isn't engaged.
 const guidingDrone = (ctx) =>
   ctx.operatives(ctx.shooter.seat, ctx.shooterToken).find((drone) => {
     if (!keywordsOf(operativeOf(ctx.game, drone).opType).has('OVERSIGHT')) return false
-    if (gapBetween(drone, ctx.shooterToken) > 6) return false
+    if (gapBetween(drone, ctx.shooterToken) > 6 + supportBonus(ctx.game, drone)) return false
     if (ctx.operatives(ctx.target.seat).some((enemy) => gapBetween(enemy, drone) <= CONTROL_RANGE)) return false
     const sees = (token) =>
       !analyseTarget({

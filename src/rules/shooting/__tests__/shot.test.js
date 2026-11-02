@@ -347,6 +347,21 @@ describe('Vespid Stingwings', () => {
     expect(ruleState(shot, 'saturate')).toBe('added')
   })
 
+  it('Aerial Guidance reaches 9" while the drone controls a Comms Device', () => {
+    const drone = 'TAU-VESP-OSD-0'
+    const game = (markers) =>
+      vespidShot({
+        tokens: [op('s', 'A', WARRIOR, 2), op('t', 'B', THEYN, 7), op('d', 'A', drone, 2, 13.5)],
+        markers,
+        shots: toggled('A', { 'TAU-VESP-aerial-guidance': true }),
+      })
+    expect(shoot(game([]), 'TAU-VESP-WAR-NB-0').attack.crit.value).toBe(6)
+    const comms = { id: 'm1', catalogId: 'comms-device', seat: 'A', x: 2, y: 14.3, radius: 0.4 }
+    expect(shoot(game([comms]), 'TAU-VESP-WAR-NB-0').attack.crit.value).toBe(5)
+    // The opponent's Comms Device doesn't help.
+    expect(shoot(game([{ ...comms, seat: 'B' }]), 'TAU-VESP-WAR-NB-0').attack.crit.value).toBe(6)
+  })
+
   it('Camouflaged: ignores Piercing and cover saves are crits; Ghost Rig: Conceal and more than 6" away isn’t valid', () => {
     const shadestrain = 'TAU-VESP-VSS-0'
     const game = (x, order) =>

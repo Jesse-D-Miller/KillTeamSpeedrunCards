@@ -132,3 +132,21 @@ export const concealedAndClear = (state, seat, inches) =>
 
 // How many of seat's operatives are in the killzone and outside enemy control range.
 export const outsideEnemyControl = (state, seat) => livingOperatives(state, seat).filter((token) => !inEnemyControl(state, token)).length
+
+// An operative controls a marker when it's within control range of it and no enemy
+// operative is (the full rule compares total APL when both sides are close; the
+// players settle that case).
+const nearMarker = (token, marker) => distance(token, marker) - tokenRadiusIn(token) - (marker.radius ?? 0) <= CONTROL_RANGE_IN
+export const controlsMarker = (state, token, marker) =>
+  nearMarker(token, marker) && !livingOperatives(state, otherSeat(token.seat)).some((enemy) => nearMarker(enemy, marker))
+
+// Universal equipment, Comms Device: while an operative controls one of its own kill
+// team's Comms Device markers, its SUPPORT rules reach 3" further.
+export const COMMS_DEVICE_MARKER = 'comms-device'
+export const COMMS_DEVICE_BONUS_IN = 3
+export const supportBonus = (state, token) =>
+  (state.markers ?? []).some(
+    (marker) => marker.catalogId === COMMS_DEVICE_MARKER && marker.seat === token.seat && !marker.attachedTo && controlsMarker(state, token, marker),
+  )
+    ? COMMS_DEVICE_BONUS_IN
+    : 0

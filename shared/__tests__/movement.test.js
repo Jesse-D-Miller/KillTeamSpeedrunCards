@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { distance, stepPath } from '../geometry.js'
-import { bendToward, capPath, concealedAndClear, markerSegment, moveLimit, moveStat, moveWarning, obstructedCrossings, obstructions } from '../movement.js'
+import { bendToward, capPath, concealedAndClear, markerSegment, supportBonus, moveLimit, moveStat, moveWarning, obstructedCrossings, obstructions } from '../movement.js'
 
 const length = (path) => path.slice(1).reduce((sum, point, index) => sum + distance(path[index], point), 0)
 const straight = (steps) => Array.from({ length: steps + 1 }, (_, x) => ({ x, y: 0 }))
@@ -117,6 +117,25 @@ describe('Razor Wire (Obstructing)', () => {
     expect(obstructedCrossings([...across, { x: 9.5, y: 10 }], segments)).toBe(2)
     // Past its end.
     expect(obstructedCrossings([{ x: 8, y: 13 }, { x: 12, y: 13 }], segments)).toBe(0)
+  })
+})
+
+describe('Comms Device', () => {
+  const op = (id, seat, x) => ({ id, seat, unitKey: `${seat}-${id}`, x, y: 5, baseMm: 28.5 })
+  const state = (tokens) => ({
+    tokens,
+    players: { A: { unitState: {} }, B: { unitState: {} } },
+    markers: [{ id: 'm1', catalogId: 'comms-device', seat: 'A', x: 5, y: 5, radius: 0.4 }],
+  })
+  it('adds 3" to SUPPORT for the operative controlling its own kill team’s device', () => {
+    const friend = op('a', 'A', 6)
+    expect(supportBonus(state([friend]), friend)).toBe(3)
+    // Too far away, or an enemy contests it.
+    expect(supportBonus(state([op('a', 'A', 9)]), op('a', 'A', 9))).toBe(0)
+    expect(supportBonus(state([friend, op('b', 'B', 4)]), friend)).toBe(0)
+    // The other side's operative can't use it.
+    const enemy = op('b', 'B', 6)
+    expect(supportBonus(state([enemy]), enemy)).toBe(0)
   })
 })
 
