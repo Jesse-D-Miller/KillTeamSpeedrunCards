@@ -854,11 +854,17 @@ describe('Hernkyn Yaegirs: Resourceful', () => {
   it('heals D3+1 lost wounds, never past its starting wounds', () => {
     let state = activate(nextTp(battle(6)))
     state = applyAction(state, { type: 'unit/update', unitKey: 'VOT-HKY-WAR-1', maxWounds: 8, patch: { wounds: 3 } }, 'A')
-    const healed = spend(state, 'heal', 'VOT-HKY-WAR-1', () => 0.99)
+    // The player rolls the D3 and enters it.
+    const heal = (from, value) => {
+      const asked = spend(from, 'heal', 'VOT-HKY-WAR-1')
+      expect(asked.battle.rolls.at(-1)).toMatchObject({ kind: 'resourceful', die: 3, seat: 'A' })
+      return applyAction(asked, { type: 'battle/roll', id: asked.battle.rolls.at(-1).id, value }, 'A')
+    }
+    const healed = heal(state, 3)
     expect(healed.players.A.unitState['VOT-HKY-WAR-1'].wounds).toBe(7)
     expect(healed.players.A.unitState['VOT-HKY-WAR-1'].resourcefulRoll).toBe(4)
     state = applyAction(state, { type: 'unit/update', unitKey: 'VOT-HKY-WAR-1', maxWounds: 8, patch: { wounds: 7 } }, 'A')
-    expect(spend(state, 'heal').players.A.unitState['VOT-HKY-WAR-1'].wounds).toBe(8)
+    expect(heal(state, 1).players.A.unitState['VOT-HKY-WAR-1'].wounds).toBe(8)
   })
 
   it('needs a point to spend', () => {
@@ -1060,8 +1066,12 @@ describe('Hernkyn Yaegirs: Minefield and HY-Pex mines', () => {
 
   it('flips under an enemy (not with a friend close): a HY-Pex mine does 3, plus a D6 under its Save', () => {
     let state = mine(battle(), 10, 0)
-    // Roll 0.5 → 4, under Save 5: 3 + 4 = 7 damage.
     state = moveVespid(state, 10, 10.9)
+    expect(state.players.B.unitState['TAU-VESP-VSS-0'].wounds).toBe(6)
+    // The Yaegir player rolls the D6: a 4, under Save 5: 3 + 4 = 7 damage.
+    const [roll] = state.battle.rolls
+    expect(roll).toMatchObject({ kind: 'hypex', die: 6, seat: 'A' })
+    state = applyAction(state, { type: 'battle/roll', id: roll.id, value: 4 }, 'A')
     const marker = state.markers.find((candidate) => candidate.catalogId === MINEFIELD_ID)
     expect(marker.minefield).toMatchObject({ flipped: true, mine: true, result: { damage: 7, roll: 4 } })
     expect(marker.short).toBe('HYPX')
@@ -1145,6 +1155,12 @@ describe('Universal equipment: Mines', () => {
     state = applyAction(state, { type: 'battle/roll', id: roll.id, value: 2 }, 'A')
     expect(state.players.B.unitState['TAU-VESP-VSS-0'].wounds).toBe(4)
     expect(state.markers.some((marker) => marker.catalogId === 'mines')).toBe(false)
+    expect(state.battle.rolls).toHaveLength(0)
+  })
+
+  it('forgets the roll if that operative is taken off the board', () => {
+    let state = applyAction(battle(), { type: 'token/update', id: vespid(battle()).id, x: 10, y: 10.9 }, 'B')
+    state = applyAction(state, { type: 'token/remove', id: vespid(state).id }, 'B')
     expect(state.battle.rolls).toHaveLength(0)
   })
 

@@ -1514,9 +1514,10 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             : inEnemyControl(game, radialToken)
               ? 'In control range'
               : null
+      // Healing asks for the D3: the ring turns to its dice.
       const spend = (use) => () => {
         act({ type: 'battle/resourceful', unitKey: radialToken.unitKey, use, maxWounds: maxWoundsOf(radialToken.id) })
-        setRadial(null)
+        setRadial((current) => (use === 'heal' && current ? { ...current, menu: 'roll' } : null))
       }
       return [
         { key: 'apl', label: '+1 APL', text: '+1', caption: blocked ?? `+1 APL · ${points} RP`, disabled: Boolean(blocked), run: spend('apl') },

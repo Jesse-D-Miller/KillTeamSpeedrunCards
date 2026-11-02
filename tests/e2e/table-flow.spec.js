@@ -1455,10 +1455,13 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   const flippedState = await tableState(table)
   const flipped = flippedState.markers.find((marker) => marker.catalogId === 'vot-hky-minefield')
   expect(flipped.minefield.flipped).toBe(true)
+  // A HY-Pex mine asks Alice for its D6; taking the Vespid off forgets it.
+  expect(flippedState.battle.rolls?.length ?? 0).toBe(flipped.minefield.mine ? 1 : 0)
   await tableActions(table, [
     { type: 'marker/remove', id: flipped.id },
     { type: 'token/remove', id: stalwartEnemy.id },
   ])
+  expect((await tableState(table)).battle.rolls ?? []).toHaveLength(0)
   // Ammo Resupply (universal equipment) from the Actions ring: Bladekyn, brought beside
   // Alice's Ammo Cache, resupplies; the marker is used for this turning point.
   const cacheState = await tableState(table)

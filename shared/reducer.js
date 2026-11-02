@@ -360,7 +360,14 @@ const addMinefield = (state, action, actor, random) => {
 // inflicts 3 damage, then D6: under the enemy's Save, that much more (its Save comes with
 // its token; without one the roll is only recorded). The marker stays.
 const touchingMarker = (token, marker) => distance(token, marker) - tokenRadiusIn(token) - marker.radius <= CONTROL_RANGE_IN
-const triggerMinefields = (state, random) => {
+// Damage on an operative from a rule (not an attack): a normal hit.
+const hurt = (state, token, damage) => {
+  const unit = state.players[token.seat].unitState[token.unitKey] ?? seedUnitState(token.maxWounds)
+  const wounds = Math.max(0, (unit.wounds ?? token.maxWounds ?? 0) - damage)
+  return patchUnit(state, token.seat, token.unitKey, { wounds, dead: wounds === 0, lastHit: 'normal', damagedTp: state.battle.tp }, token.maxWounds)
+}
+
+const triggerMinefields = (state) => {
   let next = state
   state.markers.forEach((marker) => {
     // (An iPad's copy doesn't know what a face-down marker is, so only the server flips it.)
@@ -371,12 +378,19 @@ const triggerMinefields = (state, random) => {
     if (!enemy) return
     let result = { tokenId: enemy.id, damage: 0, roll: null }
     if (marker.minefield.mine) {
-      const roll = Math.floor(random() * 6) + 1
-      const extra = enemy.save && roll < enemy.save ? roll : 0
-      const unit = next.players[enemy.seat].unitState[enemy.unitKey] ?? seedUnitState(enemy.maxWounds)
-      const wounds = Math.max(0, (unit.wounds ?? enemy.maxWounds ?? 0) - HY_PEX_DAMAGE - extra)
-      next = patchUnit(next, enemy.seat, enemy.unitKey, { wounds, dead: wounds === 0, lastHit: 'normal', damagedTp: next.battle.tp }, enemy.maxWounds)
-      result = { tokenId: enemy.id, damage: HY_PEX_DAMAGE + extra, roll, saveKnown: Boolean(enemy.save) }
+      // 3 damage now; the mine's owner then rolls the D6 (see ROLL_EFFECTS.hypex).
+      next = hurt(next, enemy, HY_PEX_DAMAGE)
+      result = { tokenId: enemy.id, damage: HY_PEX_DAMAGE, roll: null, saveKnown: Boolean(enemy.save) }
+      if (!next.players[enemy.seat].unitState[enemy.unitKey]?.dead) {
+        next = addRoll(next, {
+          kind: 'hypex',
+          die: 6,
+          seat: marker.seat,
+          tokenId: enemy.id,
+          markerId: marker.id,
+          label: `HY-Pex mine on ${enemy.label || 'the operative'}: under its Save adds that much damage`,
+        })
+      }
     }
     next = {
       ...next,
@@ -493,6 +507,14 @@ const STUN_TEST_PASS = 3
 const STUN_RANGE_IN = 6
 const STUN_AREA_IN = 1
 
+// A roll about an operative or marker taken off the board goes with it.
+const dropOrphanRolls = (state) => {
+  const rolls = state.battle?.rolls
+  if (!rolls?.length) return state
+  const kept = rolls.filter((roll) => state.tokens.some((token) => token.id === roll.tokenId) || state.markers.some((marker) => marker.id === roll.tokenId))
+  return kept.length === rolls.length ? state : { ...state, battle: { ...state.battle, rolls: kept } }
+}
+
 // What each kind of roll does with the result.
 const ROLL_EFFECTS = {
   stun: (state, roll, value) => {
@@ -516,10 +538,30 @@ const ROLL_EFFECTS = {
   mines: (state, roll, value) => {
     const victim = state.tokens.find((token) => token.id === roll.tokenId)
     const cleared = { ...state, markers: state.markers.filter((marker) => marker.id !== roll.markerId) }
-    if (!victim?.unitKey) return cleared
-    const unit = cleared.players[victim.seat].unitState[victim.unitKey] ?? seedUnitState(victim.maxWounds)
-    const wounds = Math.max(0, (unit.wounds ?? victim.maxWounds ?? 0) - MINES_DAMAGE - value)
-    return patchUnit(cleared, victim.seat, victim.unitKey, { wounds, dead: wounds === 0, lastHit: 'normal', damagedTp: cleared.battle.tp }, victim.maxWounds)
+    return victim?.unitKey ? hurt(cleared, victim, MINES_DAMAGE + value) : cleared
+  },
+  // HY-Pex mine (Yaegirs): under the enemy's Save, that much more damage. Without a known
+  // Save the roll is only recorded on the marker.
+  hypex: (state, roll, value) => {
+    const victim = state.tokens.find((token) => token.id === roll.tokenId)
+    const extra = victim?.save && value < victim.save ? value : 0
+    const noted = {
+      ...state,
+      markers: state.markers.map((marker) =>
+        marker.id === roll.markerId && marker.minefield?.result
+          ? { ...marker, minefield: { ...marker.minefield, result: { ...marker.minefield.result, roll: value, damage: marker.minefield.result.damage + extra } } }
+          : marker,
+      ),
+    }
+    return victim?.unitKey && extra ? hurt(noted, victim, extra) : noted
+  },
+  // Resourceful (Yaegirs): heal D3+1, never past its starting wounds.
+  resourceful: (state, roll, value) => {
+    const token = state.tokens.find((candidate) => candidate.id === roll.tokenId)
+    const unit = token?.unitKey ? state.players[token.seat].unitState[token.unitKey] : null
+    if (!unit || unit.dead) return state
+    const healed = value + 1
+    return patchUnit(state, token.seat, token.unitKey, { wounds: Math.min(roll.maxWounds, unit.wounds + healed), lastHit: 'normal', resourcefulRoll: healed })
   },
 }
 
@@ -982,8 +1024,9 @@ const handlers = {
 
   // Yaegirs spend a Resourceful point on the operative in its activation (or
   // counteraction): use 'apl' (+1 APL until the activation ends) or 'heal' (regain D3+1
-  // lost wounds, rolled here). Once per activation, outside enemy control range.
-  'battle/resourceful': (state, action, actor, random) => {
+  // lost wounds: the player rolls the D3 and enters it on the operative's ring). Once per
+  // activation, outside enemy control range.
+  'battle/resourceful': (state, action, actor) => {
     requirePhase(state, 'battle')
     const seat = resolveSeat(action, actor)
     const player = state.players[seat]
@@ -998,13 +1041,16 @@ const handlers = {
     if (unit.resourceful) fail('Already Resourceful this activation.')
     if ((player.sp ?? 0) < 1) fail('No Resourceful points left.')
     if (inEnemyControl(state, token)) fail('Not within control range of enemy operatives.')
-    const patch = { resourceful: use }
-    if (use === 'heal') {
-      const roll = Math.floor(random() * 3) + 2
-      const maxWounds = Math.max(1, Math.round(toNumber(action.maxWounds, unit.wounds)))
-      Object.assign(patch, { wounds: Math.min(maxWounds, unit.wounds + roll), lastHit: 'normal', resourcefulRoll: roll })
-    }
-    return updatePlayer(patchUnit(state, seat, unitKey, patch), seat, (current) => ({ sp: current.sp - 1 }))
+    const spent = updatePlayer(patchUnit(state, seat, unitKey, { resourceful: use }), seat, (current) => ({ sp: current.sp - 1 }))
+    if (use !== 'heal') return spent
+    return addRoll(spent, {
+      kind: 'resourceful',
+      die: 3,
+      seat,
+      tokenId: token.id,
+      maxWounds: Math.max(1, Math.round(toNumber(action.maxWounds, unit.wounds))),
+      label: `Resourceful: ${token.label || 'it'} heals D3 + 1`,
+    })
   },
 
   // Hernkyn Yaegirs' Dauntless Explorers (faction rule): a STRATEGIC GAMBIT in the first
@@ -1453,8 +1499,8 @@ export const ACTION_TYPES = Object.keys(handlers)
 export const applyAction = (state, action, actor, random = Math.random) => {
   const handler = handlers[action?.type]
   if (!handler) fail(`Unknown action: ${action?.type}`)
-  const next = state.phase === 'battle' ? countDownSmoke(state, handler(state, action, actor, random)) : handler(state, action, actor, random)
+  const next = dropOrphanRolls(state.phase === 'battle' ? countDownSmoke(state, handler(state, action, actor, random)) : handler(state, action, actor, random))
   if (!MOVING_ACTIONS.has(action.type)) return next
-  const minefields = next.markers?.some((marker) => marker.catalogId === MINEFIELD) ? triggerMinefields(next, random) : next
+  const minefields = next.markers?.some((marker) => marker.catalogId === MINEFIELD) ? triggerMinefields(next) : next
   return minefields.markers?.some((marker) => marker.catalogId === MINES_MARKER) ? triggerMines(minefields) : minefields
 }
