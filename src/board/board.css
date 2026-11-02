@@ -1104,3 +1104,32 @@
   fill: #000;
   fill-opacity: 0.28;
 }
+
+/* A critical hit: eight white rays shoot out past the rim and fade, on top of the
+   hurt flash. */
+.token-fx-crit-ray {
+  stroke: #fff;
+  stroke-width: 0.06;
+  stroke-linecap: round;
+  animation: token-crit-ray 0.9s ease-out forwards;
+}
+
+@keyframes token-crit-ray {
+  0% {
+    transform: translateY(0.12px) scaleY(0.4);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(-0.12px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .token-fx-crit-ray {
+    animation: token-fade 0.9s ease-in forwards;
+  }
+}

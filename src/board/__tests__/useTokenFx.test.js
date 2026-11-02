@@ -53,4 +53,10 @@ describe('token effects', () => {
     rerender({ ops: { t1: op({ counteract: 2 }) } })
     expect(kinds(result, 't1')).toEqual(['counteract'])
   })
+
+  it('bursts a critical hit instead of the plain flash', () => {
+    const { result, rerender } = renderHook(({ ops }) => useTokenFx(ops), { initialProps: { ops: { t1: op() } } })
+    rerender({ ops: { t1: op({ wounds: 4, lastHit: 'crit' }) } })
+    expect(kinds(result, 't1')).toEqual(['crit'])
+  })
 })

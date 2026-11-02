@@ -17,8 +17,8 @@ const incomingPayload = (ephemerals, tokens, seat) =>
 // once it has a target and a weapon, otherwise one aimed at my operative.
 //   toggle(modifier): turn one of my modifiers on or off (spending or refunding its CP).
 //   pickWeapon(id): my retaliation weapon, when I'm the one being fought.
-//   setWounds(operative, wounds): record damage on (or healing of) my operative; at 0
-//   it's incapacitated.
+//   setWounds(operative, wounds, hit): record damage on (or healing of) my operative; at 0
+//   it's incapacitated. hit 'crit' marks a critical hit (the board bursts it white).
 export const useAttack = (own = null) => {
   const { state: game, seat, ephemerals, act } = usePlayer()
   const layout = getLayout(game.table.mapId, game.table.arrangementId)
@@ -33,13 +33,13 @@ export const useAttack = (own = null) => {
   )
   const pickWeapon = useCallback((weaponId) => attack && act({ type: 'shot/weapon', key: attack.key, weaponId }), [act, attack])
   const setWounds = useCallback(
-    (operative, wounds) => {
+    (operative, wounds, hit = 'normal') => {
       const next = Math.max(0, Math.min(operative.maxWounds ?? wounds, wounds))
       act({
         type: 'unit/update',
         unitKey: operative.token.unitKey,
         maxWounds: operative.maxWounds,
-        patch: { wounds: next, dead: next === 0 },
+        patch: { wounds: next, dead: next === 0, lastHit: hit === 'crit' ? 'crit' : 'normal' },
       })
     },
     [act],

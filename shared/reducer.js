@@ -138,6 +138,9 @@ const UNIT_FIELDS = {
   statuses: (value) => (Array.isArray(value) ? value.map(String) : null),
   apl: (value) => clamp(Math.round(toNumber(value)), -3, 3),
   mark: (value) => (value == null ? null : String(value)),
+  // What the latest damage was ('crit' from the stats drawer's Crit button), so the board
+  // can play the right effect. Any other change of wounds counts as 'normal'.
+  lastHit: (value) => (['crit', 'normal'].includes(value) ? value : null),
   // Height on Vantage terrain (0 = killzone floor), used by the Sightline tool.
   vantage: (value) => ([0, ...VANTAGE_FLOORS.map((floor) => floor.height)].includes(Number(value)) ? Number(value) : null),
 }
@@ -811,6 +814,7 @@ const handlers = {
     const unitKey = String(action.unitKey ?? '')
     if (!unitKey) fail('Missing unit.')
     const patch = sanitizeUnitPatch(action.patch)
+    if ('wounds' in patch && !('lastHit' in patch)) patch.lastHit = 'normal'
     let next = clearAuto(state)
     // Activating an operative by hand also ends the activation in progress.
     if (patch.activation === 'active' && state.players[seat].unitState[unitKey]?.activation !== 'active') {

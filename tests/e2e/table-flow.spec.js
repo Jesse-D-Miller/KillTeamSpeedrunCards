@@ -1143,6 +1143,11 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await tableActions(table, [{ type: 'unit/update', seat: 'B', unitKey: 'TAU-VESP-WAR-9', patch: { activation: 'expended' } }])
   await expect(table.locator('[data-combat]')).toHaveCount(0)
   await expect(bobDrawer).toHaveCount(0)
+  // Damage recorded as a critical hit (the drawer's Crit button) bursts white rays out
+  // of the operative on the board.
+  await tableActions(table, [{ type: 'unit/update', seat: 'A', unitKey: 'VOT-HKY-WAR-9', maxWounds: 8, patch: { wounds: 3, lastHit: 'crit' } }])
+  await expect(table.locator('[data-fx="crit"] .token-fx-crit-ray')).toHaveCount(8)
+  await tableActions(table, [{ type: 'unit/update', seat: 'A', unitKey: 'VOT-HKY-WAR-9', maxWounds: 8, patch: { wounds: 6 } }])
   await expect(aliceBoard.locator('.pb-stat.is-cp .pb-big-value')).toHaveText(String(aliceCp))
   await expect(aliceDrawer).toHaveCount(0)
   await tableActions(table, [

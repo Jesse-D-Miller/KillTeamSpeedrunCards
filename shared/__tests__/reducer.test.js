@@ -147,6 +147,15 @@ describe('applyAction', () => {
     expect([0, 2, 3.2, 4, 6.4].map(vantageFloor)).toEqual([0, 1, 1, 2, 2])
   })
 
+  it('remembers whether the latest damage was a critical hit', () => {
+    const hit = (state, patch) => applyAction(state, { type: 'unit/update', unitKey: 'u-1', maxWounds: 10, patch }, 'B')
+    let state = hit(createGame(), { wounds: 6, lastHit: 'crit' })
+    expect(state.players.B.unitState['u-1'].lastHit).toBe('crit')
+    // Any other change of wounds (the health bar, −1) is a normal one.
+    state = hit(state, { wounds: 5 })
+    expect(state.players.B.unitState['u-1'].lastHit).toBe('normal')
+  })
+
   it('adds, moves and removes tokens', () => {
     let state = applyAction(createGame(), { type: 'token/add', x: 3, y: 4, label: 'Leader' }, 'A')
     const [token] = state.tokens

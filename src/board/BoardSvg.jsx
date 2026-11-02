@@ -130,6 +130,9 @@ function TokenName({ token, view, labelId }) {
 // Wound effects drawn on the token itself; the rest are TokenEvents.
 const WOUND_FX = new Set(['hurt', 'crit', 'heal'])
 
+// Rays of a critical hit's starburst, between the leaves' angles.
+const CRIT_RAYS = [0, 45, 90, 135, 180, 225, 270, 315]
+
 // Leaves for the healing twirl: six around the base, each a pointed leaf with a vein.
 const LEAF_PATH = 'M0 -0.22C0.13 -0.1 0.13 0.1 0 0.22C-0.13 0.1 -0.13 -0.1 0 -0.22Z'
 const LEAF_ANGLES = [0, 60, 120, 180, 240, 300]
@@ -140,9 +143,19 @@ function WoundFx({ fx, x, cy, r }) {
   if (!fx) return null
   if (fx.kind === 'hurt' || fx.kind === 'crit') {
     return (
-      <g key={fx.key} className="token-fx token-fx-hurt" aria-hidden="true">
+      <g key={fx.key} className={`token-fx token-fx-hurt${fx.kind === 'crit' ? ' is-crit' : ''}`} data-fx={fx.kind} aria-hidden="true">
         <circle className="token-fx-hurt-fill" cx={x} cy={cy} r={r} />
         <circle className="token-fx-hurt-ring" cx={x} cy={cy} r={r} />
+        {fx.kind === 'crit' ? (
+          // A critical hit: eight white rays burst out past the rim.
+          <g transform={`translate(${x} ${cy})`}>
+            {CRIT_RAYS.map((angle) => (
+              <g key={angle} transform={`rotate(${angle})`}>
+                <path className="token-fx-crit-ray" d={`M0 ${-(r + 0.08)}V${-(r + 0.42)}`} />
+              </g>
+            ))}
+          </g>
+        ) : null}
       </g>
     )
   }

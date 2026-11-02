@@ -155,7 +155,7 @@ function Modifiers({ modifiers, seat, onToggle }) {
 // and a critical hit from the opponent's current profile (after any damage changes).
 //   incoming: { normal, crit } damage the opponent deals it in this attack, or null.
 function WoundControls({ operative, incoming, onWounds }) {
-  const take = (damage) => onWounds(operative, operative.wounds - damage)
+  const take = (damage, hit = 'normal') => onWounds(operative, operative.wounds - damage, hit)
   return (
     <div className="combat-wound-controls" role="group" aria-label={`${operative.name} wounds`}>
       <button type="button" onClick={() => take(1)} disabled={operative.wounds <= 0} aria-label="Take 1 damage">
@@ -170,7 +170,7 @@ function WoundControls({ operative, incoming, onWounds }) {
               key={kind}
               type="button"
               className="is-hit"
-              onClick={() => take(damage)}
+              onClick={() => take(damage, kind === 'Crit' ? 'crit' : 'normal')}
               disabled={operative.wounds <= 0}
               aria-label={`Take ${damage} damage (${kind === 'Hit' ? 'normal' : 'critical'} hit)`}
             >
