@@ -35,6 +35,7 @@ import UnitCardModal from './UnitCardModal.jsx'
 import BoardArranger from './BoardArranger.jsx'
 import WeaponChooser from './WeaponChooser.jsx'
 import StalwartPrompt from './StalwartPrompt.jsx'
+import { FREE_ATTACK_EVENT } from './freeAttack.js'
 import { meleeWeaponsFor, rangedWeaponsFor } from '../rules/weaponRules.js'
 import AttackDrawer from './AttackDrawer.jsx'
 import ToolIcon from './ToolIcon.jsx'
@@ -906,17 +907,25 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     }
   }
 
-  // A free Shoot action outside its own activation (Stalwart Defence): its target is fixed
-  // and it's limited to the weapons that ploy allows.
-  const startFreeShot = ({ shooterId, targetId }) => {
+  // A free Shoot or Fight action outside the operative's own activation (Stalwart Defence's
+  // shot, with its target fixed and only the weapons it allows; Krump 'Em!'s fight).
+  const startFreeAttack = ({ mode = 'shoot', shooterId, targetId = null, free }) => {
     setRadial(null)
     clearTool()
     endPlacing()
     setSelectedId(null)
     setTool('attack')
-    publish({ tool: 'attack', mode: 'shoot', shooterId, targetId, point: null, weaponId: null, lockTarget: true, free: 'stalwart' })
+    publish({ tool: 'attack', mode, shooterId, targetId, point: null, weaponId: null, lockTarget: Boolean(targetId), free })
     setWeaponMenuOpen(true)
   }
+  const startFreeShot = ({ shooterId, targetId }) => startFreeAttack({ shooterId, targetId, free: 'stalwart' })
+
+  // Ploys played from the team panel that start a free attack ask for it this way.
+  useEffect(() => {
+    const onFreeAttack = (event) => startFreeAttack(event.detail)
+    window.addEventListener(FREE_ATTACK_EVENT, onFreeAttack)
+    return () => window.removeEventListener(FREE_ATTACK_EVENT, onFreeAttack)
+  })
 
   // A move action picked from the operative's Move ring: Move on, aimed at it, with
   // that action's limit (Adjust only nudges a finished move).

@@ -40,6 +40,10 @@ export const KOMMANDOS = 'ORK-KOM'
 export const SSSSHHHH = 'ORK-KOM-S-SHHH'
 export const SSSSHHHH_RANGE_IN = 6
 
+// Kommandos' Krump 'Em! (firefight ploy): at the end of the Firefight phase, one friendly
+// Kommando can immediately fight for free.
+export const KRUMP_EM = 'ORK-KOM-T-KE'
+
 // Hernkyn Yaegirs' Resourceful (faction rule, Aug 2026): in the Ready step of each
 // Strategy phase after the first they gain 2 points with 5+ friendly operatives in the
 // killzone outside enemy control range, 1 with 1-4, and discard them at the end of the

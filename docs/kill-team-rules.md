@@ -685,6 +685,7 @@ All of these were replaced in Approved Ops 2025.
     - **Checked against Wahapedia (Nov 2026):** every datacard's stats, weapons and abilities, the faction rule (Throat Slittas), all eight ploys and the four equipment items match the app's data (only wording differs; the Grappling Hook typo "Selected" is fixed). The app's data was already current.
     - **Throat Slittas:** the Move ring offers Charge on a Conceal order to Kommandos (not Bomb Squigs, the rule's exclusion). For everyone else, Charge on Conceal is greyed out ("Conceal order"), per the core rules; rules that allow it are read from the operative's own abilities (e.g. the Yaegir Bladekyn's Stalker) or its faction rule.
     - **SSSSHHHH! (strategy ploy, from TP2):** once picked, the strategy sheet lists the Kommandos on a Conceal order more than 6" from enemy operatives, and the sheet can be put aside to Dash them on the map (a banner explains; Dash is the Move ring's 3" move). The "not a valid target for enemy operatives" half isn't worked out, so the banner reminds players of it.
+    - **Krump 'Em! (firefight ploy):** usable from the Firefight ploys panel once every operative has activated (the end of the Firefight phase). Use lists your Kommandos; picking one spends the ploy and opens the Fight tool for it on the map without activating it.
     - **Sneaky Zogger:** a Kommando Grot's order tag can't be switched to Engage (a banner says why), like the Bomb Squig's Stoopid can't go to Conceal in the battle.
     - DAKKA! DAKKA! DAKKA!
     - Skulk About.

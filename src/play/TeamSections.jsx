@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BONDS_RANGE_IN, BONDS_THAT_BIND, COMMAND_REROLL, ployUses, tokenRadiusIn, turnState } from '../../shared/game.js'
+import { BONDS_RANGE_IN, BONDS_THAT_BIND, COMMAND_REROLL, KRUMP_EM, ployUses, tokenRadiusIn, turnState } from '../../shared/game.js'
 import { distance } from '../../shared/geometry.js'
 import { isHidden } from '../../shared/views.js'
 import TacOpCard from '../components/TacOpCard.jsx'
@@ -8,6 +8,7 @@ import PrimaryOpCard from './PrimaryOpCard.jsx'
 import { getTacOp } from '../data/tacOps.js'
 import { formatCostLabel, parseEquipmentWeaponEffects, selectedEquipmentFor, stripEquipmentTable } from '../rules/equipment.js'
 import { RuleText } from './RuleText.jsx'
+import { requestFreeAttack } from './freeAttack.js'
 import { usePlayer } from './usePlayer.js'
 
 // The core firefight ploy every kill team has.
@@ -98,11 +99,75 @@ function BondsThatBind({ ploy }) {
   )
 }
 
+// A firefight ploy used on one of your operatives: Use opens the list to pick from, and
+// picking spends the ploy and does its effect (onPick). when(game) says whether it can be
+// used now (null) or why not.
+function OperativePloy({ ploy, eligible, when, onPick }) {
+  const { state: game, seat, me, act } = usePlayer()
+  const [picking, setPicking] = useState(false)
+  const cost = ploy.CP ?? 1
+  const used = ployUses(me, game.battle.tp, ploy.ployId) > 0
+  const stop = (handler) => (event) => {
+    event.preventDefault()
+    handler()
+  }
+  if (used) {
+    return (
+      <button type="button" className="ploy-use is-used" aria-pressed="true" onClick={stop(() => act({ type: 'battle/firefightPloy', ployId: ploy.ployId, cost, on: false }))} aria-label={`${ploy.ployName}: used, tap to undo`}>
+        Used ✓
+      </button>
+    )
+  }
+  const choices = game.tokens.filter((token) => token.seat === seat && token.unitKey && !me.unitState?.[token.unitKey]?.dead && eligible(token))
+  if (picking) {
+    return (
+      <span className="ploy-use-group is-picking" data-ploy-pick={ploy.ployId}>
+        {choices.map((token) => (
+          <button
+            key={token.id}
+            type="button"
+            className="ploy-use"
+            onClick={stop(() => {
+              act({ type: 'battle/firefightPloy', ployId: ploy.ployId, cost })
+              onPick(token)
+              setPicking(false)
+            })}
+          >
+            {token.label || token.unitKey}
+          </button>
+        ))}
+        <button type="button" className="ploy-use is-undo" onClick={stop(() => setPicking(false))}>
+          Cancel
+        </button>
+      </span>
+    )
+  }
+  const reason = when(game) ?? (!choices.length ? 'No operative can' : null)
+  return (
+    <button type="button" className="ploy-use" disabled={Boolean(reason) || me.cp < cost} title={reason ?? undefined} onClick={stop(() => setPicking(true))} aria-label={`Use ${ploy.ployName}`}>
+      {reason ?? `Use · ${cost}CP`}
+    </button>
+  )
+}
+
+// Krump 'Em! (Kommandos): at the end of the Firefight phase, one Kommando fights for free.
+function KrumpEm({ ploy }) {
+  return (
+    <OperativePloy
+      ploy={ploy}
+      eligible={() => true}
+      when={(game) => (turnState(game).done ? null : 'At the end of the Firefight phase')}
+      onPick={(token) => requestFreeAttack({ mode: 'fight', shooterId: token.id, free: 'krump' })}
+    />
+  )
+}
+
 // Play a firefight ploy from here (one used in a shot or fight is switched on in the
 // stats drawer instead; both count the same use). Each is once per turning point,
 // except Command Re-roll.
-function PloyUse({ ploy }) {
+export function PloyUse({ ploy }) {
   if (ploy.ployId === BONDS_THAT_BIND) return <BondsThatBind ploy={ploy} />
+  if (ploy.ployId === KRUMP_EM) return <KrumpEm ploy={ploy} />
   return <PlainPloyUse ploy={ploy} />
 }
 
