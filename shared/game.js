@@ -33,6 +33,9 @@ export const equipmentOptionCount = (eqIds) => new Set((eqIds ?? []).map(equipme
 
 export const otherSeat = (seat) => (seat === 'A' ? 'B' : 'A')
 
+// Universal equipment: Ammo Cache markers, and the Ammo Resupply mission action (0AP).
+export const AMMO_CACHE_MARKER = 'ammo-cache'
+
 // Kommandos' SSSSHHHH! (strategy ploy, not in TP1): each Kommando that isn't a valid
 // target for enemy operatives, or has a Conceal order and is more than 6" from enemy
 // operatives, can immediately Dash for free.

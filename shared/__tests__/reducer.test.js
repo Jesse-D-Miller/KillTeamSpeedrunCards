@@ -1099,3 +1099,22 @@ describe('APL boosts until the end of the next activation', () => {
     expect([2, 1, 0, -1, -3].map(clampAplChange)).toEqual([1, 1, 0, -1, -1])
   })
 })
+
+describe('Universal equipment: Ammo Resupply', () => {
+  it('uses an Ammo Cache the operative controls, once per turning point, outside enemy control range', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'VOT-HKY-WAR-0', maxWounds: 8, x: 5, y: 5, baseMm: 28.5 }, 'A'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'VOT-HKY-WAR-1', maxWounds: 8, x: 15, y: 5, baseMm: 28.5 }, 'A'],
+      [{ type: 'marker/add', catalogId: 'ammo-cache', label: 'Ammo Cache', x: 5.9, y: 5, radius: 0.4 }, 'A'],
+    ])
+    const [near, far] = state.tokens
+    expect(() => applyAction(state, { type: 'battle/ammoResupply', tokenId: far.id }, 'A')).toThrow(/Ammo Cache/)
+    state = applyAction(state, { type: 'battle/ammoResupply', tokenId: near.id }, 'A')
+    expect(state.players.A.unitState['VOT-HKY-WAR-0'].resuppliedTp).toBe(1)
+    expect(state.markers[0].usedTp).toBe(1)
+    // That marker is used for this turning point.
+    state = applyAction(state, { type: 'token/update', id: far.id, x: 5.9, y: 6 }, 'A')
+    expect(() => applyAction(state, { type: 'battle/ammoResupply', tokenId: far.id }, 'A')).toThrow(/unused/)
+  })
+})

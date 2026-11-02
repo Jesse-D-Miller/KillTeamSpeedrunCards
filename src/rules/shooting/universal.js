@@ -41,18 +41,14 @@ export const universalAttack = (ctx) => {
     )
     return mods
   }
+  // Ammo Cache: an operative that performed Ammo Resupply this turning point (from its
+  // action ring) re-rolls one attack die with a weapon from its datacard.
   if (ctx.hasEquipment('attacker', AMMO_CACHE) && weapon.source === 'datacard') {
+    const base = { id: AMMO_CACHE, owner: 'attacker', source: 'equipment', name: 'Ammo Cache' }
     mods.push(
-      mod({
-        id: AMMO_CACHE,
-        owner: 'attacker',
-        source: 'equipment',
-        name: 'Ammo Cache',
-        mode: 'toggle',
-        text: 'If it resupplied this turning point: re-roll one attack die',
-        effect: { reroll: 'attack' },
-        tone: 'good',
-      }),
+      ctx.shooterResupplied
+        ? mod({ ...base, text: 'Resupplied this turning point: re-roll one attack die', effect: { reroll: 'attack' }, tone: 'good' })
+        : mod({ ...base, mode: 'inactive', text: 'It hasn’t resupplied this turning point' }),
     )
   }
   if (ctx.inBattle) {

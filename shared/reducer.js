@@ -30,6 +30,7 @@ import {
   FALLEN_KIN,
   FALLEN_KIN_RADIUS_IN,
   HY_PEX_DAMAGE,
+  AMMO_CACHE_MARKER,
   MINEFIELD,
   MINEFIELD_COUNTS,
   NO_KIN_LEFT_BEHIND,
@@ -982,6 +983,26 @@ const handlers = {
       candidate.id === marker.id ? { ...candidate, label: 'Minefield', short: 'MINE', minefield: { mine: candidate.minefield.mine, flipped: false } } : candidate,
     )
     return updatePlayer({ ...state, markers: reset }, seat, { minefieldResetTp: state.battle.tp })
+  },
+
+  // Universal equipment, Ammo Resupply (0AP mission action): one of your Ammo Cache markers
+  // the operative controls (within 1") and that hasn't been used this turning point is
+  // used; until the next turning point the operative re-rolls one attack die with its
+  // datacard weapons. Not while within enemy control range.
+  'battle/ammoResupply': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const token = state.tokens.find((candidate) => candidate.id === String(action.tokenId ?? ''))
+    const player = state.players[seat]
+    if (!token || token.seat !== seat || !token.unitKey || player.unitState[token.unitKey]?.dead) fail('Pick one of your operatives.')
+    if (inEnemyControl(state, token)) fail('Not within control range of enemy operatives.')
+    const { tp } = state.battle
+    const cache = state.markers.find(
+      (marker) => marker.catalogId === AMMO_CACHE_MARKER && marker.seat === seat && marker.usedTp !== tp && touchingMarker(token, marker),
+    )
+    if (!cache) fail('It must control one of your unused Ammo Cache markers.')
+    const used = { ...state, markers: state.markers.map((marker) => (marker.id === cache.id ? { ...marker, usedTp: tp } : marker)) }
+    return patchUnit(used, seat, token.unitKey, { resuppliedTp: tp }, token.maxWounds)
   },
 
   // A player confirms (or takes back) ending turning point fromTp. It moves on once, when

@@ -6,6 +6,7 @@ import {
   MOVE_ADJUST_REACH,
   HERNKYN_YAEGIRS,
   MINEFIELD,
+  AMMO_CACHE_MARKER,
   SSSSHHHH,
   activePloyIds,
   VANTAGE_FLOORS,
@@ -1160,9 +1161,14 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   }
   const pressTool = { units: pressUnits, token: pressToken }
   // Shoot or Fight: the attacker's ranged or melee weapons, full screen. Cancel ends it.
-  // An operative's own datacard actions (abilities with an AP cost).
-  const datacardActionsOf = (token) =>
-    token?.unitKey && token.seat === seat ? (roster.find((unit) => unit.key === token.unitKey)?.opType?.abilities ?? []).filter((ability) => ability.AP != null) : []
+  // An operative's own datacard actions (abilities with an AP cost), plus Ammo Resupply when
+  // your kill team has Ammo Cache markers set up.
+  const datacardActionsOf = (token) => {
+    if (!token?.unitKey || token.seat !== seat) return []
+    const own = (roster.find((unit) => unit.key === token.unitKey)?.opType?.abilities ?? []).filter((ability) => ability.AP != null)
+    const caches = (game.markers ?? []).some((marker) => marker.catalogId === AMMO_CACHE_MARKER && marker.seat === seat)
+    return caches ? [...own, { abilityName: 'Ammo Resupply', AP: 0 }] : own
+  }
   // What the known datacard actions do from the ring (keyed by name, lower case, no '!').
   //   blocked({ inControl, order }): why it can't be done now, or null.
   const DATACARD_ACTIONS = {
@@ -1189,6 +1195,14 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         setTool('move')
         setMoveKind(null)
         setMoveStatus({ label: 'Grappling Hook', used: null, limit: null, warning: 'Set it up within 1" of a visible point on terrain, not within enemy control range.' })
+      },
+    },
+    // Universal equipment: resupply from an Ammo Cache marker it controls (the server checks).
+    'ammo resupply': {
+      blocked: ({ inControl }) => (inControl ? 'In control range' : null),
+      run: (token) => {
+        act({ type: 'battle/ammoResupply', tokenId: token.id })
+        setRadial(null)
       },
     },
     // Kommando Boss Nob and Comms Boy: SUPPORT, +1 APL to another Kommando.

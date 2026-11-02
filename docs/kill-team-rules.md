@@ -322,6 +322,11 @@ Setup rules:
 - Equipment terrain goes on the floor, more than 2" from other equipment terrain, access points and Accessible terrain.
 - No equipment within 2" of a teleport pad.
 
+**In the app (Nov 2026):** dice are rolled by the players; where a rule needs a roll, the app asks for the result on the action ring.
+
+- **Ammo Cache:** Ammo Resupply is on an operative's Actions ring while your kill team has Ammo Cache markers. The server checks the operative controls one of your markers (within 1") that hasn't been used this turning point, and isn't within enemy control range; it then records `resuppliedTp`, and its shots with datacard weapons get the one attack die re-roll in the stats drawer until the next turning point.
+
+
 ## 8. Approved Ops 2025: game sequence
 
 1. **Set up the battle:**

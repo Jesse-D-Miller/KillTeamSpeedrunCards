@@ -1428,6 +1428,17 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     { type: 'marker/remove', id: flipped.id },
     { type: 'token/remove', id: stalwartEnemy.id },
   ])
+  // Ammo Resupply (universal equipment) from the Actions ring: Bladekyn, brought beside
+  // Alice's Ammo Cache, resupplies; the marker is used for this turning point.
+  const cacheState = await tableState(table)
+  const cache = cacheState.markers.find((marker) => marker.catalogId === 'ammo-cache')
+  const blade = cacheState.tokens.find((token) => token.id === 't2')
+  await tableActions(table, [{ type: 'token/update', id: 't2', x: cache.x + 0.9, y: cache.y }])
+  await ringAction(a, 't2', 'Actions')
+  await a.locator('.unit-radial[data-ring-for="t2"]').getByRole('menuitem', { name: 'Ammo Resupply' }).click()
+  await expect.poll(async () => (await tableState(table)).players.A.unitState['VOT-HKY-BLD-0'].resuppliedTp).toBe(2)
+  expect((await tableState(table)).markers.find((marker) => marker.id === cache.id).usedTp).toBe(2)
+  await tableActions(table, [{ type: 'token/update', id: 't2', x: blade.x, y: blade.y }])
   await openTab(a, 'Operatives')
   await bladeCard.locator('button.state-pill').click()
   await expect(bladeTag).toHaveAttribute('data-order-color', 'red')

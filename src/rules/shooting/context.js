@@ -44,6 +44,8 @@ export const operativeOf = (game, token) => {
     dead: Boolean(unit.dead),
     counteractedTp: unit.counteractedTp ?? null,
     movedTp: unit.movedTp ?? null,
+    // The turning point it performed Ammo Resupply (universal equipment), if any.
+    resuppliedTp: unit.resuppliedTp ?? null,
   }
 }
 
@@ -113,6 +115,8 @@ export const buildShotContext = ({ game, layout, shooterToken, targetToken, weap
         ? token.lastMove.kinds ?? ['free']
         : [],
     movedThisTp: inBattle && (shooter.movedTp === tp || Boolean(shooterToken.lastMove)),
+    // Ammo Resupply this turning point: one attack re-roll with datacard weapons.
+    shooterResupplied: inBattle && shooter.resuppliedTp === tp,
     targetExpended: target.activation === 'expended',
     // Set by computeShot as it goes: the first targeting check, then the attacker's
     // effects and the weapon rules they give (before the defender's rules are read).
