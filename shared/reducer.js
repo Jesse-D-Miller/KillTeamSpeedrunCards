@@ -242,8 +242,11 @@ const patchUnit = (state, seat, unitKey, patch, maxWounds) =>
     const activationChanged = (patch.activation && patch.activation !== current.activation) || (patch.counteractedTp != null && patch.counteractedTp !== current.counteractedTp)
     const resourceful = activationChanged && !('resourceful' in patch) ? { resourceful: null } : {}
     // An activation ending uses up an APL boost "until the end of its next activation".
-    const boostSpent = current.activation === 'active' && patch.activation === 'expended' && current.nextActivationApl ? { nextActivationApl: 0 } : {}
-    return { unitState: { ...player.unitState, [unitKey]: { ...current, ...patch, ...resourceful, ...boostSpent, orderFlips } } }
+    const ending = current.activation === 'active' && patch.activation === 'expended'
+    const boostSpent = ending && current.nextActivationApl ? { nextActivationApl: 0 } : {}
+    // Stunned lasts "until the end of its next activation" too.
+    const stunOver = ending && !patch.statuses && (current.statuses ?? []).includes('stunned') ? { statuses: current.statuses.filter((status) => status !== 'stunned') } : {}
+    return { unitState: { ...player.unitState, [unitKey]: { ...current, ...patch, ...resourceful, ...boostSpent, ...stunOver, orderFlips } } }
   })
 
 
@@ -468,8 +471,21 @@ const countDownSmoke = (before, next) => {
   }
 }
 
+// Universal equipment, Stun Grenade: the target and each other operative within 1" of it
+// take a stun test, rolled by the thrower: on a 3+, Stunned (APL −1 until the end of its
+// next activation).
+const STUN_TEST_PASS = 3
+const STUN_RANGE_IN = 6
+const STUN_AREA_IN = 1
+
 // What each kind of roll does with the result.
 const ROLL_EFFECTS = {
+  stun: (state, roll, value) => {
+    const token = state.tokens.find((candidate) => candidate.id === roll.tokenId)
+    const unit = token?.unitKey ? state.players[token.seat]?.unitState?.[token.unitKey] : null
+    if (!token || value < STUN_TEST_PASS || (unit?.statuses ?? []).includes('stunned')) return state
+    return patchUnit(state, token.seat, token.unitKey, { statuses: [...(unit?.statuses ?? []), 'stunned'] }, token.maxWounds)
+  },
   // Counted from the start of the turning point, in case the roll is entered after
   // some activations are already done.
   smoke: (state, roll, value) => {
@@ -1114,6 +1130,33 @@ const handlers = {
     if (!cache) fail('It must control one of your unused Ammo Cache markers.')
     const used = { ...state, markers: state.markers.map((marker) => (marker.id === cache.id ? { ...marker, usedTp: tp } : marker)) }
     return patchUnit(used, seat, token.unitKey, { resuppliedTp: tp }, token.maxWounds)
+  },
+
+  // Stun Grenade thrown by tokenId at targetId: a stun test (D6, the thrower's player
+  // rolls) for the target and every other operative within 1" of it.
+  'battle/stunGrenade': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const thrower = state.tokens.find((token) => token.id === String(action.tokenId ?? ''))
+    const target = state.tokens.find((token) => token.id === String(action.targetId ?? ''))
+    if (!thrower?.unitKey || !target?.unitKey) fail('Unknown operative.')
+    if (isSeat(actor) && actor !== thrower.seat) fail('That operative isn’t yours.')
+    if (target.seat === thrower.seat) fail('Pick an enemy operative.')
+    const gap = (a, b) => distance(a, b) - tokenRadiusIn(a) - tokenRadiusIn(b)
+    if (gap(thrower, target) > STUN_RANGE_IN) fail('The target must be within 6".')
+    if (inEnemyControl(state, thrower)) fail('Not within control range of enemy operatives.')
+    const alive = (token) => token.unitKey && token.seat && !state.players[token.seat]?.unitState?.[token.unitKey]?.dead
+    const caught = [target, ...state.tokens.filter((token) => token.id !== target.id && alive(token) && gap(token, target) <= STUN_AREA_IN)]
+    return caught.reduce(
+      (next, token) =>
+        addRoll(next, {
+          kind: 'stun',
+          die: 6,
+          seat: thrower.seat,
+          tokenId: token.id,
+          label: `Stun test for ${token.label || 'the operative'}: ${STUN_TEST_PASS}+ stuns it`,
+        }),
+      state,
+    )
   },
 
   // A player enters a roll the app asked for (see addRoll): value on that die.

@@ -1517,6 +1517,19 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     { type: 'token/update', id: 't2', x: wireBlade.x, y: wireBlade.y },
     { type: 'marker/remove', id: ladderId },
   ])
+  // Stun Grenade: thrown at a Vespid 4" away (sent from the projector here: Alice's team
+  // didn't take stun grenades), Alice rolls its stun test and enters a 4 on its ring; it's
+  // Stunned (sparks on the projector).
+  await tableActions(table, [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-VSS-8', label: 'Stunned', maxWounds: 9, x: wireBlade.x + 4, y: wireBlade.y, baseMm: 28.5, baseLocked: true }])
+  const stunTarget = (await tableState(table)).tokens.find((token) => token.unitKey === 'TAU-VESP-VSS-8')
+  await tableActions(table, [{ type: 'battle/stunGrenade', tokenId: 't2', targetId: stunTarget.id }])
+  await a.locator('[data-roll-prompt="stun"]').click()
+  const stunRing = a.locator(`.unit-radial[data-ring-for="${stunTarget.id}"][data-menu="roll"]`)
+  await expect(stunRing.getByRole('menuitem')).toHaveText(['1', '2', '3', '4', '5', '6', 'Back'])
+  await stunRing.getByRole('menuitem', { name: 'Rolled 4' }).click()
+  await expect(table.locator(`[data-status-for="${stunTarget.id}"] [data-status="stunned"]`)).toHaveCount(1)
+  await expect(a.locator('[data-roll-prompt]')).toHaveCount(0)
+  await tableActions(table, [{ type: 'token/remove', id: stunTarget.id }])
   await openTab(a, 'Operatives')
   await bladeCard.locator('button.state-pill').click()
   await expect(bladeTag).toHaveAttribute('data-order-color', 'red')

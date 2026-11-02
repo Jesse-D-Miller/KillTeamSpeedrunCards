@@ -189,11 +189,14 @@ function BaseSizer({ token, onStep }) {
 // Each Turn tap on a long marker (Razor Wire), in degrees.
 const WIRE_TURN = 15
 
-function RollPrompt({ roll, mine, token, onOpen }) {
+function RollPrompt({ roll, mine, token, count, onOpen }) {
   const what = roll.label
   return mine ? (
     <button type="button" className="move-status glass is-roll" data-roll-prompt={roll.kind} onClick={() => token && onOpen(token)}>
-      <span className="move-status-label">Roll a D{roll.die}</span>
+      <span className="move-status-label">
+        Roll a D{roll.die}
+        {count > 1 ? ` · ${count} to go` : ''}
+      </span>
       <span className="move-status-warning">{what}. Tap here or the operative to enter it.</span>
     </button>
   ) : (
@@ -1719,10 +1722,26 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             </span>
           </div>
         ) : null}
-        {rolls.length && !moveStatus ? (
+        {attacker && overlay.weaponId === 'grenade-stun' && overlay.targetId ? (
+          // Stun Grenade aimed: throwing it asks for each operative's stun test.
+          <button
+            type="button"
+            className="move-status glass is-roll"
+            data-stun-throw
+            onClick={() => {
+              act({ type: 'battle/stunGrenade', tokenId: attacker.id, targetId: overlay.targetId })
+              leaveTool()
+            }}
+          >
+            <span className="move-status-label">Throw stun grenade</span>
+            <span className="move-status-warning">Then roll a stun test (D6, 3+) for the target and each operative within 1&quot; of it.</span>
+          </button>
+        ) : null}
+        {rolls.length && !moveStatus && !attacker ? (
           <RollPrompt
             roll={rolls.find((roll) => roll.seat === seat) ?? rolls[0]}
             mine={rolls.some((roll) => roll.seat === seat)}
+            count={rolls.filter((roll) => roll.seat === (rolls.some((mine) => mine.seat === seat) ? seat : rolls[0].seat)).length}
             token={itemById((rolls.find((roll) => roll.seat === seat) ?? rolls[0]).tokenId)}
             onOpen={openRadial}
           />

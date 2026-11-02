@@ -1212,3 +1212,40 @@ describe('Universal equipment: Smoke Grenade', () => {
   })
 })
 
+describe('Universal equipment: Stun Grenade', () => {
+  const battle = () =>
+    run(createGame(), [
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'VOT-HKY-WAR-0', label: 'Warrior', maxWounds: 8, x: 2, y: 5, baseMm: 28.5 }, 'A'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-VSS-0', label: 'Shadestrain', maxWounds: 9, x: 7, y: 5, baseMm: 28.5 }, 'B'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-WAR-0', label: 'Warrior', maxWounds: 9, x: 8.5, y: 5, baseMm: 28.5 }, 'B'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-WAR-1', label: 'Far', maxWounds: 9, x: 12, y: 5, baseMm: 28.5 }, 'B'],
+    ])
+  const id = (state, unitKey) => state.tokens.find((token) => token.unitKey === unitKey).id
+  const statuses = (state, unitKey) => state.players.B.unitState[unitKey]?.statuses ?? []
+
+  it('asks the thrower for a stun test for the target and each operative within 1"; 3+ stuns', () => {
+    let state = battle()
+    state = applyAction(state, { type: 'battle/stunGrenade', tokenId: id(state, 'VOT-HKY-WAR-0'), targetId: id(state, 'TAU-VESP-VSS-0') }, 'A')
+    const rolls = state.battle.rolls
+    expect(rolls.map((roll) => roll.tokenId)).toEqual([id(state, 'TAU-VESP-VSS-0'), id(state, 'TAU-VESP-WAR-0')])
+    expect(rolls.every((roll) => roll.die === 6 && roll.seat === 'A')).toBe(true)
+    state = applyAction(state, { type: 'battle/roll', id: rolls[0].id, value: 3 }, 'A')
+    state = applyAction(state, { type: 'battle/roll', id: rolls[1].id, value: 2 }, 'A')
+    expect(statuses(state, 'TAU-VESP-VSS-0')).toEqual(['stunned'])
+    expect(statuses(state, 'TAU-VESP-WAR-0')).toEqual([])
+    // Too far, or a friendly target.
+    expect(() => applyAction(state, { type: 'battle/stunGrenade', tokenId: id(state, 'VOT-HKY-WAR-0'), targetId: id(state, 'TAU-VESP-WAR-1') }, 'A')).toThrow(/6"/)
+  })
+
+  it('clears Stunned when its next activation ends', () => {
+    let state = battle()
+    const update = (patch) => applyAction(state, { type: 'unit/update', seat: 'B', unitKey: 'TAU-VESP-VSS-0', maxWounds: 9, patch }, 'B')
+    state = update({ statuses: ['stunned'] })
+    state = update({ activation: 'active' })
+    expect(statuses(state, 'TAU-VESP-VSS-0')).toEqual(['stunned'])
+    state = update({ activation: 'expended' })
+    expect(statuses(state, 'TAU-VESP-VSS-0')).toEqual([])
+  })
+})
+
