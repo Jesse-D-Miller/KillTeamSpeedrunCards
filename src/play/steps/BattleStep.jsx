@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
-import { HERNKYN_YAEGIRS, NEXT_ACTIVATION, activePloyIds, aplBonus, createUnitState, initiativeBefore, otherSeat, tokenRadiusIn } from '../../../shared/game.js'
+import { HERNKYN_YAEGIRS, KOMMANDOS, SSSSHHHH, SSSSHHHH_RANGE_IN, NEXT_ACTIVATION, activePloyIds, aplBonus, createUnitState, initiativeBefore, otherSeat, tokenRadiusIn } from '../../../shared/game.js'
 import { baseWithinRect } from '../../../shared/geometry.js'
+import { concealedAndClear } from '../../../shared/movement.js'
 import { getLayout } from '../../board/boardData.js'
 import UnitCard from '../../components/UnitCard.jsx'
 import { seatColor } from '../../board/colors.js'
@@ -57,6 +58,27 @@ function DauntlessGambit({ onAside }) {
           {eligible.length ? `Use · ${eligible.length} Yaegir${eligible.length === 1 ? '' : 's'} in your drop zone` : 'No Yaegirs wholly in your drop zone'}
         </button>
       )}
+    </section>
+  )
+}
+
+// Kommandos' SSSSHHHH! once picked (from TP2): the Kommandos it lets Dash right away, and
+// the sheet can be put aside to Dash them on the map.
+function SsssshhhhDashes({ onAside }) {
+  const { state: game, seat } = usePlayer()
+  const eligible = concealedAndClear(game, seat, SSSSHHHH_RANGE_IN)
+  return (
+    <section className="strategy-step strategy-gambit" data-ploy-moves="ssssshhhh">
+      <h4>
+        <span className="step-number">◆</span> SSSSHHHH! · free Dashes
+      </h4>
+      <p className="muted">
+        Each Kommando on a Conceal order more than 6&quot; from enemy operatives ({eligible.length ? eligible.map((token) => token.label || token.unitKey).join(', ') : 'none right now'}),
+        or not a valid target for any enemy, can Dash now.
+      </p>
+      <button type="button" className="btn is-primary" onClick={onAside}>
+        Dash on the map
+      </button>
     </section>
   )
 }
@@ -184,6 +206,7 @@ export function StrategySheet({ onAside }) {
           ) : null}
 
           {tp === 1 && me.killteamId === HERNKYN_YAEGIRS ? <DauntlessGambit onAside={onAside} /> : null}
+          {tp > 1 && me.killteamId === KOMMANDOS && active.includes(SSSSHHHH) ? <SsssshhhhDashes onAside={onAside} /> : null}
 
           <section className={`strategy-step${initiative ? '' : ' is-locked'}`}>
             <h4>

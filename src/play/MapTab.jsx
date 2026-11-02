@@ -6,6 +6,8 @@ import {
   MOVE_ADJUST_REACH,
   HERNKYN_YAEGIRS,
   MINEFIELD,
+  SSSSHHHH,
+  activePloyIds,
   VANTAGE_FLOORS,
   baseRadiusIn,
   tokenRadiusIn,
@@ -244,6 +246,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const dauntless =
     game.phase === 'battle' && !firefight && game.players[seat]?.dauntless?.tp === game.battle.tp ? new Set(game.players[seat].dauntless.tokenIds) : null
   const myDrop = layout.zones[game.table.dropZones?.[seat]]?.drop ?? null
+  // Kommandos' SSSSHHHH! picked this strategy phase: their free Dashes happen on the map.
+  const ssssshhhh = game.phase === 'battle' && !firefight && game.battle.tp > 1 && activePloyIds(game.players[seat], game.battle.tp).includes(SSSSHHHH)
   const turn = turnState(game)
   // Operatives are only set up before the battle (core rules), so no Units tool after.
   const tools = TOOLS.filter(([id]) => id !== 'units' || game.phase !== 'battle')
@@ -1456,6 +1460,15 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             <BaseSizer token={editing} onStep={(direction) => stepBase(editing, direction)} />
           ) : null}
         </BoardSvg>
+        {ssssshhhh && !dauntless && !moveStatus ? (
+          <div className="move-status glass" role="status" data-ploy-moves>
+            <span className="move-status-label">SSSSHHHH!</span>
+            <span className="move-status-warning">
+              Dash each Kommando on Conceal more than 6&quot; from enemies (or not a valid target for any): Move ring → Dash. Then go back to the
+              strategy phase.
+            </span>
+          </div>
+        ) : null}
         {dauntless && !moveStatus ? (
           <div className="move-status glass" role="status" data-dauntless>
             <span className="move-status-label">Dauntless Explorers</span>

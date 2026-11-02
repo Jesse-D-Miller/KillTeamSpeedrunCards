@@ -99,5 +99,14 @@ export const inEnemyControl = (state, token) =>
   livingOperatives(state, otherSeat(token.seat)).some(
     (enemy) => distance(token, enemy) - tokenRadiusIn(token) - tokenRadiusIn(enemy) <= CONTROL_RANGE_IN,
   )
+// Seat's living operatives on a Conceal order with no enemy operative within `inches`
+// (edge to edge).
+export const concealedAndClear = (state, seat, inches) =>
+  livingOperatives(state, seat).filter(
+    (token) =>
+      (state.players[seat]?.unitState?.[token.unitKey]?.order ?? 'conceal') === 'conceal' &&
+      livingOperatives(state, otherSeat(seat)).every((enemy) => distance(token, enemy) - tokenRadiusIn(token) - tokenRadiusIn(enemy) > inches),
+  )
+
 // How many of seat's operatives are in the killzone and outside enemy control range.
 export const outsideEnemyControl = (state, seat) => livingOperatives(state, seat).filter((token) => !inEnemyControl(state, token)).length

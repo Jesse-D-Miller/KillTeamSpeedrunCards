@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { distance, stepPath } from '../geometry.js'
-import { bendToward, capPath, moveLimit, moveStat, moveWarning } from '../movement.js'
+import { bendToward, capPath, concealedAndClear, moveLimit, moveStat, moveWarning } from '../movement.js'
 
 const length = (path) => path.slice(1).reduce((sum, point, index) => sum + distance(path[index], point), 0)
 const straight = (steps) => Array.from({ length: steps + 1 }, (_, x) => ({ x, y: 0 }))
@@ -80,5 +80,19 @@ describe('end-of-move warnings', () => {
 
   it('says nothing for a free move', () => {
     expect(moveWarning({ kind: null, mover: { x: 8.5, y: 0 }, enemies: [enemy], radius })).toBeNull()
+  })
+})
+
+describe('concealed and clear of enemies', () => {
+  it("lists a seat's operatives on Conceal with no enemy within the distance", () => {
+    const tokens = [
+      { id: 'a', seat: 'A', unitKey: 'k-0', x: 2, y: 2, baseMm: 32 },
+      { id: 'b', seat: 'A', unitKey: 'k-1', x: 20, y: 2, baseMm: 32 },
+      { id: 'c', seat: 'A', unitKey: 'k-2', x: 2, y: 20, baseMm: 32 },
+      { id: 'e', seat: 'B', unitKey: 'e-0', x: 24, y: 2, baseMm: 32 },
+    ]
+    const players = { A: { unitState: { 'k-2': { order: 'engage' } } }, B: { unitState: {} } }
+    // b is within 6" of the enemy, c is on Engage: only a.
+    expect(concealedAndClear({ tokens, players }, 'A', 6).map((token) => token.id)).toEqual(['a'])
   })
 })

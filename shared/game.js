@@ -33,6 +33,13 @@ export const equipmentOptionCount = (eqIds) => new Set((eqIds ?? []).map(equipme
 
 export const otherSeat = (seat) => (seat === 'A' ? 'B' : 'A')
 
+// Kommandos' SSSSHHHH! (strategy ploy, not in TP1): each Kommando that isn't a valid
+// target for enemy operatives, or has a Conceal order and is more than 6" from enemy
+// operatives, can immediately Dash for free.
+export const KOMMANDOS = 'ORK-KOM'
+export const SSSSHHHH = 'ORK-KOM-S-SHHH'
+export const SSSSHHHH_RANGE_IN = 6
+
 // Hernkyn Yaegirs' Resourceful (faction rule, Aug 2026): in the Ready step of each
 // Strategy phase after the first they gain 2 points with 5+ friendly operatives in the
 // killzone outside enemy control range, 1 with 1-4, and discard them at the end of the
