@@ -56,9 +56,8 @@
 }
 
 .board-wall.is-light {
-  stroke: #b8b2a3;
+  stroke: #8d8d8d;
   stroke-width: 0.1;
-  stroke-dasharray: 0.3 0.2;
 }
 
 .board-wall.is-door {
