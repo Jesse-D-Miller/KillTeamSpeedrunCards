@@ -265,7 +265,11 @@ The working rules reference for this project: what the official rules say, in ou
 - **Garrisoned Stronghold:** inside an operative retaliates first.
 - **Door Fight (1AP):** fight across a door.
 - **Compound Siege upgrade:** stockades with breach points, and bunkers.
-- **App outlines (`src/data/terrainPieces.json`):** most pieces are rough rectangles. Pieces are being replaced with outlines traced from photos of the real models on an inch grid, so sightlines, cover and obscured match the table. Each tracing is centred in its old box so the killzone layouts still place it in the same spot. Traced so far: **L** (light rubble, 1.96" × 3.42", was a 2" × 4" box), **G** (wall on rubble, heavy, 2.97" × 1.05", was a 3" × 1" box) and **H** (wall on rubble, heavy, 2.92" × 1", was a 2.5" × 1" box, so it now reaches about 0.2" past each end of its old spot); 1 Nov 2026.
+- **App outlines (`src/data/terrainPieces.json`):** traced so the projected sightlines, cover and obscured match the real pieces.
+  - **From 3D models** (Fabricator's Lab's printable Volkus set, kept out of git in `terrain-models/`): strongholds **A**, **B**, large ruins **C**, **D**, small ruins **E**, **F**, light rubble **I**, **J**, **K**, stronghold rubble **M** and crate **N** (1 Nov 2026). Walls are the outline of everything above the base, both faces, so windows don't let sight through (the large ruin's windows are Barred and Heavy, close enough for a 2D board). Upper floors are the floor plates laid flat where they rest on the walls; B's second area is still its tower (4" Vantage). The models have no doors, so doors keep their old positions, moved onto the wall's centre line.
+  - **From photos of the real pieces on an inch grid:** **G**, **H** (heavy rubble) and **L** (stronghold rubble). The remake's versions of these are 0.2–0.3" longer than the GW pieces, so the photo traces stay.
+  - **Placement:** each piece keeps the rotation and spot the layouts give it (strongholds centred on their pillars, L-shaped ruins anchored at the corner of the L). Where a slightly bigger outline ran into another piece or off the board, that layout's placement moved the smaller piece the least distance that clears it.
+  - **Rules note:** stronghold rubble (L, M) and the crate (N) are drawn as Light. Volkus's rules make every other part of a stronghold Heavy, and the barrel containers Blocking and Heavy, so these may need to become Heavy (see the checklist).
 
 ### Gallowdark and Tomb World (close quarters)
 
