@@ -295,6 +295,7 @@ function BoardSvg({
   )
   const facingOf = (seat) => readAngle[seat] ?? 0
   const glowFilter = `${instanceId}-glow`
+  const interiorHatch = `${instanceId}-interior`
   const tokenViews = tokens
     .map((token) => {
       const status = statusFor(token)
@@ -369,6 +370,10 @@ function BoardSvg({
         <filter id={glowFilter} x="-60%" y="-60%" width="220%" height="220%">
           <feGaussianBlur stdDeviation="0.1" />
         </filter>
+        {/* Faint diagonal lines inside strongholds, so their insides read apart from floors. */}
+        <pattern id={interiorHatch} width={0.35} height={0.35} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line className="board-interior-hatch" x1={0} y1={0} x2={0} y2={0.35} />
+        </pattern>
       </defs>
       <rect className="board-mat" x={0} y={0} width={W} height={H} />
 
@@ -388,6 +393,15 @@ function BoardSvg({
 
       {flags.terrain ? (
         <g className="board-terrain">
+          {(layout.interiors ?? []).map((interior) => (
+            <polygon
+              key={interior.id}
+              className="board-terrain-interior"
+              data-interior-for={interior.featureId}
+              points={pointsAttr(interior.points)}
+              fill={`url(#${interiorHatch})`}
+            />
+          ))}
           {layout.areas.map((area) => (
             <polygon key={area.id} className="board-terrain-area" points={pointsAttr(area.points)} />
           ))}

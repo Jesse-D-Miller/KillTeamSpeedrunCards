@@ -359,6 +359,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await table.waitForTimeout(17000)
   await expect(table.locator('.overlay-measure')).toHaveCount(1)
   await shot(table, '06-map-table')
+  // Both strongholds in this layout have their insides marked.
+  await expect(table.locator('.table-board [data-interior-for]')).toHaveCount(2)
   // The projector's menu hides the terrain labels, and brings them back.
   const labels = table.locator('.table-board .board-vantage')
   expect(await labels.count()).toBeGreaterThan(0)

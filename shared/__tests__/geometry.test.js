@@ -129,4 +129,13 @@ describe('buildTerrain', () => {
     const { areas } = buildTerrain({ terrain: [{ id: 'b', pieceId: 'volkus_B', placement: { x: 0, y: 0 } }, { id: 'i', pieceId: 'volkus_I', placement: { x: 5, y: 5 } }] }, pieces)
     expect(areas.map(({ vantage, height }) => [vantage, height])).toEqual([[3.2, 3.2], [6.4, 6.4], [null, 1.1]])
   })
+
+  it('places a stronghold interior with its piece', () => {
+    const square = [[0, 0], [1, 0], [1, 1], [0, 1]]
+    const pieces = new Map([['volkus_A', { id: 'volkus_A', name: 'volkus_A', interior: { points: square }, walls: { segments: [] } }]])
+    const { interiors } = buildTerrain({ terrain: [{ id: 'a', pieceId: 'volkus_A', placement: { x: 3, y: 4, rotation: 90 } }] }, pieces)
+    expect(interiors).toHaveLength(1)
+    expect(interiors[0].featureId).toBe('a')
+    expect(interiors[0].points.map(({ x, y }) => [Math.round(x), Math.round(y)])).toEqual([[3, 4], [3, 5], [2, 5], [2, 4]])
+  })
 })

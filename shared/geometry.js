@@ -50,6 +50,8 @@ export const polygonCentroid = (points) => {
 export const buildTerrain = (arrangement, pieceById) => {
   const areas = []
   const walls = []
+  // Inside a stronghold's walls (the killzone's Condensed and Garrisoned Stronghold rules).
+  const interiors = []
   ;(arrangement?.terrain ?? []).forEach((entry) => {
     const piece = entry?.pieceId ? pieceById.get(entry.pieceId) : entry
     if (!piece) return
@@ -71,6 +73,13 @@ export const buildTerrain = (arrangement, pieceById) => {
         centroid: polygonCentroid(points),
       })
     })
+    if (piece.interior?.points?.length) {
+      interiors.push({
+        id: `${entry.id || piece.id}-interior`,
+        featureId: entry.id || piece.id,
+        points: piece.interior.points.map((point) => transformPoint(point, placement)),
+      })
+    }
     ;(piece.walls?.segments ?? []).forEach((segment, index) => {
       const segmentPoints = getSegmentPoints(segment)
       if (!Array.isArray(segmentPoints)) return
@@ -83,7 +92,7 @@ export const buildTerrain = (arrangement, pieceById) => {
       })
     })
   })
-  return { areas, walls }
+  return { areas, walls, interiors }
 }
 
 // Map 2 zone rects are authored in portrait (22x30); the board is always drawn landscape.
