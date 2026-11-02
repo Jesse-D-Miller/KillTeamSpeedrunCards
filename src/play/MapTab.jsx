@@ -34,6 +34,7 @@ import { TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
 import VantageMark from './VantageMark.jsx'
 import { RailPhaseButton, RailStatus, TeamSectionButtons, TeamSectionPanel, ViewButtons } from './RailParts.jsx'
 import UnitCardModal from './UnitCardModal.jsx'
+import TokenRules from './TokenRules.jsx'
 import BoardArranger from './BoardArranger.jsx'
 import WeaponChooser from './WeaponChooser.jsx'
 import StalwartPrompt from './StalwartPrompt.jsx'
@@ -122,6 +123,8 @@ const ITEM_ACTIONS = [
   { id: 'range', label: 'Range', icon: 'range' },
   { id: 'edit', label: 'Edit', icon: 'edit' },
   { id: 'ping', label: 'Ping', icon: 'ping' },
+  // What a marker or token does (not on blank bases).
+  { id: 'rules', label: 'Rules', icon: 'rules', marker: true },
 ]
 const MM_PER_IN = 25.4
 
@@ -244,6 +247,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const [radial, setRadial] = useState(null)
   // The operative whose unit card is open (by token id), from the action ring.
   const [cardFor, setCardFor] = useState(null)
+  // The marker or token whose rules are open beside it: { id, x, y } (screen point).
+  const [rulesFor, setRulesFor] = useState(null)
   // The operative whose rules are open beside it: { tokenId, x, y } (screen point).
   const stageRef = useRef(null)
   const pointersRef = useRef(new Map())
@@ -954,6 +959,11 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       setRadial((current) => current && { ...current, menu: id })
       return
     }
+    if (id === 'rules') {
+      setRulesFor({ id: token.id, x: radial?.x ?? 0, y: radial?.y ?? 0 })
+      setRadial(null)
+      return
+    }
     if (id === 'card') {
       setRadial(null)
       setCardFor(token.id)
@@ -1352,6 +1362,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const radialIsOperative = Boolean(radialToken?.unitKey) && !radialIsMarker
   const radialStatuses = (radialIsOperative && game.players[radialToken.seat]?.unitState?.[radialToken.unitKey]?.statuses) || []
   const updateRadial = (patch) => act({ type: `${radialIsMarker ? 'marker' : 'token'}/update`, id: radialToken.id, ...patch })
+  const rulesMarker = rulesFor ? game.markers.find((marker) => marker.id === rulesFor.id) ?? null : null
   const cardToken = cardFor ? tokens.find((token) => token.id === cardFor && token.unitKey) ?? null : null
   // What the ring shows: the operative's actions, or one of its second rings of choices.
   //   [{ key, label, icon?, mark? (a graphic instead of the icon), text? (shown big
@@ -1692,7 +1703,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             (!action.resourceful || resourceful) &&
             (!action.datacard || hasActions),
         )
-      : ITEM_ACTIONS
+      : ITEM_ACTIONS.filter((action) => !action.marker || radialIsMarker)
     return actions.map((action) => ({
       key: action.id,
       label: action.label,
@@ -1837,6 +1848,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       {weaponMenu}
       <StalwartPrompt onShoot={startFreeShot} />
       {cardToken ? <UnitCardModal token={cardToken} onClose={() => setCardFor(null)} /> : null}
+      {rulesMarker ? <TokenRules marker={rulesMarker} game={game} viewer={seat} at={rulesFor} onClose={() => setRulesFor(null)} /> : null}
       {arranging ? <BoardArranger onClose={() => setArranging(false)} /> : null}
       <AttackDrawer {...attack} />
 

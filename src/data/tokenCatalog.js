@@ -87,6 +87,21 @@ export const radiusFor = (entry) =>
 
 export const factionTokensFor = (killteamId) => factionTokens[killteamId] ?? []
 
+// Where a catalogue id comes from, for its rules: { entry, source: 'equipment' |
+// 'mission' | 'critOp' | 'operative' | 'general' | 'faction', killteamId?, critOpId? }.
+export const catalogSource = (catalogId) => {
+  const find = (list) => list.find((entry) => entry.id === catalogId)
+  if (find(EQUIPMENT)) return { entry: find(EQUIPMENT), source: 'equipment' }
+  if (find(MISSION_COMMON)) return { entry: find(MISSION_COMMON), source: 'mission' }
+  const critOp = Object.entries(CRIT_OP_TOKENS).find(([, list]) => find(list))
+  if (critOp) return { entry: find(critOp[1]), source: 'critOp', critOpId: critOp[0] }
+  if (find(OPERATIVE)) return { entry: find(OPERATIVE), source: 'operative' }
+  if (find(GENERAL)) return { entry: find(GENERAL), source: 'general' }
+  const faction = Object.entries(factionTokens).find(([, list]) => find(list))
+  if (faction) return { entry: find(faction[1]), source: 'faction', killteamId: faction[0] }
+  return null
+}
+
 // The Token tool's categories for this player: [{ id, name, entries }].
 export const categoriesFor = (game, seat) => {
   const player = game.players?.[seat]
