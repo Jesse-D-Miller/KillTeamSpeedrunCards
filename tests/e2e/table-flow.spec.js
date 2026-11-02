@@ -1,4 +1,7 @@
 import { expect, test } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+
+const KILLZONE_MAPS = JSON.parse(readFileSync(new URL('../../src/data/killzoneMaps.json', import.meta.url), 'utf8')).maps
 
 // Full table flow with three devices: projector + two iPads.
 // Screenshots land in test-results/flow-*.png for eyeballing layouts.
@@ -564,6 +567,22 @@ test('projector + two iPads play through setup into battle', async ({ browser })
     ],
   )
   await expect(table.locator('.board-token')).toHaveCount(tokenCount)
+
+  // Setting up equipment: an Ammo Cache of Alice's in Bob's territory gets a warning on
+  // her map until it's wholly within her own.
+  // (The middle of each drop zone, from the map data.)
+  const setupTable = (await tableState(table)).table
+  const dropCentre = (seat) => {
+    const zone = KILLZONE_MAPS.find((map) => map.id === setupTable.mapId).zones[`player${setupTable.dropZones[seat]}`].dropZone
+    const rect = setupTable.mapId === 'map_02' ? { x: zone.y, y: zone.x, w: zone.h, h: zone.w } : zone
+    return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 }
+  }
+  await tableActions(table, [{ type: 'marker/add', kind: 'marker', catalogId: 'ammo-cache', label: 'Ammo Cache', seat: 'A', radius: 0.4, ...dropCentre('B') }])
+  await expect(a.locator('[data-placement-warning="ammo-cache"]')).toContainText('wholly within your territory')
+  const setupCache = (await tableState(table)).markers.find((marker) => marker.catalogId === 'ammo-cache')
+  await tableActions(table, [{ type: 'marker/update', id: setupCache.id, ...dropCentre('A') }])
+  await expect(a.locator('[data-placement-warning]')).toHaveCount(0)
+  await tableActions(table, [{ type: 'marker/remove', id: setupCache.id }])
 
   // The rail also holds Fit and the Tabs flyout; the map has no top status bar or hint.
   await expect(a.locator('.play-header')).toHaveCount(0)

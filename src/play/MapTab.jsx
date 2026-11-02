@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { adjustPath, baseWithinRect, clampWithin, distance, stepPath } from '../../shared/geometry.js'
+import { adjustPath, baseWithinRect, boundsOf, clampWithin, distance, stepPath } from '../../shared/geometry.js'
 import {
   BASE_SIZES_MM,
   DEFAULT_BASE_MM,
@@ -43,6 +43,7 @@ import AttackDrawer from './AttackDrawer.jsx'
 import ToolIcon from './ToolIcon.jsx'
 import { usePlayer } from './usePlayer.js'
 import { useAttack } from './useAttack.js'
+import { placementWarning } from '../../shared/equipment.js'
 
 // The iPad is the controller: everything drawn here is streamed to the projector.
 // One finger uses the active tool; two fingers pan/zoom the iPad view only.
@@ -437,6 +438,27 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // Rolls the app is waiting for (it never rolls for players): mine to enter, and the
   // other player's, so both iPads say what's holding things up.
   const rolls = game.battle.rolls ?? []
+  // My territory, drop zone included (the map data draws the two as separate bands).
+  const myZone = layout.zones[game.table.dropZones?.[seat]]
+  const myTerritory = myZone?.territory && myZone.drop ? boundsOf([myZone.territory, myZone.drop]) : myZone?.territory ?? null
+  // Before the battle: the first of my equipment markers set up against its rules.
+  const placementIssue =
+    game.phase === 'battle' || game.phase === 'results'
+      ? null
+      : game.markers
+          .filter((marker) => marker.seat === seat && !marker.attachedTo)
+          .map((marker) => {
+            const warning = placementWarning({
+              marker,
+              markers: game.markers,
+              objectives: layout.objectives,
+              doors: layout.doors,
+              territory: myTerritory,
+              drop: myDrop,
+            })
+            return warning ? { marker, warning } : null
+          })
+          .find(Boolean) ?? null
   const rollFor = (tokenId) => rolls.find((roll) => roll.seat === seat && roll.tokenId === tokenId) ?? null
 
   // Open the action ring around an operative (or a marker or token), kept fully on
@@ -1736,6 +1758,12 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             <span className="move-status-label">Throw stun grenade</span>
             <span className="move-status-warning">Then roll a stun test (D6, 3+) for the target and each operative within 1&quot; of it.</span>
           </button>
+        ) : null}
+        {placementIssue && !moveStatus ? (
+          <div className="move-status glass is-warning" role="status" data-placement-warning={placementIssue.marker.catalogId}>
+            <span className="move-status-label">{placementIssue.marker.label || 'Equipment'}</span>
+            <span className="move-status-warning">⚠ {placementIssue.warning}</span>
+          </div>
         ) : null}
         {rolls.length && !moveStatus && !attacker ? (
           <RollPrompt

@@ -114,6 +114,19 @@ export const baseWithinRect = (point, radius, rect, margin = 0) =>
   point.y - radius >= rect.y - margin &&
   point.y + radius <= rect.y + rect.h + margin
 
+// The smallest rect { x, y, w, h } holding all these rects (e.g. a territory band and
+// the drop zone beside it).
+export const boundsOf = (rects) => {
+  const x = Math.min(...rects.map((rect) => rect.x))
+  const y = Math.min(...rects.map((rect) => rect.y))
+  return {
+    x,
+    y,
+    w: Math.max(...rects.map((rect) => rect.x + rect.w)) - x,
+    h: Math.max(...rects.map((rect) => rect.y + rect.h)) - y,
+  }
+}
+
 // Map 2 zone rects are authored in portrait (22x30); the board is always drawn landscape.
 export const resolveZoneRect = (zone, mapId) => {
   if (!zone) return null
