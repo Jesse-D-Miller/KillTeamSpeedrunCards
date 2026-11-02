@@ -75721,7 +75721,7 @@
             "opTypeId": "ORK-KOM-GROT",
             "abilityName": "Grappling Hook",
             "AP": 1,
-            "description": "Selected a visible point on a terrain feature for this operative.\nRemove this operative from the killzone and set it back up within 1\" horizontally of that point in a location it can be placed, not within control range of enemy operatives, and with that point visible to it.\nThe operative cannot perform the Operate Hatch action during this action.  \n\nThis action is treated as a Reposition action.\nThis operative cannot perform this action while within control range of an enemy operative, or during an activation in which it performed the Charge or Fall Back action (or vice-versa).",
+            "description": "Select a visible point on a terrain feature for this operative.\nRemove this operative from the killzone and set it back up within 1\" horizontally of that point in a location it can be placed, not within control range of enemy operatives, and with that point visible to it.\nThe operative cannot perform the Operate Hatch action during this action.  \n\nThis action is treated as a Reposition action.\nThis operative cannot perform this action while within control range of an enemy operative, or during an activation in which it performed the Charge or Fall Back action (or vice-versa).",
             "isFactionRule": false
           },
           {

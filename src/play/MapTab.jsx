@@ -23,7 +23,7 @@ import { MARKER_SIZES_MM, categoriesFor, radiusFor } from '../data/tokenCatalog.
 import { maxWoundsFor, saveFor, tokenLabelFor } from '../rules/roster.js'
 import { isLegionaryUnit } from '../rules/equipment.js'
 import { LEGIONARY_MARKS } from '../rules/legionary.js'
-import { engageOnlyInBattle } from '../rules/orders.js'
+import { concealOnly, engageOnlyInBattle } from '../rules/orders.js'
 import Drawer from './Drawer.jsx'
 import FullscreenButton from './FullscreenButton.jsx'
 import { TokenFlyout, UnitsFlyout } from './RailFlyouts.jsx'
@@ -1003,14 +1003,21 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   }
 
   // Tapping your own operative's order tag switches Engage / Conceal. A Bomb Squig
-  // (Stoopid) can't be put on Conceal during the battle; the banner says why.
+  // (Stoopid) can't be put on Conceal during the battle, and a Kommando Grot (Sneaky
+  // Zogger) can never be on Engage; the banner says why.
   const toggleOrder = (event, token) => {
     event.stopPropagation()
     if (token.seat !== seat) return
     const unit = roster.find((candidate) => candidate.key === token.unitKey)
     const order = game.players[seat].unitState?.[token.unitKey]?.order ?? 'conceal'
-    if (order === 'engage' && game.phase === 'battle' && engageOnlyInBattle(unit?.opType)) {
-      setMoveStatus({ label: unit.opType.opTypeName, used: null, limit: null, warning: 'Stoopid: it can’t take a Conceal order in the battle.' })
+    const blocked =
+      order === 'engage' && game.phase === 'battle' && engageOnlyInBattle(unit?.opType)
+        ? 'Stoopid: it can’t take a Conceal order in the battle.'
+        : order === 'conceal' && concealOnly(unit?.opType)
+          ? 'Sneaky Zogger: it can’t have an Engage order.'
+          : null
+    if (blocked) {
+      setMoveStatus({ label: unit.opType.opTypeName, used: null, limit: null, warning: blocked })
       if (moveStatusTimer.current) window.clearTimeout(moveStatusTimer.current)
       moveStatusTimer.current = window.setTimeout(() => setMoveStatus(null), 3000)
       return

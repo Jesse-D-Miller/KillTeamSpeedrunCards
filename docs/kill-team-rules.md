@@ -682,6 +682,8 @@ All of these were replaced in Approved Ops 2025.
     - Camouflaged, Ghost Rig and Evasive Drone.
     - Skytorch: only operatives in the torch zone between the start and end of its move; no cover or obscured.
   - **Kommandos:**
+    - **Checked against Wahapedia (Nov 2026):** every datacard's stats, weapons and abilities, the faction rule (Throat Slittas), all eight ploys and the four equipment items match the app's data (only wording differs; the Grappling Hook typo "Selected" is fixed). The app's data was already current.
+    - **Sneaky Zogger:** a Kommando Grot's order tag can't be switched to Engage (a banner says why), like the Bomb Squig's Stoopid can't go to Conceal in the battle.
     - DAKKA! DAKKA! DAKKA!
     - Skulk About.
     - Just A Scratch (not Bomb Squigs or Grots).
@@ -730,6 +732,7 @@ All of these were replaced in Approved Ops 2025.
   - Hernkyn Yaegir bolt shotgun (long range) is 4 / 5+ / **2/3**, not 2/2 (Theyn and Warrior).
   - Stabilised Bolt Shells also give **Accurate 1**.
   - The Kommando Burna Boy's burna (deluge) has **Seek**, not Seek Light.
+  - Kommando Grot's Grappling Hook: "Selected a visible point" → "Select" (typo; 2 Nov 2026, when the whole team was re-checked).
   - The Comms Boy's weapon is the **shokka pistol** (Collapsible Stocks names it).
   - Vespid Stingwings matched the June 2026 official rules.
 - **Wounds corrected (31 Oct 2026),** checked against Wahapedia's current datacards (`wahapedia.ru/kill-team3/kill-teams/<slug>/`, lowercase slug):
