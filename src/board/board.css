@@ -727,3 +727,48 @@
     stroke-opacity: 0.45;
   }
 }
+
+/* ---- Token events: one-off effects, about a second each (TokenEvents.jsx) ---- */
+.token-events {
+  pointer-events: none;
+}
+
+/* Just injured: a single drop slides down the right of the rim and fades. */
+.token-event-drop {
+  fill: #e5484d;
+}
+
+.token-event-drip {
+  animation: token-drip 1.3s ease-in forwards;
+}
+
+@keyframes token-drip {
+  0% {
+    transform: rotate(20deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: rotate(95deg);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .token-event-drip {
+    animation: token-fade 1.3s ease-in forwards;
+    transform: rotate(60deg);
+  }
+}
+
+@keyframes token-fade {
+  0%,
+  40% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}

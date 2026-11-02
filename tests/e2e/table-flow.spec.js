@@ -1227,6 +1227,8 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await expect(theynToken.locator('.token-fx-hurt')).toHaveCount(1)
   await shot(table, '10b1-hurt-flash')
   for (let i = 0; i < 4; i += 1) await hit()
+  // The hit that injures it runs a drop of blood down its rim, once.
+  await expect(table.locator('[data-events-for="t1"] [data-event="injured"]')).toHaveCount(1)
   await expect(badge).toHaveClass(/is-injured/)
   await expect(badge).toHaveText('4/9')
   await expect(badge.locator('.board-token-wounds-glow')).toHaveCount(1)

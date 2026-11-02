@@ -8,8 +8,9 @@ import { BOARD, getLayout, toSvgY } from './boardData.js'
 import { isInjured } from './health.js'
 import { SKULL_PATH } from './icons.js'
 import { NEUTRAL_COLOR, seatColor, zoneOwner } from './colors.js'
-import { useWoundFx } from './useWoundFx.js'
+import { useTokenFx } from './useTokenFx.js'
 import StatusRim from './StatusRim.jsx'
+import TokenEvents from './TokenEvents.jsx'
 import MarkerDisc from './MarkerDisc.jsx'
 import OrderTag from './OrderTag.jsx'
 import Overlay, { MoveCount } from './Overlay.jsx'
@@ -126,6 +127,9 @@ function TokenName({ token, view, labelId }) {
 }
 
 
+// Wound effects drawn on the token itself; the rest are TokenEvents.
+const WOUND_FX = new Set(['hurt', 'crit', 'heal'])
+
 // Leaves for the healing twirl: six around the base, each a pointed leaf with a vein.
 const LEAF_PATH = 'M0 -0.22C0.13 -0.1 0.13 0.1 0 0.22C-0.13 0.1 -0.13 -0.1 0 -0.22Z'
 const LEAF_ANGLES = [0, 60, 120, 180, 240, 300]
@@ -134,7 +138,7 @@ const LEAF_ANGLES = [0, 60, 120, 180, 240, 300]
 // twirl of green leaves when healed. key restarts it if it changes again.
 function WoundFx({ fx, x, cy, r }) {
   if (!fx) return null
-  if (fx.kind === 'hurt') {
+  if (fx.kind === 'hurt' || fx.kind === 'crit') {
     return (
       <g key={fx.key} className="token-fx token-fx-hurt" aria-hidden="true">
         <circle className="token-fx-hurt-fill" cx={x} cy={cy} r={r} />
@@ -306,8 +310,28 @@ function BoardSvg({
     })
     .filter(({ view }) => !(hideDead && view.dead))
   const viewById = new Map(tokenViews.map((entry) => [entry.token.id, entry]))
-  const woundFx = useWoundFx(
-    Object.fromEntries(tokenViews.filter(({ status }) => status?.wounds != null).map(({ token, status }) => [token.id, status.wounds])),
+  const tokenFx = useTokenFx(
+    Object.fromEntries(
+      tokenViews
+        .filter(({ token, status }) => token.unitKey && status)
+        .map(({ token, status, view }) => {
+          const maxWounds = maxWoundsOf(token)
+          return [
+            token.id,
+            {
+              wounds: status.wounds ?? null,
+              injured: Boolean(maxWounds && status.wounds != null && isInjured(maxWounds, status.wounds)),
+              dead: Boolean(status.dead),
+              order: status.order ?? 'conceal',
+              counteract: status.counteractedTp ?? null,
+              lastHit: status.lastHit ?? null,
+              x: view.x,
+              cy: view.cy,
+              r: view.r,
+            },
+          ]
+        }),
+    ),
   )
   // Engaged: living operatives on opposite sides within each other's control range (1"
   // edge to edge). They're marked until they move apart.
@@ -499,8 +523,11 @@ function BoardSvg({
           glowFilter={glowFilter}
           highlighted={token.id === highlightTokenId}
           onPointerDown={onTokenPointerDown}
-          fx={woundFx[token.id] ?? null}
+          fx={(tokenFx[token.id] ?? []).find((effect) => WOUND_FX.has(effect.kind)) ?? null}
         />
+      ))}
+      {Object.entries(tokenFx).map(([id, effects]) => (
+        <TokenEvents key={id} tokenId={id} effects={effects.filter((effect) => !WOUND_FX.has(effect.kind))} />
       ))}
       {tokenViews.map(({ token, view, status }) =>
         token.unitKey && !view.dead ? <StatusRim key={token.id} token={token} view={view} status={status} maxWounds={maxWoundsOf(token)} /> : null,
