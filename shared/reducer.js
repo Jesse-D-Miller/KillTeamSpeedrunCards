@@ -152,6 +152,8 @@ const UNIT_FIELDS = {
   // What the latest damage was ('crit' from the stats drawer's Crit button), so the board
   // can play the right effect. Any other change of wounds counts as 'normal'.
   lastHit: (value) => (['crit', 'normal'].includes(value) ? value : null),
+  // +1 APL until the end of its next activation (Kommandos' Get It Dun! / Listen In).
+  nextActivationApl: (value) => (value ? 1 : 0),
   // The turning point Shake It Off (Kommandos) was used on it: APL changes ignored then.
   shakeItOffTp: (value) => (value == null ? null : Math.max(1, Math.round(toNumber(value)))),
   // Height on Vantage terrain (0 = killzone floor), used by the Sightline tool.
@@ -232,7 +234,9 @@ const patchUnit = (state, seat, unitKey, patch, maxWounds) =>
     // the last one (and its +1 APL) is done with.
     const activationChanged = (patch.activation && patch.activation !== current.activation) || (patch.counteractedTp != null && patch.counteractedTp !== current.counteractedTp)
     const resourceful = activationChanged && !('resourceful' in patch) ? { resourceful: null } : {}
-    return { unitState: { ...player.unitState, [unitKey]: { ...current, ...patch, ...resourceful, orderFlips } } }
+    // An activation ending uses up an APL boost "until the end of its next activation".
+    const boostSpent = current.activation === 'active' && patch.activation === 'expended' && current.nextActivationApl ? { nextActivationApl: 0 } : {}
+    return { unitState: { ...player.unitState, [unitKey]: { ...current, ...patch, ...resourceful, ...boostSpent, orderFlips } } }
   })
 
 

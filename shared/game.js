@@ -93,8 +93,12 @@ export const canToughOut = (player, unit, tp) =>
 export const SHAKE_IT_OFF = 'ORK-KOM-T-SIO'
 export const aplChangesIgnored = (unit, tp) => unit?.shakeItOffTp != null && unit.shakeItOffTp === tp
 
-// APL an operative has from spending Resourceful this activation.
-export const aplBonus = (unit) => (unit?.resourceful === 'apl' ? 1 : 0)
+// APL an operative has for now from rules that last an activation: spending Resourceful
+// (Yaegirs) this activation, or a SUPPORT action like Get It Dun! / Listen In
+// (Kommandos) until the end of its next activation.
+export const aplBonus = (unit) => (unit?.resourceful === 'apl' ? 1 : 0) + (unit?.nextActivationApl ? 1 : 0)
+// An operative's APL can't change by more than 1 either way (core rules).
+export const clampAplChange = (change) => Math.max(-1, Math.min(1, change))
 
 // Kill teams that keep a tally of special points (Yaegirs' Resourceful points, the
 // Vespids' points) shown beside CP and VP.

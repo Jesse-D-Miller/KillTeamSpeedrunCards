@@ -105,6 +105,8 @@ const RADIAL_ACTIONS = [
   { id: 'edit', label: 'Edit', icon: 'edit', own: true },
   // Legionaries only: their Mark of Chaos.
   { id: 'mark', label: 'Mark', icon: 'mark', own: true, legionary: true },
+  // The operative's own datacard actions (e.g. Kommandos' Breach, Get It Dun!).
+  { id: 'actions', label: 'Actions', icon: 'actions', own: true, datacard: true },
   // Hernkyn Yaegirs only, in the battle: spend a Resourceful point.
   { id: 'resourceful', label: 'Resourceful', icon: 'resourceful', own: true, resourceful: true },
   { id: 'ping', label: 'Ping', icon: 'ping' },
@@ -870,7 +872,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const runAction = (id, token) => {
     // Some open a second ring of choices instead (an operative's move in the battle:
     // which move action).
-    if (id === 'range' || id === 'vantage' || id === 'edit' || id === 'mark' || id === 'resourceful' || (id === 'move' && token.unitKey && steppedMoves)) {
+    if (id === 'range' || id === 'vantage' || id === 'edit' || id === 'mark' || id === 'resourceful' || id === 'actions' || (id === 'move' && token.unitKey && steppedMoves)) {
       setRadial((current) => current && { ...current, menu: id })
       return
     }
@@ -1158,6 +1160,47 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   }
   const pressTool = { units: pressUnits, token: pressToken }
   // Shoot or Fight: the attacker's ranged or melee weapons, full screen. Cancel ends it.
+  // An operative's own datacard actions (abilities with an AP cost).
+  const datacardActionsOf = (token) =>
+    token?.unitKey && token.seat === seat ? (roster.find((unit) => unit.key === token.unitKey)?.opType?.abilities ?? []).filter((ability) => ability.AP != null) : []
+  // What the known datacard actions do from the ring (keyed by name, lower case, no '!').
+  //   blocked({ inControl, order }): why it can't be done now, or null.
+  const DATACARD_ACTIONS = {
+    // Kommando Breacha Boy: place a Breach marker; drag it against the terrain feature.
+    breach: {
+      blocked: ({ inControl }) => (inControl ? 'In control range' : null),
+      run: (token) => {
+        act({ type: 'marker/add', kind: 'marker', catalogId: 'breach', label: 'Breach', short: 'BRCH', radius: 0.4, x: token.x + tokenRadiusIn(token) + 0.5, y: token.y })
+        setRadial(null)
+      },
+    },
+    // Kommando Dakka Boy: a free Dash and a free Shoot (dakka shoota only).
+    'dakka dash': {
+      blocked: ({ inControl, order }) => (order === 'conceal' ? 'Conceal order' : inControl ? 'In control range' : null),
+      run: () => setRadial((current) => current && { ...current, menu: 'dakka' }),
+    },
+    // Kommando Grot: set it up within 1" of a visible point on terrain (a free move).
+    'grappling hook': {
+      blocked: ({ inControl }) => (inControl ? 'In control range' : null),
+      run: (token) => {
+        setRadial(null)
+        clearTool()
+        setSelectedId(token.id)
+        setTool('move')
+        setMoveKind(null)
+        setMoveStatus({ label: 'Grappling Hook', used: null, limit: null, warning: 'Set it up within 1" of a visible point on terrain, not within enemy control range.' })
+      },
+    },
+    // Kommando Boss Nob and Comms Boy: SUPPORT, +1 APL to another Kommando.
+    'get it dun': {
+      blocked: ({ inControl }) => (inControl ? 'In control range' : null),
+      run: () => setRadial((current) => current && { ...current, menu: 'support' }),
+    },
+    'listen in': {
+      blocked: ({ inControl }) => (inControl ? 'In control range' : null),
+      run: () => setRadial((current) => current && { ...current, menu: 'support' }),
+    },
+  }
   const weaponUsesOf = (token) => game.players[token.seat]?.unitState?.[token.unitKey]?.weaponUses ?? {}
   const weaponMenu =
     attacker && weaponMenuOpen ? (
@@ -1169,8 +1212,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
             ? meleeWeaponsFor(game, attacker)
             : rangedWeaponsFor(game, attacker).filter(
                 (weapon) =>
-                  overlay.free !== 'stalwart' ||
-                  (!/\b(frag|krak) grenade\b/i.test(weapon.name) && !weapon.rules?.blast && !weapon.rules?.devastating?.distance),
+                  (overlay.free !== 'dakka' || /dakka shoota/i.test(weapon.name)) &&
+                  (overlay.free !== 'stalwart' ||
+                    (!/\b(frag|krak) grenade\b/i.test(weapon.name) && !weapon.rules?.blast && !weapon.rules?.devastating?.distance)),
               )
         }
         selectedId={overlay.weaponId ?? null}
@@ -1202,6 +1246,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   //   [{ key, label, icon?, mark? (a graphic instead of the icon), text? (shown big
   //   instead of an icon and label), caption? (shown instead of the label), selected?, run }]
   const back = { key: 'back', label: 'Back', icon: 'back', run: () => setRadial((current) => ({ ...current, menu: 'main' })) }
+  const openMenu = (menu) => () => setRadial((current) => ({ ...current, menu }))
   const ringItems = () => {
     if (!radialToken) return []
     if (radial.menu === 'mark') {
@@ -1269,6 +1314,62 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         back,
       ]
     }
+    if (radial.menu === 'actions') {
+      // Its datacard actions; the ones the app knows do their thing, the rest open its card.
+      const inControl = inEnemyControl(game, radialToken)
+      const order = game.players[radialToken.seat]?.unitState?.[radialToken.unitKey]?.order ?? 'conceal'
+      return [
+        ...datacardActionsOf(radialToken).map((ability) => {
+          const name = ability.abilityName
+          const known = DATACARD_ACTIONS[name.toLowerCase().replace(/[!’']/g, '')]
+          const blocked = known?.blocked?.({ inControl, order }) ?? null
+          return {
+            key: `action-${name}`,
+            label: name,
+            text: `${ability.AP}AP`,
+            caption: blocked ?? name,
+            disabled: Boolean(blocked),
+            run: () => (known ? known.run(radialToken) : (setRadial(null), setCardFor(radialToken.id))),
+          }
+        }),
+        back,
+      ]
+    }
+    if (radial.menu === 'support') {
+      // SUPPORT: another friendly operative within 6" (excluding Bomb Squigs) gets +1 APL
+      // until the end of its next activation (visibility isn't checked).
+      const choices = tokens.filter(
+        (token) =>
+          token.seat === radialToken.seat &&
+          token.id !== radialToken.id &&
+          token.unitKey &&
+          !/-SQUIG-/.test(token.unitKey) &&
+          !game.players[token.seat]?.unitState?.[token.unitKey]?.dead &&
+          distance(token, radialToken) - tokenRadiusIn(token) - tokenRadiusIn(radialToken) <= 6,
+      )
+      return [
+        ...choices.map((token) => ({
+          key: `support-${token.id}`,
+          label: token.label || token.unitKey,
+          caption: token.label || token.unitKey,
+          text: '+1',
+          selected: Boolean(game.players[token.seat]?.unitState?.[token.unitKey]?.nextActivationApl),
+          run: () => {
+            act({ type: 'unit/update', seat: token.seat, unitKey: token.unitKey, maxWounds: maxWoundsOf(token.id), patch: { nextActivationApl: 1 } })
+            setRadial(null)
+          },
+        })),
+        { ...back, run: openMenu('actions') },
+      ]
+    }
+    if (radial.menu === 'dakka') {
+      // Dakka Dash: a free Dash and a free Shoot with its dakka shoota, in either order.
+      return [
+        { key: 'dakka-dash', label: 'Dash', text: '3"', caption: 'Dash', run: () => startMove('dash', radialToken) },
+        { key: 'dakka-shoot', label: 'Shoot', icon: 'attack', run: () => startFreeAttack({ shooterId: radialToken.id, free: 'dakka' }) },
+        { ...back, run: openMenu('actions') },
+      ]
+    }
     if (radial.menu === 'resourceful') {
       // Why a point can't be spent now (the server checks the same), shown on the buttons.
       const player = game.players[radialToken.seat]
@@ -1318,7 +1419,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     }
     // Edit: the operative's name, base size and removal, each with its own ring (as in
     // the Select panel).
-    const openMenu = (menu) => () => setRadial((current) => ({ ...current, menu }))
     if (radial.menu === 'edit') {
       return [
         { key: 'name', label: 'Name', icon: 'name', run: openMenu('name') },
@@ -1430,9 +1530,14 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     }
     const legionary = isLegionaryUnit(roster.find((unit) => unit.key === radialToken.unitKey)?.opType)
     const resourceful = game.phase === 'battle' && game.players[radialToken.seat]?.killteamId === HERNKYN_YAEGIRS
+    const hasActions = game.phase === 'battle' && datacardActionsOf(radialToken).length > 0
     const actions = radialIsOperative
       ? RADIAL_ACTIONS.filter(
-          (action) => (!action.own || radialToken.seat === seat) && (!action.legionary || legionary) && (!action.resourceful || resourceful),
+          (action) =>
+            (!action.own || radialToken.seat === seat) &&
+            (!action.legionary || legionary) &&
+            (!action.resourceful || resourceful) &&
+            (!action.datacard || hasActions),
         )
       : ITEM_ACTIONS
     return actions.map((action) => ({

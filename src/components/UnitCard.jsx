@@ -5,6 +5,7 @@ import {
   tokenizeWeaponRuleText,
 } from '../data/ktData'
 import statusEffectsData from '../data/statusEffects.json'
+import { clampAplChange } from '../../shared/game.js'
 import { LEGIONARY_MARKS } from '../rules/legionary.js'
 import './UnitCard.css'
 
@@ -258,7 +259,7 @@ function UnitCard({
   const baseApl = Number.parseInt(opType.APL, 10)
   const hasNumericApl = !Number.isNaN(baseApl)
   const effectiveApl = hasNumericApl
-    ? Math.max(0, baseApl + (aplLocked ? 0 : statusAplDelta + aplAdjustment + aplBonus))
+    ? Math.max(0, baseApl + (aplLocked ? 0 : clampAplChange(statusAplDelta + aplAdjustment + aplBonus)))
     : opType.APL
   const isStunned = selectedStatuses.includes('stunned')
   const selectedStatusEffects = selectedStatuses

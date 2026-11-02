@@ -687,6 +687,7 @@ All of these were replaced in Approved Ops 2025.
     - **SSSSHHHH! (strategy ploy, from TP2):** once picked, the strategy sheet lists the Kommandos on a Conceal order more than 6" from enemy operatives, and the sheet can be put aside to Dash them on the map (a banner explains; Dash is the Move ring's 3" move). The "not a valid target for enemy operatives" half isn't worked out, so the banner reminds players of it.
     - **Krump 'Em! (firefight ploy):** usable from the Firefight ploys panel once every operative has activated (the end of the Firefight phase). Use lists your Kommandos; picking one spends the ploy and opens the Fight tool for it on the map without activating it.
     - **Shake It Off (firefight ploy):** Use lists your Kommandos; the one picked ignores APL changes until the next turning point (`shakeItOffTp`): its card shows its printed APL and the board's APL tag is hidden. WAAAGH! (Balanced) and Kunnin' But Brutal (reads the Charge from the move record) were already in place.
+    - **Datacard actions (Actions on the ring):** Breach places a Breach marker beside the operative to drag to the terrain; Dakka Dash opens a free Dash and a free Shoot limited to the dakka shoota (not on Conceal or in control range); Grappling Hook starts a free set-up move with the rule shown; Get It Dun! and Listen In pick another Kommando (not a Bomb Squig) within 6" for +1 APL until the end of its next activation (`nextActivationApl`, cleared when that activation ends). Visibility isn't checked, and AP isn't counted.
     - **Sneaky Zogger:** a Kommando Grot's order tag can't be switched to Engage (a banner says why), like the Bomb Squig's Stoopid can't go to Conceal in the battle.
     - DAKKA! DAKKA! DAKKA!
     - Skulk About.
@@ -702,6 +703,7 @@ All of these were replaced in Approved Ops 2025.
   - **Recognised:** granted weapon rules, Hit/Atk/Dmg/Save changes (including "to a maximum of 3+"), ignore Piercing/Saturate, extra or crit cover saves, re-rolls, "cannot be obscured", "not a valid target" and damage reduction.
   - **When they apply:** only plain, unconditional text from an active strategy ploy or an ability applies by itself. Everything else is offered as a toggle marked "check its conditions".
   - **Left out:** rules with several options under headings.
+- **Datacard actions (all teams):** any of your operatives with actions on its datacard (an AP cost) gets Actions on its ring, listing them; the ones the app knows do their effect, the rest open the Unit card with the rule. APL changes are capped at ±1 in total (core rules) on the card and the board.
 - **Limited x weapons (all teams):** picking one in the Shoot or Fight weapon chooser counts a use for that operative (`unit/weaponUse`, by weapon name); swapping to another weapon gives it back. The chooser shows the uses left, and one that's used up can't be picked (e.g. the Yaegir Bladekyn's throwing plasma knife and the Tracker's throwing hatchet, Limited 1).
 - **Moved this activation:** the operative is active (or counteracting) and still holds the latest move on the board.
 

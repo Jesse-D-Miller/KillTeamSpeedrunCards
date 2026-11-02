@@ -1,4 +1,4 @@
-import { aplBonus, aplChangesIgnored } from '../../shared/game.js'
+import { aplBonus, aplChangesIgnored, clampAplChange } from '../../shared/game.js'
 import { isMissionMarker } from '../data/tokenCatalog.js'
 import { isInjured } from './health.js'
 
@@ -53,7 +53,9 @@ const CARRY_PATH = 'M0 -0.13L0.095 0L0 0.13L-0.095 0Z'
 const APL_TAG_ANGLE = 180
 // Shake It Off (Kommandos) ignores every change for the rest of the turning point.
 const aplChange = (status, tp) =>
-  aplChangesIgnored(status, tp) ? 0 : (Number(status?.apl) || 0) + ((status?.statuses ?? []).includes('stunned') ? -1 : 0) + aplBonus(status)
+  aplChangesIgnored(status, tp)
+    ? 0
+    : clampAplChange((Number(status?.apl) || 0) + ((status?.statuses ?? []).includes('stunned') ? -1 : 0) + aplBonus(status))
 
 function AplTag({ view, change }) {
   const { x, cy, r, facing = 0 } = view

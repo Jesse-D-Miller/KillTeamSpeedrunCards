@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { COMMAND_REROLL, canToughOut, createGame, musterBlocker, toughSurvivalistsDamage, turnState, vantageFloor } from '../game.js'
+import { COMMAND_REROLL, aplBonus, canToughOut, clampAplChange, createGame, musterBlocker, toughSurvivalistsDamage, turnState, vantageFloor } from '../game.js'
 import { ActionError, applyAction } from '../reducer.js'
 import { viewFor } from '../views.js'
 
@@ -1070,5 +1070,20 @@ describe('Hernkyn Yaegirs: Minefield and HY-Pex mines', () => {
     state = applyAction(state, { type: 'token/update', id: ironbraek, x: 10, y: 9 }, 'A')
     state = applyAction(state, { type: 'battle/resetMinefield', id: state.markers[0].id }, 'A')
     expect(state.markers[0].minefield).toEqual({ mine: false, flipped: false })
+  })
+})
+
+describe('APL boosts until the end of the next activation', () => {
+  it("lasts through the operative's next activation, then goes; APL changes cap at ±1", () => {
+    const update = (state, patch) => applyAction(state, { type: 'unit/update', unitKey: 'ORK-KOM-BOY-0', maxWounds: 10, patch }, 'A')
+    let state = run(createGame(), [[{ type: 'phase/set', phase: 'battle' }, 'table']])
+    state = update(state, { nextActivationApl: 1 })
+    const unit = () => state.players.A.unitState['ORK-KOM-BOY-0']
+    expect(aplBonus(unit())).toBe(1)
+    state = update(state, { activation: 'active' })
+    expect(aplBonus(unit())).toBe(1)
+    state = update(state, { activation: 'expended' })
+    expect(aplBonus(unit())).toBe(0)
+    expect([2, 1, 0, -1, -3].map(clampAplChange)).toEqual([1, 1, 0, -1, -1])
   })
 })

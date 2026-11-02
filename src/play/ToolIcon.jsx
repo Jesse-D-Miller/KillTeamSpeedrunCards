@@ -19,6 +19,7 @@ const PATHS = {
   // The eight-pointed star of Chaos.
   mark: 'M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
   resourceful: 'M9 7V5.5a3 3 0 0 1 6 0V7M5 7h14l-1.2 13H6.2zM9 12h6M12 9.5v5',
+  actions: 'M3 12h4l2.5-6 3 12 2.5-6h6',
   stun: 'M12 3l2.2 6.3H21l-5.4 4 2 6.7-5.6-4.1L6.4 20l2-6.7L3 9.3h6.8z',
   rules: 'M12 6c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-13c-3-.5-6 0-8 1.5zM12 6v13',
   // A new round: an arrow coming back round on itself.
