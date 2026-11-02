@@ -173,7 +173,9 @@ function TokenBody({ token, view, maxWounds, wounds, highlighted, onPointerDown,
       onPointerDown={onPointerDown ? (event) => onPointerDown(event, token) : undefined}
     >
       {view.activation === 'active' ? (
-        <circle className="board-token-glow" cx={x} cy={cy} r={r + 0.12} filter={`url(#${glowFilter})`} />
+        <g className="board-token-active" transform={`translate(${x} ${cy})`}>
+          <circle className="board-token-active-ring" r={r + 0.12} />
+        </g>
       ) : null}
       <circle className="board-token-base" cx={x} cy={cy} r={r} />
       {dead ? (

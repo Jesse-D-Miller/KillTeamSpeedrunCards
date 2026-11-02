@@ -154,28 +154,21 @@
   opacity: 0.85;
 }
 
-/* Active: pulsing yellow glow just outside the base. */
-.board-token-glow {
+/* Active: a dashed ring in the seat colour turning slowly just outside the base, so
+   everyone can see whose go it is without anything flashing. */
+.board-token-active-ring {
   fill: none;
-  stroke: #ffd84a;
-  stroke-width: 0.16;
-  animation: token-glow 1.6s ease-in-out infinite;
-}
-
-@keyframes token-glow {
-  0%,
-  100% {
-    stroke-opacity: 0.35;
-  }
-  50% {
-    stroke-opacity: 1;
-  }
+  stroke: var(--token-color);
+  stroke-width: 0.07;
+  stroke-opacity: 0.85;
+  stroke-dasharray: 0.22 0.14;
+  stroke-linecap: round;
+  animation: status-orbit 12s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .board-token-glow {
+  .board-token-active-ring {
     animation: none;
-    stroke-opacity: 0.85;
   }
 }
 
