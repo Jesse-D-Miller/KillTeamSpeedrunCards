@@ -157,6 +157,24 @@ export const BREACH_RANGE_IN = 3
 export const OVERWHELM_TARGET = 'IMP-INB-T-OT'
 export const LOCK_IT_DOWN = 'IMP-INB-T-LID'
 export const PHOBOS_STRIKE_TEAM = 'IMP-PHO'
+// Phobos Terror: enemies within 3" of friendly Reivers count 1 APL lower for controlling
+// markers. Which Phobos players' Terror touches this objective (an enemy contesting it,
+// within 1", is within 3" of one of their Reivers).
+const TERROR_RANGE_IN = 3
+export const terrorOver = (state, objective) => {
+  const gap = (a, b, rb = tokenRadiusIn(b)) => Math.hypot(a.x - b.x, a.y - b.y) - tokenRadiusIn(a) - rb
+  const alive = (token) => token.unitKey && token.seat && !state.players[token.seat]?.unitState?.[token.unitKey]?.dead
+  return SEATS.filter((seat) => state.players[seat]?.killteamId === PHOBOS_STRIKE_TEAM).filter((seat) => {
+    const reivers = state.tokens.filter((token) => token.seat === seat && /-RVR[A-Z]*-/.test(token.unitKey ?? '') && alive(token))
+    return state.tokens.some(
+      (enemy) =>
+        alive(enemy) &&
+        enemy.seat !== seat &&
+        gap(enemy, objective, objective.radius ?? 0) <= 1 &&
+        reivers.some((reiver) => gap(enemy, reiver) <= TERROR_RANGE_IN),
+    )
+  })
+}
 
 // Phobos Omni-Scrambler (strategic gambit): why this operative can't be activated or act
 // yet in this Firefight phase, or null. It's lifted once its player has activated as many
