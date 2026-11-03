@@ -583,6 +583,29 @@ describe('Imperial Navy Breachers', () => {
     const defended = computeShot({ game: game('A', 'IMP-INB-S-DO', 'imp-inb-defence-order', 4), layout: { walls: [], areas: [] }, payload: { shooterId: 't', targetId: 's', weaponId: 'CHAOS-LEG-WAR-BG-0' } })
     expect(find(defended, 'defence', 'Defence Order').mode).toBe('auto')
   })
+
+  it('Close Assault, Brace for Counterattack and Blitz', () => {
+    const ARMSMAN = 'IMP-INB-ARM-0'
+    const game = (ploys, extra = {}) =>
+      setup({
+        teams: ['IMP-INB', 'CHAOS-LEG'],
+        tokens: [op('s', 'A', ARMSMAN, 2, 5, extra.move ?? {}), op('t', 'B', 'CHAOS-LEG-WAR-0', 4.5)],
+        units: { A: { [ARMSMAN]: { order: 'engage', activation: 'active' } }, B: { 'CHAOS-LEG-WAR-0': { order: 'engage' } } },
+        ploys: { A: ploys },
+      })
+    // Close Assault: the shotgun (3/3) is 4/4 within 3".
+    expect(shoot(game(['IMP-INB-S-CA']), 'IMP-INB-ARM-NS-0').attack.dmg.normal.value).toBe(4)
+    // Brace: shot by a boltgun (3/4) while it hasn't moved: crits 4 → 3, normals 3 → 2.
+    const braced = computeShot({ game: game(['IMP-INB-S-BFCA']), layout: { walls: [], areas: [] }, payload: { shooterId: 't', targetId: 's', weaponId: 'CHAOS-LEG-WAR-BG-0' } })
+    expect([braced.attack.dmg.normal.value, braced.attack.dmg.crit.value]).toEqual([2, 3])
+    const repositioned = game(['IMP-INB-S-BFCA'], { move: { lastMove: { from: { x: 0, y: 5 }, path: [], inches: 2, kinds: ['reposition'] } } })
+    expect(find(computeShot({ game: repositioned, layout: { walls: [], areas: [] }, payload: { shooterId: 't', targetId: 's', weaponId: 'CHAOS-LEG-WAR-BG-0' } }), 'defence', 'Brace for Counterattack').mode).toBe('toggle')
+    // Blitz: Accurate 1, and Severe for the first operative activated this turning point.
+    const first = game([])
+    first.battle.firstActivatedByTp = { 1: { A: ARMSMAN } }
+    expect(find(shoot(first, 'IMP-INB-ARM-NS-0'), 'attack', 'Blitz').text).toMatch(/Severe/)
+    expect(find(shoot(game([]), 'IMP-INB-ARM-NS-0'), 'attack', 'Blitz').text).not.toMatch(/Severe/)
+  })
 })
 
 describe('other kill teams (read from their rules text)', () => {

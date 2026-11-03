@@ -274,10 +274,19 @@ const expendActive = (state, keep = null) => {
   return { state: patchUnit(state, active.seat, active.unitKey, { activation: 'expended' }), expended: active }
 }
 
-const markActivated = (state, seat) => ({
-  ...state,
-  battle: { ...state.battle, lastActivatedByTp: { ...state.battle.lastActivatedByTp, [state.battle.tp]: seat } },
-})
+// Also remembers each player's first operative activated in a turning point (Blitz).
+const markActivated = (state, seat, unitKey) => {
+  const { tp } = state.battle
+  const first = state.battle.firstActivatedByTp?.[tp] ?? {}
+  return {
+    ...state,
+    battle: {
+      ...state.battle,
+      lastActivatedByTp: { ...state.battle.lastActivatedByTp, [tp]: seat },
+      firstActivatedByTp: { ...state.battle.firstActivatedByTp, [tp]: { ...first, [seat]: first[seat] ?? unitKey } },
+    },
+  }
+}
 
 // Moving an operative in the Firefight phase activates it (expending the last one),
 // or counts as its counteraction. Returns the new state with battle.lastAuto set so
@@ -294,7 +303,7 @@ const autoActivate = (state, token, maxWounds) => {
   const previousLast = battle.lastActivatedByTp?.[battle.tp] ?? null
   if (activation === 'ready') {
     const { state: next, expended } = expendActive(state)
-    const activated = markActivated(patchUnit(next, token.seat, token.unitKey, { activation: 'active' }, maxWounds), token.seat)
+    const activated = markActivated(patchUnit(next, token.seat, token.unitKey, { activation: 'active' }, maxWounds), token.seat, token.unitKey)
     return { ...activated, battle: { ...activated.battle, lastAuto: { tokenId: token.id, kind: 'activate', expended, previousLast } } }
   }
   if (activation === 'expended' && canCounteract(state, token.seat, token.unitKey)) {
@@ -1464,7 +1473,7 @@ const handlers = {
     let next = clearAuto(state)
     // Activating an operative by hand also ends the activation in progress.
     if (patch.activation === 'active' && state.players[seat].unitState[unitKey]?.activation !== 'active') {
-      next = markActivated(expendActive(next, { seat, unitKey }).state, seat)
+      next = markActivated(expendActive(next, { seat, unitKey }).state, seat, unitKey)
     }
     return patchUnit(next, seat, unitKey, patch, action.maxWounds)
   },

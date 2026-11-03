@@ -4,11 +4,18 @@ import * as generic from '../generic.js'
 import { mod } from '../effects.js'
 
 // Imperial Navy Breachers (IMP-INB). Hand-checked so far against the current team rules
-// (Wahapedia): Void Armour, Attack Order and Defence Order. Everything else still comes from the rules-text reader
+// (Wahapedia): Void Armour, Attack Order, Defence Order, Close Assault, Brace for
+// Counterattack and Blitz. Everything else still comes from the rules-text reader
 // (generic.js), added alongside; the rules handled here are taken out of its suggestions.
 
 const VOID_ARMOUR = 'IMP-INB-void-armour'
-const PLOYS = { attackOrder: 'IMP-INB-S-AO', defenceOrder: 'IMP-INB-S-DO' }
+const PLOYS = {
+  attackOrder: 'IMP-INB-S-AO',
+  defenceOrder: 'IMP-INB-S-DO',
+  closeAssault: 'IMP-INB-S-CA',
+  braceForCounterattack: 'IMP-INB-S-BFCA',
+  blitz: 'IMP-INB-T-BL',
+}
 const HANDLED_NAMES = new Set(['Void Armour'])
 const HANDLED_IDS = new Set(Object.values(PLOYS))
 const unhandled = (mods) => mods.filter((modifier) => !HANDLED_NAMES.has(modifier.name) && !HANDLED_IDS.has(modifier.id))
@@ -61,11 +68,74 @@ const voidArmour = (ctx) => {
   ]
 }
 
-export const attack = (ctx) => [...unhandled(generic.attack(ctx)), ...(ctx.weapon?.atk != null ? attackOrder(ctx, 'attacker', ctx.shooterToken, ctx.shooter.seat) : [])]
-export const defence = (ctx) => [...unhandled(generic.defence(ctx)), ...voidArmour(ctx), ...defenceOrder(ctx)]
+// Close Assault: fighting or shooting an operative within 3", its Navis (heavy) shotguns
+// get +1 to both Dmg stats; turning a fail into a normal success is the player's call.
+const closeAssault = (ctx, owner, weapon) => {
+  if (!weapon || !ctx.stratActive(owner, PLOYS.closeAssault) || ctx.gap > 3) return []
+  const base = { id: PLOYS.closeAssault, owner, source: 'strat', name: 'Close Assault' }
+  return /navis (heavy )?shotgun/i.test(weapon.name)
+    ? [mod({ ...base, text: 'Within 3": +1 Dmg; with two or more fails, discard one to keep another as a normal success', effect: { normalDmg: 1, critDmg: 1 }, tone: 'good' })]
+    : [mod({ ...base, mode: 'note', text: 'Within 3": with two or more fails, discard one to keep another as a normal success' })]
+}
+
+// Brace for Counterattack: against a Breacher in your territory (drop zone included), or
+// one that hasn't Charged, Fallen Back or Repositioned this turning point, Normal and Crit
+// Dmg of 3 or more deals 1 less. A free drag can't say which move it was: the player
+// decides.
+const BRACE_REDUCTION = { atLeast: 3, by: 1, crit: true }
+const inOwnTerritory = (ctx, token, seat) => {
+  const zone = ctx.layout?.zones?.[ctx.game.table?.dropZones?.[seat]]
+  const inside = (rect) => rect && token.x >= rect.x && token.x <= rect.x + rect.w && token.y >= rect.y && token.y <= rect.y + rect.h
+  return zone ? inside(zone.territory) || inside(zone.drop) : null
+}
+const brace = (ctx, owner, operative, token, key) => {
+  if (!ctx.stratActive(owner, PLOYS.braceForCounterattack)) return []
+  const base = { id: PLOYS.braceForCounterattack, owner, source: 'strat', name: 'Brace for Counterattack', effect: { [key]: BRACE_REDUCTION }, tone: 'good' }
+  const territory = inOwnTerritory(ctx, token, operative.seat)
+  const kinds = ctx.game.phase === 'battle' ? token.lastMove?.kinds ?? [] : []
+  const moved = kinds.some((kind) => ['charge', 'fallBack', 'reposition'].includes(kind))
+  if (territory || (!moved && !kinds.includes('free'))) {
+    return [mod({ ...base, text: territory ? 'In your territory: Dmg 3+ deals 1 less' : 'No Charge, Fall Back or Reposition this turning point: Dmg 3+ deals 1 less' })]
+  }
+  if (moved && territory === false) return [mod({ ...base, mode: 'inactive', text: 'It moved this turning point and isn’t in your territory' })]
+  return [mod({ ...base, mode: 'toggle', text: 'If it’s in your territory or hasn’t Charged, Fallen Back or Repositioned this turning point: Dmg 3+ deals 1 less' })]
+}
+
+// Blitz (firefight ploy): against an enemy within 6", Accurate 1 if it's the team's first
+// operative to Shoot or Fight this turning point (the player says so), and Severe too if it
+// was the first activated this turning point (recorded).
+const blitz = (ctx, owner, operative) => {
+  if (!ctx.inBattle || ctx.gap > 6) return []
+  const first = ctx.game.battle.firstActivatedByTp?.[ctx.game.battle.tp]?.[operative.seat] === operative.unitKey
+  return [
+    mod({
+      id: PLOYS.blitz,
+      owner,
+      source: 'firefight',
+      name: 'Blitz',
+      mode: 'toggle',
+      cost: 1,
+      limit: 1,
+      text: first ? 'First to Shoot or Fight this turning point, and first activated: Accurate 1, Severe' : 'If it’s the first to Shoot or Fight this turning point: Accurate 1',
+      effect: { accurate: 1, ...(first ? { addRules: { severe: true } } : {}) },
+      tone: 'good',
+    }),
+  ]
+}
+
+export const attack = (ctx) => [
+  ...unhandled(generic.attack(ctx)),
+  ...(ctx.weapon?.atk != null ? [...attackOrder(ctx, 'attacker', ctx.shooterToken, ctx.shooter.seat), ...closeAssault(ctx, 'attacker', ctx.weapon), ...blitz(ctx, 'attacker', ctx.shooter)] : []),
+]
+export const defence = (ctx) => [...unhandled(generic.defence(ctx)), ...voidArmour(ctx), ...defenceOrder(ctx), ...brace(ctx, 'defender', ctx.target, ctx.targetToken, 'dmgReduction')]
 export const fight = (ctx, side) => {
-  const { operative, token, weapon } = ctx.fighter(side)
-  return [...unhandled(generic.fight(ctx, side)), ...(weapon ? attackOrder(ctx, side, token, operative.seat) : [])]
+  const { operative, token, weapon, retaliating } = ctx.fighter(side)
+  return [
+    ...unhandled(generic.fight(ctx, side)),
+    ...(weapon ? attackOrder(ctx, side, token, operative.seat) : []),
+    ...(!retaliating ? [...closeAssault(ctx, side, weapon), ...(weapon ? blitz(ctx, side, operative) : [])] : []),
+    ...brace(ctx, side, operative, token, 'opponentDmgReduction'),
+  ]
 }
 
 // Void Armour: x" Devastating doesn't affect Breachers that aren't the target.

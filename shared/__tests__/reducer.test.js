@@ -559,6 +559,13 @@ describe('semi-automatic activations', () => {
     expect(unit(state, 'A', 'a1').activation).toBe('active')
   })
 
+  it('remembers each player’s first operative activated in a turning point', () => {
+    let state = move(battle(), 't1', 'A')
+    state = applyAction(state, { type: 'battle/endActivation' }, 'A')
+    state = move(state, 't2', 'A')
+    expect(state.battle.firstActivatedByTp[1]).toEqual({ A: 'a1' })
+  })
+
   it('activating by hand or ending the activation expends the active operative', () => {
     let state = move(battle(), 't1', 'A')
     state = applyAction(state, { type: 'unit/update', unitKey: 'b1', maxWounds: 9, patch: { activation: 'active' } }, 'B')

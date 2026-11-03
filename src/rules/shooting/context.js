@@ -28,6 +28,7 @@ export const operativeOf = (game, token) => {
   return {
     token,
     seat: token?.seat ?? null,
+    unitKey: token?.unitKey ?? null,
     player,
     killteamId: player?.killteamId ?? '',
     opType,
