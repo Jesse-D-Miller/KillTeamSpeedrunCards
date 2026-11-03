@@ -76,7 +76,11 @@ function AplTag({ view, change }) {
   )
 }
 
-function StatusRim({ token, view, status, maxWounds, riders = [], tp = null }) {
+// Scrambled (Phobos Omni-Scrambler): a faint broken ring with a small slash, until it can
+// be activated.
+const SCRAMBLE_DASH = '0.08 0.12'
+
+function StatusRim({ token, view, status, maxWounds, riders = [], tp = null, scrambled = false }) {
   const { x, cy, r } = view
   const injured = maxWounds && status?.wounds != null && isInjured(maxWounds, status.wounds)
   const stunned = (status?.statuses ?? []).includes('stunned')
@@ -125,6 +129,12 @@ function StatusRim({ token, view, status, maxWounds, riders = [], tp = null }) {
             <circle className="status-carry-track" r={r + 0.2} />
             <path className="status-carry-icon" d={CARRY_PATH} transform={`translate(0 ${-(r + 0.2)})`} />
           </g>
+        </g>
+      ) : null}
+      {scrambled ? (
+        <g className="status-scrambled" data-status="scrambled" transform={`translate(${x} ${cy})`}>
+          <circle r={r + 0.24} strokeDasharray={SCRAMBLE_DASH} />
+          <path d={`M${-(r + 0.36)} ${r + 0.36}L${-(r + 0.12)} ${r + 0.12}`} />
         </g>
       ) : null}
       {apl ? <AplTag key={apl} view={view} change={apl} /> : null}

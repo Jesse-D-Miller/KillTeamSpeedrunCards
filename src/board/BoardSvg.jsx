@@ -1,5 +1,5 @@
 import { useId, useMemo } from 'react'
-import { SEATS, otherSeat, tokenRadiusIn, vantageFloor } from '../../shared/game.js'
+import { SEATS, otherSeat, scrambledReason, tokenRadiusIn, vantageFloor } from '../../shared/game.js'
 import { EDGE_ROTATION, casualtySlots, edgeCasualtyArea } from '../../shared/geometry.js'
 import { getKillteamById } from '../data/ktData.js'
 import { toOpTypeId } from '../rules/killOpCounts.js'
@@ -597,6 +597,7 @@ function BoardSvg({
             maxWounds={maxWoundsOf(token)}
             riders={markers.filter((marker) => marker.attachedTo === token.id)}
             tp={game.battle?.tp ?? null}
+            scrambled={game.phase === 'battle' && Boolean(token.unitKey && scrambledReason(game, token.seat, token.unitKey))}
           />
         ) : null,
       )}

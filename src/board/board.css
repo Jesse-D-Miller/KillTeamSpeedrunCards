@@ -780,6 +780,16 @@
   }
 }
 
+/* Scrambled (Phobos Omni-Scrambler): a faint broken violet ring and a slash, still. */
+.status-scrambled circle,
+.status-scrambled path {
+  fill: none;
+  stroke: #b197fc;
+  stroke-opacity: 0.7;
+  stroke-width: 0.04;
+  stroke-linecap: round;
+}
+
 /* Stunned: three faint yellow sparks drifting round the rim, a turn every 9s. */
 .status-spark {
   fill: #ffd84a;

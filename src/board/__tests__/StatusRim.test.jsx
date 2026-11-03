@@ -73,6 +73,17 @@ describe('status rim', () => {
     expect(carrying([{ catalogId: 'guard' }])).toBeNull()
   })
 
+  it('marks an operative held by an Omni-Scrambler', () => {
+    const held = (scrambled) =>
+      render(
+        <svg>
+          <StatusRim token={{ id: 't1' }} view={view} status={{ wounds: 8 }} maxWounds={8} scrambled={scrambled} />
+        </svg>,
+      ).container.querySelector('[data-status="scrambled"]')
+    expect(held(true)).not.toBeNull()
+    expect(held(false)).toBeNull()
+  })
+
   it('counts a Resourceful +1 APL in the tag', () => {
     expect(rim({ wounds: 8, resourceful: 'apl' }).querySelector('[data-status="apl"]').textContent).toBe('▲+1')
     expect(rim({ wounds: 8, resourceful: 'heal' }).querySelector('[data-status="apl"]')).toBeNull()

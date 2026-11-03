@@ -156,6 +156,23 @@ export const IMPERIAL_NAVY_BREACHERS = 'IMP-INB'
 export const BREACH_RANGE_IN = 3
 export const OVERWHELM_TARGET = 'IMP-INB-T-OT'
 export const LOCK_IT_DOWN = 'IMP-INB-T-LID'
+export const PHOBOS_STRIKE_TEAM = 'IMP-PHO'
+
+// Phobos Omni-Scrambler (strategic gambit): why this operative can't be activated or act
+// yet in this Firefight phase, or null. It's lifted once its player has activated as many
+// operatives as there were Infiltrators when it was used, or it's their last one to go.
+//   unit.scrambledTp: the turning point; unit.scrambledNeeded: that Infiltrator count.
+export const scrambledReason = (state, seat, unitKey) => {
+  const player = state.players[seat]
+  const unit = player?.unitState?.[unitKey]
+  if (!unit || unit.scrambledTp !== state.battle.tp) return null
+  const others = (player.units ?? []).filter((key) => key !== unitKey && !isDead(player, key))
+  const activated = others.filter((key) => activationOf(player, key) !== 'ready').length
+  const lastOne = others.every((key) => activationOf(player, key) !== 'ready')
+  return activated >= (unit.scrambledNeeded ?? 0) || lastOne
+    ? null
+    : `Omni-Scrambler: not until ${unit.scrambledNeeded} of your other operatives have activated, or it's your last`
+}
 // Breacher strategy ploys that place a marker until the next Ready step (only one of the
 // two each Strategy phase): ploy id -> marker catalogue id.
 export const ORDER_PLOYS = { 'IMP-INB-S-AO': 'imp-inb-attack-order', 'IMP-INB-S-DO': 'imp-inb-defence-order' }

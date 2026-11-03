@@ -40,6 +40,8 @@ import {
   IMPERIAL_NAVY_BREACHERS,
   ORDER_PLOYS,
   LOCK_IT_DOWN,
+  PHOBOS_STRIKE_TEAM,
+  scrambledReason,
   SICKENING_CAPTIVATION,
   NEUROSTIMULANT,
   CONVERGENCE_STIMULANT,
@@ -304,6 +306,8 @@ const autoActivate = (state, token, maxWounds) => {
   if (unit?.dead) return state
   const activation = unit?.activation ?? 'ready'
   const previousLast = battle.lastActivatedByTp?.[battle.tp] ?? null
+  const scrambled = activation === 'ready' ? scrambledReason(state, token.seat, token.unitKey) : null
+  if (scrambled) fail(scrambled)
   if (activation === 'ready') {
     const { state: next, expended } = expendActive(state)
     const activated = markActivated(patchUnit(next, token.seat, token.unitKey, { activation: 'active' }, maxWounds), token.seat, token.unitKey)
@@ -1239,6 +1243,26 @@ const handlers = {
     return addRoll(state, { kind: 'pulse', die: 6, max: 7, seat, tokenId: target.id, label: `Interference Pulse on ${target.label || 'it'}: D6, +1 if it's a valid target for the Gheistskull; 3+ is APL −1` })
   },
 
+  // Phobos Omni-Scrambler (strategic gambit, with an Infiltrator in the killzone): the
+  // chosen enemy operative can't be activated or act in the following Firefight phase
+  // until enough of its side have activated (see scrambledReason). Visibility to an
+  // Infiltrator, or 6" from a Voxbreaker, is the players' call.
+  'battle/omniScrambler': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const player = state.players[seat]
+    const { tp } = state.battle
+    if (player.killteamId !== PHOBOS_STRIKE_TEAM) fail('Only a Phobos Strike Team has the Omni-Scrambler.')
+    if (state.battle.firefightTp === tp) fail('It’s a strategic gambit: use it in the Strategy phase.')
+    if (player.scramblerTp === tp) fail('Already used this turning point.')
+    const infiltrators = state.tokens.filter((token) => token.seat === seat && /-INF[A-Z]*-/.test(token.unitKey ?? '') && !player.unitState[token.unitKey]?.dead).length
+    if (!infiltrators) fail('A friendly Infiltrator must be in the killzone.')
+    const target = state.tokens.find((token) => token.id === String(action.targetId ?? ''))
+    if (!target?.unitKey || target.seat === seat) fail('Pick an enemy operative.')
+    const marked = patchUnit(state, target.seat, target.unitKey, { scrambledTp: tp, scrambledNeeded: infiltrators }, target.maxWounds)
+    return updatePlayer(marked, seat, { scramblerTp: tp })
+  },
+
   // Imperial Navy Breachers' Lock It Down (firefight ploy): as a Breacher is activated, pick
   // an objective marker; until the end of the battle (or the next use) its APL counts 1
   // higher for controlling that objective (player.lockItDown, shown on the board).
@@ -1527,6 +1551,7 @@ const handlers = {
     if (state.phase === 'battle' && 'wounds' in patch && before && patch.wounds < before.wounds) patch.damagedTp = state.battle.tp
     let next = clearAuto(state)
     // Activating an operative by hand also ends the activation in progress.
+    if (patch.activation === 'active' && scrambledReason(state, seat, unitKey)) fail(scrambledReason(state, seat, unitKey))
     if (patch.activation === 'active' && state.players[seat].unitState[unitKey]?.activation !== 'active') {
       next = markActivated(expendActive(next, { seat, unitKey }).state, seat, unitKey)
     }

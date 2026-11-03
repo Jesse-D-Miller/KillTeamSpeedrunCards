@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { HERNKYN_YAEGIRS, KOMMANDOS, SSSSHHHH, SSSSHHHH_RANGE_IN, NEXT_ACTIVATION, activePloyIds, aplBonus, aplChangesIgnored, createUnitState, initiativeBefore, otherSeat, tokenRadiusIn } from '../../../shared/game.js'
+import { HERNKYN_YAEGIRS, KOMMANDOS, NEXT_ACTIVATION, PHOBOS_STRIKE_TEAM, SSSSHHHH, SSSSHHHH_RANGE_IN, activePloyIds, aplBonus, aplChangesIgnored, createUnitState, initiativeBefore, otherSeat, tokenRadiusIn } from '../../../shared/game.js'
 import { baseWithinRect } from '../../../shared/geometry.js'
 import { concealedAndClear } from '../../../shared/movement.js'
 import { getLayout } from '../../board/boardData.js'
@@ -58,6 +58,40 @@ function DauntlessGambit({ onAside }) {
         >
           {eligible.length ? `Use · ${eligible.length} Yaegir${eligible.length === 1 ? '' : 's'} in your drop zone` : 'No Yaegirs wholly in your drop zone'}
         </button>
+      )}
+    </section>
+  )
+}
+
+// Phobos Omni-Scrambler, a strategic gambit while a friendly Infiltrator is in the
+// killzone: one enemy operative can't be activated in this Firefight phase until enough
+// of the enemy's others have gone (the server keeps count; the board marks it).
+function OmniScramblerGambit() {
+  const { state: game, seat, me, act } = usePlayer()
+  const infiltrators = game.tokens.filter((token) => token.seat === seat && /-INF[A-Z]*-/.test(token.unitKey ?? '') && !me.unitState?.[token.unitKey]?.dead)
+  if (!infiltrators.length) return null
+  const enemies = game.tokens.filter((token) => token.seat && token.seat !== seat && token.unitKey && !game.players[token.seat]?.unitState?.[token.unitKey]?.dead)
+  const target = enemies.find((token) => game.players[token.seat]?.unitState?.[token.unitKey]?.scrambledTp === game.battle.tp)
+  return (
+    <section className="strategy-step strategy-gambit" data-gambit="omni-scrambler">
+      <h4>
+        <span className="step-number">◆</span> Strategic gambit · Omni-Scrambler
+      </h4>
+      <p className="muted">
+        One enemy operative visible to a friendly Infiltrator, or within 6&quot; of your Voxbreaker, can&apos;t be activated or act this
+        Firefight phase until your opponent has activated {infiltrators.length} other operative{infiltrators.length === 1 ? '' : 's'}, or it&apos;s
+        their last.
+      </p>
+      {me.scramblerTp === game.battle.tp ? (
+        <p>Scrambled: {target?.label || 'an enemy operative'}</p>
+      ) : (
+        <div className="row">
+          {enemies.map((token) => (
+            <button key={token.id} type="button" className="btn" onClick={() => act({ type: 'battle/omniScrambler', targetId: token.id })}>
+              {token.label || token.unitKey}
+            </button>
+          ))}
+        </div>
       )}
     </section>
   )
@@ -208,6 +242,7 @@ export function StrategySheet({ onAside }) {
           ) : null}
 
           {tp === 1 && me.killteamId === HERNKYN_YAEGIRS ? <DauntlessGambit onAside={onAside} /> : null}
+          {me.killteamId === PHOBOS_STRIKE_TEAM ? <OmniScramblerGambit /> : null}
           {tp > 1 && me.killteamId === KOMMANDOS && active.includes(SSSSHHHH) ? <SsssshhhhDashes onAside={onAside} /> : null}
 
           <section className={`strategy-step${initiative ? '' : ' is-locked'}`}>

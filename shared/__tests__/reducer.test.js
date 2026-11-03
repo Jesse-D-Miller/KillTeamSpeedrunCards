@@ -1520,3 +1520,28 @@ describe('Imperial Navy Breachers: Spot and Interference Pulse', () => {
   })
 })
 
+describe('Phobos: Omni-Scrambler', () => {
+  it('stops the chosen enemy activating until enough of its side have gone, or it is the last', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'IMP-PHO' }, 'A'],
+      [{ type: 'setup/killteam', killteamId: 'TAU-VESP' }, 'B'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'IMP-PHO-INFWAR-0', maxWounds: 14, x: 2, y: 2, baseMm: 32 }, 'A'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-WAR-0', maxWounds: 9, x: 20, y: 20, baseMm: 28.5 }, 'B'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-WAR-1', maxWounds: 9, x: 22, y: 20, baseMm: 28.5 }, 'B'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-WAR-2', maxWounds: 9, x: 24, y: 20, baseMm: 28.5 }, 'B'],
+    ])
+    state = { ...state, players: { ...state.players, B: { ...state.players.B, units: ['TAU-VESP-WAR-0', 'TAU-VESP-WAR-1', 'TAU-VESP-WAR-2'] } } }
+    const target = state.tokens.find((token) => token.unitKey === 'TAU-VESP-WAR-0').id
+    state = applyAction(state, { type: 'battle/omniScrambler', targetId: target }, 'A')
+    expect(state.players.B.unitState['TAU-VESP-WAR-0']).toMatchObject({ scrambledTp: 1, scrambledNeeded: 1 })
+    const activate = (from, unitKey) => applyAction(from, { type: 'unit/update', unitKey, maxWounds: 9, patch: { activation: 'active' } }, 'B')
+    expect(() => activate(state, 'TAU-VESP-WAR-0')).toThrow(/Omni-Scrambler/)
+    // One other Vespid activates (one Infiltrator): it's lifted.
+    state = activate(state, 'TAU-VESP-WAR-1')
+    expect(() => activate(state, 'TAU-VESP-WAR-0')).not.toThrow()
+    expect(() => applyAction(state, { type: 'battle/omniScrambler', targetId: target }, 'A')).toThrow()
+  })
+})
+
