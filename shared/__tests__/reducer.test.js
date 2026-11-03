@@ -1400,3 +1400,24 @@ describe('Vespid Stingwings: Darting Flight', () => {
   })
 })
 
+describe('Legionaries: Sickening Captivation', () => {
+  it('gives an enemy within 4" of the active Slaanesh Legionary APL −1 until its next activation ends', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'CHAOS-LEG' }, 'A'],
+      [{ type: 'setup/killteam', killteamId: 'TAU-VESP' }, 'B'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'CHAOS-LEG-WAR-0', maxWounds: 14, x: 5, y: 5, baseMm: 32 }, 'A'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-WAR-0', maxWounds: 9, x: 8, y: 5, baseMm: 28.5 }, 'B'],
+      [{ type: 'unit/update', unitKey: 'CHAOS-LEG-WAR-0', maxWounds: 14, patch: { mark: 'SLAANESH', activation: 'active' } }, 'A'],
+    ])
+    const vespid = state.tokens.find((token) => token.seat === 'B').id
+    state = applyAction(state, { type: 'battle/sickeningCaptivation', targetId: vespid }, 'A')
+    expect(state.players.A.cp).toBe(2)
+    expect(aplBonus(state.players.B.unitState['TAU-VESP-WAR-0'])).toBe(-1)
+    state = applyAction(state, { type: 'unit/update', unitKey: 'TAU-VESP-WAR-0', maxWounds: 9, patch: { activation: 'active' } }, 'B')
+    state = applyAction(state, { type: 'unit/update', unitKey: 'TAU-VESP-WAR-0', maxWounds: 9, patch: { activation: 'expended' } }, 'B')
+    expect(aplBonus(state.players.B.unitState['TAU-VESP-WAR-0'])).toBe(0)
+  })
+})
+

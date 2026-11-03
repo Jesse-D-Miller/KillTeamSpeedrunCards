@@ -141,13 +141,18 @@ export const aplChangesIgnored = (unit, tp) => unit?.shakeItOffTp != null && uni
 // APL an operative has for now from rules that last an activation: spending Resourceful
 // (Yaegirs) this activation, or a SUPPORT action like Get It Dun! / Listen In
 // (Kommandos) until the end of its next activation.
-export const aplBonus = (unit) => (unit?.resourceful === 'apl' ? 1 : 0) + (unit?.nextActivationApl ? 1 : 0)
+// nextActivationApl: +1 (e.g. Get It Dun!) or −1 (Sickening Captivation) until the end of
+// its next activation.
+export const aplBonus = (unit) => (unit?.resourceful === 'apl' ? 1 : 0) + (Number(unit?.nextActivationApl) || 0)
 // An operative's APL can't change by more than 1 either way (core rules).
 export const clampAplChange = (change) => Math.max(-1, Math.min(1, change))
 
 // Kill teams that keep a tally of special points (Yaegirs' Resourceful points, the
 // Vespids' points) shown beside CP and VP.
 export const VESPID_STINGWINGS = 'TAU-VESP'
+// Legionary firefight ploy: an enemy within 4" of a Slaanesh Legionary gets APL −1 until
+// the end of its next activation.
+export const SICKENING_CAPTIVATION = 'CHAOS-LEG-T-SC'
 // Vespid firefight ploy: a Reposition D3" further, then no Shoot or Fight this TP.
 export const DARTING_FLIGHT = 'TAU-VESP-T-DFL'
 // Vespid equipment: roll two D3 for Communion and keep one.

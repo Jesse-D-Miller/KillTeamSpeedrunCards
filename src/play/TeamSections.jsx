@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BONDS_RANGE_IN, BONDS_THAT_BIND, COMMAND_REROLL, KRUMP_EM, SHAKE_IT_OFF, ployUses, tokenRadiusIn, turnState } from '../../shared/game.js'
+import { BONDS_RANGE_IN, BONDS_THAT_BIND, COMMAND_REROLL, KRUMP_EM, SHAKE_IT_OFF, SICKENING_CAPTIVATION, ployUses, tokenRadiusIn, turnState } from '../../shared/game.js'
 import { distance } from '../../shared/geometry.js'
 import { isHidden } from '../../shared/views.js'
 import TacOpCard from '../components/TacOpCard.jsx'
@@ -102,7 +102,9 @@ function BondsThatBind({ ploy }) {
 // A firefight ploy used on one of your operatives: Use opens the list to pick from, and
 // picking spends the ploy and does its effect (onPick). when(game) says whether it can be
 // used now (null) or why not.
-function OperativePloy({ ploy, eligible, when, onPick }) {
+//   enemy: pick from the opponent's operatives; spends: false when onPick's own action
+//   spends the ploy (e.g. battle/sickeningCaptivation).
+function OperativePloy({ ploy, eligible, when, onPick, enemy = false, spends = true }) {
   const { state: game, seat, me, act } = usePlayer()
   const [picking, setPicking] = useState(false)
   const cost = ploy.CP ?? 1
@@ -118,7 +120,13 @@ function OperativePloy({ ploy, eligible, when, onPick }) {
       </button>
     )
   }
-  const choices = game.tokens.filter((token) => token.seat === seat && token.unitKey && !me.unitState?.[token.unitKey]?.dead && eligible(token))
+  const choices = game.tokens.filter(
+    (token) =>
+      (enemy ? token.seat && token.seat !== seat : token.seat === seat) &&
+      token.unitKey &&
+      !game.players[token.seat]?.unitState?.[token.unitKey]?.dead &&
+      eligible(token),
+  )
   if (picking) {
     return (
       <span className="ploy-use-group is-picking" data-ploy-pick={ploy.ployId}>
@@ -128,7 +136,7 @@ function OperativePloy({ ploy, eligible, when, onPick }) {
             type="button"
             className="ploy-use"
             onClick={stop(() => {
-              act({ type: 'battle/firefightPloy', ployId: ploy.ployId, cost })
+              if (spends) act({ type: 'battle/firefightPloy', ployId: ploy.ployId, cost })
               onPick(token)
               setPicking(false)
             })}
@@ -176,6 +184,42 @@ function ShakeItOff({ ploy }) {
   )
 }
 
+// Mutability and Change (Legionaries): as a Tzeentch Legionary is activated, +1 APL until
+// the end of that activation (it can't perform the same action twice in it).
+const MUTABILITY_AND_CHANGE = 'CHAOS-LEG-T-MAC'
+function MutabilityAndChange({ ploy }) {
+  const { me, act } = usePlayer()
+  return (
+    <OperativePloy
+      ploy={ploy}
+      eligible={(token) => me.unitState?.[token.unitKey]?.mark === 'TZEENTCH' && me.unitState?.[token.unitKey]?.activation === 'active'}
+      when={() => null}
+      onPick={(token) => act({ type: 'unit/update', unitKey: token.unitKey, patch: { nextActivationApl: 1 } })}
+    />
+  )
+}
+
+// Sickening Captivation (Legionaries): during a Slaanesh Legionary's activation, an enemy
+// within 4" of it gets APL −1 until the end of its next activation (visibility is the
+// players' call).
+function SickeningCaptivation({ ploy }) {
+  const { state: game, seat, me, act } = usePlayer()
+  const slaanesh = game.tokens.filter(
+    (token) => token.seat === seat && me.unitState?.[token.unitKey]?.mark === 'SLAANESH' && me.unitState?.[token.unitKey]?.activation === 'active',
+  )
+  const near = (token) => slaanesh.some((own) => distance(own, token) - tokenRadiusIn(own) - tokenRadiusIn(token) <= 4)
+  return (
+    <OperativePloy
+      ploy={ploy}
+      enemy
+      spends={false}
+      eligible={near}
+      when={() => (slaanesh.length ? null : 'During a Slaanesh Legionary’s activation')}
+      onPick={(token) => act({ type: 'battle/sickeningCaptivation', targetId: token.id })}
+    />
+  )
+}
+
 // Play a firefight ploy from here (one used in a shot or fight is switched on in the
 // stats drawer instead; both count the same use). Each is once per turning point,
 // except Command Re-roll.
@@ -183,6 +227,8 @@ export function PloyUse({ ploy }) {
   if (ploy.ployId === BONDS_THAT_BIND) return <BondsThatBind ploy={ploy} />
   if (ploy.ployId === KRUMP_EM) return <KrumpEm ploy={ploy} />
   if (ploy.ployId === SHAKE_IT_OFF) return <ShakeItOff ploy={ploy} />
+  if (ploy.ployId === MUTABILITY_AND_CHANGE) return <MutabilityAndChange ploy={ploy} />
+  if (ploy.ployId === SICKENING_CAPTIVATION) return <SickeningCaptivation ploy={ploy} />
   return <PlainPloyUse ploy={ploy} />
 }
 

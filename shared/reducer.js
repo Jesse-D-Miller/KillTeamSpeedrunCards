@@ -36,6 +36,7 @@ import {
   SMOKE_MARKER,
   VESPID_STINGWINGS,
   DARTING_FLIGHT,
+  SICKENING_CAPTIVATION,
   NEUROSTIMULANT,
   CONVERGENCE_STIMULANT,
   SMOKE_USES_KEY,
@@ -1247,6 +1248,23 @@ const handlers = {
     const spent = handlers['battle/firefightPloy'](state, { ployId: DARTING_FLIGHT, cost: action.cost ?? 1, seat: token.seat }, actor)
     const marked = patchUnit(spent, token.seat, token.unitKey, { dartingTp: state.battle.tp, dartingBonus: null }, token.maxWounds)
     return addRoll(marked, { kind: 'darting', die: 3, seat: token.seat, tokenId: token.id, label: `Darting Flight: ${token.label || 'it'} Repositions D3" further` })
+  },
+
+  // Sickening Captivation (Legionary firefight ploy): an enemy operative within 4" of the
+  // player's active Slaanesh Legionary gets APL −1 until the end of its next activation.
+  'battle/sickeningCaptivation': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const target = state.tokens.find((token) => token.id === String(action.targetId ?? ''))
+    if (!target?.unitKey || target.seat === seat) fail('Pick an enemy operative.')
+    const gap = (a, b) => distance(a, b) - tokenRadiusIn(a) - tokenRadiusIn(b)
+    const slaanesh = state.tokens.find((token) => {
+      const unit = token.seat === seat && token.unitKey ? state.players[seat].unitState[token.unitKey] : null
+      return unit?.mark === 'SLAANESH' && unit.activation === 'active' && gap(token, target) <= 4
+    })
+    if (!slaanesh) fail('It must be within 4" of your active Slaanesh Legionary.')
+    const spent = handlers['battle/firefightPloy'](state, { ployId: SICKENING_CAPTIVATION, cost: action.cost ?? 1, seat }, actor)
+    return patchUnit(spent, target.seat, target.unitKey, { nextActivationApl: -1 }, target.maxWounds)
   },
 
   // Stun Grenade thrown by tokenId at targetId: a stun test (D6, the thrower's player

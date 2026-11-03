@@ -11,6 +11,11 @@ const PLOYS = {
   quicksilverSpeed: 'CHAOS-LEG-S-QSS',
   fickleFates: 'CHAOS-LEG-S-FF',
   bloodForTheBloodGod: 'CHAOS-LEG-S-BFTBG',
+  malignantAura: 'CHAOS-LEG-T-MA',
+  unendingBloodshed: 'CHAOS-LEG-T-UEBS',
+  // Played from the Firefight ploys panel (they change APL, not a shot or fight).
+  sickeningCaptivation: 'CHAOS-LEG-T-SC',
+  mutabilityAndChange: 'CHAOS-LEG-T-MAC',
 }
 const HANDLED = new Set(Object.values(PLOYS))
 const unhandled = (mods) => mods.filter((modifier) => !HANDLED.has(modifier.id))
@@ -62,6 +67,16 @@ const shootingPloys = (ctx) => {
       ctx.target.activation === 'ready'
         ? mod({ ...base, text: 'Shooting a ready enemy: Balanced', effect: { addRules: { balanced: true } }, tone: 'good' })
         : mod({ ...base, mode: 'inactive', text: 'The target isn’t ready' }),
+    )
+  }
+  // Malignant Aura (firefight ploy): a Nurgle Legionary shooting an enemy within 3" has
+  // Piercing 1.
+  if (ctx.inBattle && ctx.shooter.mark === 'NURGLE') {
+    const base = { id: PLOYS.malignantAura, owner, source: 'firefight', name: 'Malignant Aura' }
+    mods.push(
+      ctx.gap <= 3
+        ? mod({ ...base, mode: 'toggle', cost: 1, limit: 1, text: 'Nurgle, enemy within 3": Piercing 1', effect: { addRules: { piercing: 1 } }, tone: 'good' })
+        : mod({ ...base, mode: 'inactive', text: 'Nurgle: the enemy is more than 3" away' }),
     )
   }
   // Implacable: an injured Nurgle Legionary ignores being injured (its Hit too).
@@ -136,6 +151,13 @@ export const fight = (ctx, side) => {
         : enemy.injured
           ? mod({ ...base, mode: 'inactive', text: 'Not on top of the enemy being injured' })
           : mod({ ...base, text: 'Moved this turning point: the enemy’s Hit is worse by 1', effect: { opponentHit: 1 }, tone: 'good' }),
+    )
+  }
+  // Unending Bloodshed (firefight ploy): a Khorne Legionary incapacitated in this fight
+  // strikes with one unresolved success before it's removed.
+  if (weapon && ctx.inBattle && operative.mark === 'KHORNE') {
+    mods.push(
+      mod({ id: PLOYS.unendingBloodshed, owner: side, source: 'firefight', name: 'Unending Bloodshed', mode: 'toggle', cost: 1, limit: 1, text: 'Khorne: if it’s incapacitated in this fight, strike with one unresolved success first', tone: 'good' }),
     )
   }
   // Implacable: an injured Nurgle Legionary ignores being injured (its Hit too).

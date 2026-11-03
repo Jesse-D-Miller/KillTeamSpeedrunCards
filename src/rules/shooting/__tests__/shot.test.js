@@ -518,6 +518,15 @@ describe('Legionaries', () => {
     expect(brawl.retaliation.hit.value).toBe(5)
   })
 
+  it('firefight ploys: Malignant Aura within 3", Unending Bloodshed for Khorne', () => {
+    const aura = shoot(legion('NURGLE', 4.5), 'CHAOS-LEG-WAR-BG-0')
+    expect(find(aura, 'attack', 'Malignant Aura')).toMatchObject({ mode: 'toggle', cost: 1 })
+    expect(find(shoot(legion('NURGLE', 8), 'CHAOS-LEG-WAR-BG-0'), 'attack', 'Malignant Aura').mode).toBe('inactive')
+    const on = { ...legion('NURGLE', 4.5), battle: { ...legion('NURGLE', 4.5).battle, shots: toggled('A', { 'CHAOS-LEG-T-MA': true }) } }
+    expect(shoot(on, 'CHAOS-LEG-WAR-BG-0').rules.piercing).toBe(1)
+    expect(find({ modifiers: fightAt(legion('KHORNE', 3.2)).modifiers }, 'attack', 'Unending Bloodshed')).toMatchObject({ mode: 'toggle' })
+  })
+
   it('Astartes: reminders that it can Shoot or Fight twice', () => {
     expect(find(shoot(legion(null), 'CHAOS-LEG-WAR-BG-0'), 'attack', 'Astartes').text).toMatch(/Shoot twice/)
     expect(find({ modifiers: fightAt(legion(null, 3.2)).modifiers }, 'attack', 'Astartes').text).toMatch(/Fight twice/)
