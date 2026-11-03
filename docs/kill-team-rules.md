@@ -767,6 +767,11 @@ All of these were replaced in Approved Ops 2025.
   - **Raveners** (Aug 2026 dataslate): Ravener Prime 21 → **19**; Felltalon, Tremorscythe, Venomspitter, Warrior and Wrecker 20 → **18**. APL, Move and Save already matched.
   - **Canoptek Tomb Crawler** (Apr 2026 dataslate): 21 → **18**. The rest of Canoptek Circle matched.
 - **Legionaries checked (2 Nov 2026)** against Wahapedia's current team page: every datacard's APL, Move, Save and Wounds, every weapon profile and its rules (the data's abbreviations, e.g. "Prc1", read the same), every ability (Grisly Mark 2AP), all eight ploys and the four faction equipment items match. No change needed.
+- **Imperial Navy Breachers checked (2 Nov 2026)** against Wahapedia's current team page: every datacard's stats and weapons match (the Grenadier's frag and krak grenades are listed in the data as equipment-type entries, `wepType "E"`, which the Shoot tool skips; its Grenadier rule gives them). Text fixed to the current rules:
+  - **Boost** (Gheistskull): "the next time it performs a Charge action this activation, add 4" to the distance it can move (instead of 2")", not "+6" to its Move stat".
+  - **Slugs**: the Navis shotgun (long range) also gains **Accurate 1**.
+  - **Overwhelm Target**: applies to the operative activated; the old "select one of those operatives" is gone.
+  - The Inquisitorial Agents' copy of the Gheistskull (IMP-INQ) still has the old Boost text; not checked yet.
   - **Rules text from the same dataslates (Aug 2026):**
     - **Felltalon's Toxic Lunge:** the target must be visible, and an enemy within control range must be picked first.
     - **Whipcord Emergence:** on your TUNNEL, re-roll only defence dice results of one (was any). Also fixed the data's "f that" typos. The text reader labels it "Re-roll defence dice showing 1".

@@ -64532,7 +64532,7 @@
             "opTypeId": "IMP-INB-GS",
             "abilityName": "Boost",
             "AP": 1,
-            "description": "Until the end of the activation, add 6\" to this operative’s Move stat.  \n\nThis operative can only perform this action once per battle, and cannot perform it during the first turning point.",
+            "description": "The next time this operative performs a Charge action during this activation, add 4\" to the distance it can move (instead of 2\").\n\nThis operative cannot perform this action more than once per battle, and cannot perform it during the first turning point.",
             "isFactionRule": false
           },
           {
@@ -65265,7 +65265,7 @@
         "ployType": "T",
         "seq": 1,
         "ployName": "Overwhelm Target",
-        "description": "Use this firefight ploy when you activate either friendly IMPERIAL NAVY BREACHER operative while using the Breach and Clear faction rule.\nSelect one of those friendly IMPERIAL NAVY BREACHER operatives. Until the end of that operative’s activation, add 1 to its APL stat."
+        "description": "Use this firefight ploy when you activate either friendly IMPERIAL NAVY BREACHER operative while using the Breach and Clear faction rule.\nUntil the end of that operative’s activation, add 1 to its APL stat."
       }
     ],
     "spotlightRosters": [
@@ -66337,7 +66337,7 @@
         "killteamId": "IMP-INB",
         "seq": 2,
         "eqName": "Slugs",
-        "description": "Up to three times per turning point, whenever a friendly IMPERIAL NAVY BREACHER operative is performing the Shoot action and you select a navis shotgun (long range), you can use this rule.\nIf you do, until the end of that action, improve the Hit stat of that weapon by 1 and add 1 to both of its Dmg stats.",
+        "description": "Up to three times per turning point, whenever a friendly IMPERIAL NAVY BREACHER operative is performing the Shoot action and you select a navis shotgun (long range), you can use this rule.\nIf you do, until the end of that action, improve the Hit stat of that weapon by 1 and add 1 to both of its Dmg stats, and that weapon has the Accurate 1 weapon rule.",
         "effects": ""
       },
       {
