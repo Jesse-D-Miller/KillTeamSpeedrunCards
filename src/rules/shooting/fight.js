@@ -7,6 +7,7 @@ import * as hernkynYaegirs from './teams/hernkynYaegirs.js'
 import * as breachers from './teams/breachers.js'
 import * as kommandos from './teams/kommandos.js'
 import * as legionaries from './teams/legionaries.js'
+import * as phobos from './teams/phobos.js'
 import * as vespidStingwings from './teams/vespidStingwings.js'
 import { COMMAND_REROLL } from './universal.js'
 
@@ -20,7 +21,7 @@ import { COMMAND_REROLL } from './universal.js'
 //   (Normal or Crit Dmg) or block one of the opponent's unresolved successes (a normal
 //   blocks a normal, a crit blocks either). Brutal: only crits can block it.
 
-const CURATED = { 'VOT-HKY': hernkynYaegirs, 'TAU-VESP': vespidStingwings, 'ORK-KOM': kommandos, 'CHAOS-LEG': legionaries, 'IMP-INB': breachers }
+const CURATED = { 'VOT-HKY': hernkynYaegirs, 'TAU-VESP': vespidStingwings, 'ORK-KOM': kommandos, 'CHAOS-LEG': legionaries, 'IMP-INB': breachers, 'IMP-PHO': phobos }
 const teamRules = (killteamId) => CURATED[killteamId] ?? generic
 
 const SIDES = ['attacker', 'defender']

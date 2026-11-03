@@ -620,6 +620,22 @@ describe('Imperial Navy Breachers', () => {
   })
 })
 
+describe('Phobos Strike Team', () => {
+  const phobos = (unitKey, ploys = []) =>
+    setup({
+      teams: ['IMP-PHO', 'CHAOS-LEG'],
+      tokens: [op('s', 'A', unitKey, 2), op('t', 'B', 'CHAOS-LEG-WAR-0', 9)],
+      units: { A: { [unitKey]: { order: 'engage', activation: 'active' } }, B: { 'CHAOS-LEG-WAR-0': { order: 'engage' } } },
+      ploys: { A: ploys },
+    })
+  it('Multi-Spectrum Array: an Incursor’s target can’t be obscured; Astartes reminder', () => {
+    const shot = shoot(phobos('IMP-PHO-INCWAR-0'), 'IMP-PHO-INCWAR-OBC-0')
+    expect(find(shot, 'attack', 'Multi-Spectrum Array')).toMatchObject({ mode: 'auto' })
+    expect(find(shoot(phobos('IMP-PHO-INFWAR-0'), 'IMP-PHO-INFWAR-MBC-0'), 'attack', 'Multi-Spectrum Array')).toBeUndefined()
+    expect(find(shot, 'attack', 'Astartes').text).toMatch(/Shoot twice/)
+  })
+})
+
 describe('other kill teams (read from their rules text)', () => {
   it('reads weapon rules, Hit and Dmg changes from attack rules', () => {
     expect(parseAttackText('Friendly DEATH KORPS operatives’ ranged weapons have the Saturate and Accurate 1 weapon rules.').effect).toEqual({

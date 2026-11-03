@@ -9,6 +9,7 @@ import * as hernkynYaegirs from './teams/hernkynYaegirs.js'
 import * as breachers from './teams/breachers.js'
 import * as kommandos from './teams/kommandos.js'
 import * as legionaries from './teams/legionaries.js'
+import * as phobos from './teams/phobos.js'
 import * as vespidStingwings from './teams/vespidStingwings.js'
 import { COVER_CHOICE, PORTABLE_BARRICADE, coreModifiers, universalAttack, universalDefence } from './universal.js'
 
@@ -22,7 +23,7 @@ import { COVER_CHOICE, PORTABLE_BARRICADE, coreModifiers, universalAttack, unive
 //    removed, Ocelli's extra height...), then the core rules read off it.
 // 4. Validity (rules that take precedence over Seek and Vantage), then the numbers.
 
-const CURATED = { 'VOT-HKY': hernkynYaegirs, 'TAU-VESP': vespidStingwings, 'ORK-KOM': kommandos, 'CHAOS-LEG': legionaries, 'IMP-INB': breachers }
+const CURATED = { 'VOT-HKY': hernkynYaegirs, 'TAU-VESP': vespidStingwings, 'ORK-KOM': kommandos, 'CHAOS-LEG': legionaries, 'IMP-INB': breachers, 'IMP-PHO': phobos }
 export const CURATED_TEAMS = Object.keys(CURATED)
 const teamRules = (killteamId) => CURATED[killteamId] ?? generic
 
