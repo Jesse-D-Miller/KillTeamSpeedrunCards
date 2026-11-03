@@ -693,6 +693,19 @@ describe('Phobos Strike Team', () => {
     expect(shot.rules.seekLight).toBe(true)
   })
 
+  it('equipment: Special Issue Ammunition, Purity Seals, Combat Blades', () => {
+    const INC = 'IMP-PHO-INCWAR-0'
+    const game = phobos(INC)
+    game.players.A.equipment = ['IMP-PHO-SIA', 'IMP-PHO-PS', 'IMP-PHO-CB']
+    const shot = shoot(game, 'IMP-PHO-INCWAR-OBC-0')
+    expect(find(shot, 'attack', 'Special Issue Ammunition')).toMatchObject({ mode: 'toggle', limit: 1 })
+    expect(find(shot, 'attack', 'Purity Seals')).toMatchObject({ mode: 'toggle', limit: 1 })
+    // Used this turning point: the next shot offers to keep it, free.
+    game.players.A.usesByTp = { 1: { 'IMP-PHO-SIA': 1 } }
+    expect(find(shoot(game, 'IMP-PHO-INCWAR-OBC-0'), 'attack', 'Special Issue Ammunition').id).toBe('IMP-PHO-SIA-kept')
+    expect(meleeWeaponsFor(game, { seat: 'A', unitKey: INC }).find((weapon) => /combat blade/i.test(weapon.name))).toMatchObject({ atk: 5, hit: 3 })
+  })
+
   it('ploys: Deadly Shots, Know No Fear, Lethal Assaults, and the dice switches', () => {
     const INC = 'IMP-PHO-INCWAR-0'
     // Not moved this activation: Balanced.

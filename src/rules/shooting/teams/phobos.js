@@ -16,8 +16,9 @@ const PLOYS = {
   stealthAssault: 'IMP-PHO-T-SA',
   transhumanPhysiology: 'IMP-PHO-T-TP',
 }
+const EQUIPMENT = { puritySeals: 'IMP-PHO-PS', specialIssueAmmunition: 'IMP-PHO-SIA' }
 const HANDLED_NAMES = new Set(['Astartes', 'Multi-Spectrum Array'])
-const HANDLED_IDS = new Set(Object.values(PLOYS))
+const HANDLED_IDS = new Set([...Object.values(PLOYS), ...Object.values(EQUIPMENT)])
 const unhandled = (mods) => mods.filter((modifier) => !HANDLED_NAMES.has(modifier.name) && !HANDLED_IDS.has(modifier.id))
 const MOVE_ACTIONS = ['charge', 'fallBack', 'reposition']
 
@@ -71,6 +72,27 @@ const auspexScan = (ctx) => {
   ]
 }
 
+// Purity Seals: once per turning point, with two or more fails, discard one to keep another
+// as a normal success (the player does it; the switch counts the use).
+const puritySeals = (ctx, owner) =>
+  ctx.inBattle && ctx.hasEquipment(owner, EQUIPMENT.puritySeals)
+    ? [mod({ id: EQUIPMENT.puritySeals, owner, source: 'equipment', name: 'Purity Seals', mode: 'toggle', limit: 1, text: 'Two or more fails: discard one to keep another as a normal success', tone: 'good' })]
+    : []
+
+// Special Issue Ammunition: once per turning point, a bolt carbine (marksman, occulus) has
+// Piercing 1 until the end of the turning point. Once used, later shots offer a free
+// switch to keep it on the weapon it was used on (which the app doesn't record).
+const BOLT_CARBINE = /^(bolt carbine|marksman bolt carbine|occulus bolt carbine)$/i
+const specialIssue = (ctx) => {
+  if (!ctx.inBattle || !ctx.hasEquipment('attacker', EQUIPMENT.specialIssueAmmunition) || !BOLT_CARBINE.test(ctx.weapon.name)) return []
+  const base = { owner: 'attacker', source: 'equipment', name: 'Special Issue Ammunition', mode: 'toggle', effect: { addRules: { piercing: 1 } }, tone: 'good' }
+  const used = (ctx.shooter.player?.usesByTp?.[ctx.game.battle.tp]?.[EQUIPMENT.specialIssueAmmunition] ?? 0) > 0
+  const thisShot = ctx.toggles[ctx.shooter.seat]?.[EQUIPMENT.specialIssueAmmunition]
+  return used && !thisShot
+    ? [mod({ ...base, id: `${EQUIPMENT.specialIssueAmmunition}-kept`, text: 'If this is the weapon it was used on this turning point: Piercing 1' })]
+    : [mod({ ...base, id: EQUIPMENT.specialIssueAmmunition, limit: 1, text: 'Once per turning point: Piercing 1 until the end of the turning point' })]
+}
+
 // Firefight ploys whose effect is on the dice as they're resolved: a switch with the rule.
 const dicePloy = (owner, id, name, text) => mod({ id, owner, source: 'firefight', name, mode: 'toggle', cost: 1, limit: 1, text, tone: 'good' })
 
@@ -87,7 +109,9 @@ const multiSpectrum = (ctx) =>
 
 export const attack = (ctx) => [
   ...unhandled(generic.attack(ctx)),
-  ...(ctx.weapon?.atk != null ? [...multiSpectrum(ctx), ...auspexScan(ctx), ...deadlyShots(ctx), ...knowNoFear(ctx, 'attacker', ctx.shooter)] : []),
+  ...(ctx.weapon?.atk != null
+    ? [...multiSpectrum(ctx), ...auspexScan(ctx), ...deadlyShots(ctx), ...knowNoFear(ctx, 'attacker', ctx.shooter), ...specialIssue(ctx), ...puritySeals(ctx, 'attacker')]
+    : []),
   // Critical Shot: a crit with a bolt weapon deals D3 more (the player rolls it).
   ...(ctx.inBattle && /\bbolt\b/i.test(ctx.weapon?.name ?? '') ? [dicePloy('attacker', PLOYS.criticalShot, 'Critical Shot', 'When a crit is resolved with this bolt weapon: D3 more damage')] : []),
   ...(ctx.inBattle ? [astartes('attacker', 'It can Shoot twice this activation (one of them with a bolt weapon)')] : []),
@@ -112,7 +136,7 @@ export const fight = (ctx, side) => {
   const { operative, token, weapon, retaliating } = ctx.fighter(side)
   return [
     ...unhandled(generic.fight(ctx, side)),
-    ...(weapon ? knowNoFear(ctx, side, operative) : []),
+    ...(weapon ? [...knowNoFear(ctx, side, operative), ...puritySeals(ctx, side)] : []),
     ...(weapon && !retaliating ? lethalAssaults(ctx, side, operative, token) : []),
     // Stealth Assault: activated on Conceal, given Engage, Charged then Fought: after its
     // first attack die, resolve another before the opponent.
