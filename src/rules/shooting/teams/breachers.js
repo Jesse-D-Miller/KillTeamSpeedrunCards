@@ -123,8 +123,28 @@ const blitz = (ctx, owner, operative) => {
   ]
 }
 
+// Spot (C.A.T. Unit): shooting the enemy it spotted this turning point, Seek Light and it
+// can't be obscured (while it stays visible to the C.A.T. Unit: the players' call).
+const spot = (ctx) => {
+  const marked = ctx.shooter.player?.spot
+  if (!ctx.inBattle || marked?.tp !== ctx.game.battle.tp || marked.targetId !== ctx.targetToken.id) return []
+  return [
+    mod({
+      id: 'IMP-INB-spot',
+      owner: 'attacker',
+      source: 'ability',
+      name: 'Spot',
+      mode: 'default',
+      text: 'Spotted by the C.A.T. Unit: Seek Light, and it can’t be obscured',
+      effect: { addRules: { seekLight: true }, cannotBeObscured: true },
+      tone: 'good',
+    }),
+  ]
+}
+
 export const attack = (ctx) => [
   ...unhandled(generic.attack(ctx)),
+  ...(ctx.weapon?.atk != null ? spot(ctx) : []),
   ...(ctx.weapon?.atk != null ? [...attackOrder(ctx, 'attacker', ctx.shooterToken, ctx.shooter.seat), ...closeAssault(ctx, 'attacker', ctx.weapon), ...blitz(ctx, 'attacker', ctx.shooter)] : []),
 ]
 export const defence = (ctx) => [...unhandled(generic.defence(ctx)), ...voidArmour(ctx), ...defenceOrder(ctx), ...brace(ctx, 'defender', ctx.target, ctx.targetToken, 'dmgReduction')]

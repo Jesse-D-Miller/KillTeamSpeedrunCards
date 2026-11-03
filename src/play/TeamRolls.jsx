@@ -25,7 +25,7 @@ function TeamRolls() {
       {rolls.map((roll) => (
         <div key={roll.id} className="team-roll" data-roll-kind={roll.kind}>
           <p>{roll.label}</p>
-          <DiceButtons die={roll.die} onPick={(value) => act({ type: 'battle/roll', id: roll.id, value })} />
+          <DiceButtons die={roll.max ?? roll.die} onPick={(value) => act({ type: 'battle/roll', id: roll.id, value })} />
         </div>
       ))}
     </section>

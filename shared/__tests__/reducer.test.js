@@ -1486,3 +1486,37 @@ describe('Imperial Navy Breachers: Lock It Down', () => {
   })
 })
 
+describe('Imperial Navy Breachers: Spot and Interference Pulse', () => {
+  const battle = () =>
+    run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'IMP-INB' }, 'A'],
+      [{ type: 'setup/killteam', killteamId: 'TAU-VESP' }, 'B'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'IMP-INB-CAT-0', maxWounds: 5, x: 2, y: 2, baseMm: 28.5 }, 'A'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'IMP-INB-GS-0', maxWounds: 5, x: 10, y: 10, baseMm: 25 }, 'A'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'IMP-INB-VJ-0', maxWounds: 8, x: 2, y: 8, baseMm: 28.5 }, 'A'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-WAR-0', maxWounds: 9, x: 14, y: 10, baseMm: 28.5 }, 'B'],
+      [{ type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-WAR-1', maxWounds: 9, x: 25, y: 20, baseMm: 28.5 }, 'B'],
+    ])
+  const id = (state, unitKey) => state.tokens.find((token) => token.unitKey === unitKey).id
+
+  it('Spot records the enemy for this turning point', () => {
+    let state = battle()
+    state = applyAction(state, { type: 'battle/spot', tokenId: id(state, 'IMP-INB-CAT-0'), targetId: id(state, 'TAU-VESP-WAR-0') }, 'A')
+    expect(state.players.A.spot).toMatchObject({ tp: 1, targetId: id(state, 'TAU-VESP-WAR-0') })
+  })
+
+  it('Interference Pulse: within 8" of the Gheistskull; the D6 (+1 for a valid target) on 3+ is APL −1', () => {
+    let state = battle()
+    const jammer = id(state, 'IMP-INB-VJ-0')
+    expect(() => applyAction(state, { type: 'battle/interferencePulse', tokenId: jammer, targetId: id(state, 'TAU-VESP-WAR-1') }, 'A')).toThrow(/8"/)
+    state = applyAction(state, { type: 'battle/interferencePulse', tokenId: jammer, targetId: id(state, 'TAU-VESP-WAR-0') }, 'A')
+    const roll = state.battle.rolls.find((candidate) => candidate.kind === 'pulse')
+    expect(roll).toMatchObject({ die: 6, max: 7, seat: 'A' })
+    expect(() => applyAction(state, { type: 'battle/roll', id: roll.id, value: 8 }, 'A')).toThrow(/1 to 7/)
+    state = applyAction(state, { type: 'battle/roll', id: roll.id, value: 3 }, 'A')
+    expect(aplBonus(state.players.B.unitState['TAU-VESP-WAR-0'])).toBe(-1)
+  })
+})
+

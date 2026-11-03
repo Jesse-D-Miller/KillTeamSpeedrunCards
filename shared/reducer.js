@@ -172,6 +172,8 @@ const UNIT_FIELDS = {
   // once-per-battle Infernal Pact having been used on this Warrior.
   daemon: (value) => Boolean(value),
   infernalPact: (value) => Boolean(value),
+  // Breacher Gheistskull: the turning point it performed Boost (once per battle).
+  boostTp: (value) => (value == null ? null : Math.max(1, Math.round(toNumber(value)))),
   // What the latest damage was ('crit' from the stats drawer's Crit button), so the board
   // can play the right effect. Any other change of wounds counts as 'normal'.
   lastHit: (value) => (['crit', 'normal'].includes(value) ? value : null),
@@ -436,7 +438,8 @@ const triggerMinefields = (state) => {
 // The app doesn't roll dice: a rule that needs one adds a pending roll, the player who
 // rolls enters the result from the action ring of the operative (or marker) it's about,
 // and battle/roll applies it.
-//   roll: { id, kind, die: 3 | 6, seat (who rolls), tokenId (what it's about), label, ... }
+//   roll: { id, kind, die: 3 | 6, max? (the highest result with a bonus added), seat (who
+//   rolls), tokenId (what it's about), label, ... }
 const addRoll = (state, roll) => ({
   ...state,
   battle: { ...state.battle, rolls: [...(state.battle.rolls ?? []), { id: `r${state.nextId}`, ...roll }] },
@@ -621,6 +624,10 @@ const ROLL_EFFECTS = {
       ),
     }
     return victim?.unitKey && extra ? hurt(noted, victim, extra) : noted
+  },
+  pulse: (state, roll, value) => {
+    const target = state.tokens.find((candidate) => candidate.id === roll.tokenId)
+    return target?.unitKey && value >= 3 ? patchUnit(state, target.seat, target.unitKey, { nextActivationApl: -1 }, target.maxWounds) : state
   },
   darting: (state, roll, value) => {
     const token = state.tokens.find((candidate) => candidate.id === roll.tokenId)
@@ -1202,6 +1209,36 @@ const handlers = {
     return { ...used, battle: { ...used.battle, chain: { tp, seat, after: active.unitKey, next: second.unitKey } } }
   },
 
+  // Breacher C.A.T. Unit's Spot (1AP): until the end of the turning point, Breachers
+  // shooting that enemy can give their ranged weapons Seek Light and it can't be obscured
+  // (player.spot; "while it's visible to the C.A.T. Unit" is the players' call).
+  'battle/spot': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const cat = state.tokens.find((token) => token.id === String(action.tokenId ?? ''))
+    const target = state.tokens.find((token) => token.id === String(action.targetId ?? ''))
+    if (!cat || cat.seat !== seat || !target?.unitKey || target.seat === seat) fail('Pick an enemy operative.')
+    if (inEnemyControl(state, cat)) fail('Not within control range of enemy operatives.')
+    return updatePlayer(state, seat, { spot: { tp: state.battle.tp, by: cat.id, targetId: target.id } })
+  },
+
+  // Breacher Void-Jammer's Interference Pulse (1AP): an enemy within 8" of a friendly
+  // Gheistskull; the player rolls a D6 (+1 if it's a valid target for the Gheistskull):
+  // on a 3+, APL −1 until the end of its next activation.
+  'battle/interferencePulse': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const jammer = state.tokens.find((token) => token.id === String(action.tokenId ?? ''))
+    const target = state.tokens.find((token) => token.id === String(action.targetId ?? ''))
+    if (!jammer || jammer.seat !== seat || !target?.unitKey || target.seat === seat) fail('Pick an enemy operative.')
+    if (inEnemyControl(state, jammer)) fail('Not within control range of enemy operatives.')
+    const gap = (a, b) => distance(a, b) - tokenRadiusIn(a) - tokenRadiusIn(b)
+    const skull = state.tokens.find((token) => token.seat === seat && /-GS-/.test(token.unitKey ?? '') && !state.players[seat].unitState[token.unitKey]?.dead)
+    if (!skull) fail('A friendly Gheistskull must be in the killzone.')
+    if (gap(skull, target) > 8) fail('It must be within 8" of the Gheistskull.')
+    return addRoll(state, { kind: 'pulse', die: 6, max: 7, seat, tokenId: target.id, label: `Interference Pulse on ${target.label || 'it'}: D6, +1 if it's a valid target for the Gheistskull; 3+ is APL −1` })
+  },
+
   // Imperial Navy Breachers' Lock It Down (firefight ploy): as a Breacher is activated, pick
   // an objective marker; until the end of the battle (or the next use) its APL counts 1
   // higher for controlling that objective (player.lockItDown, shown on the board).
@@ -1377,7 +1414,9 @@ const handlers = {
     if (!roll) fail('That roll is already done.')
     if (isSeat(actor) && actor !== roll.seat) fail('That roll is the other player’s.')
     const value = Math.round(toNumber(action.value))
-    if (value < 1 || value > roll.die) fail(`Enter 1 to ${roll.die}.`)
+    // (max: the highest result once a bonus is added, e.g. Interference Pulse's +1.)
+    const highest = roll.max ?? roll.die
+    if (value < 1 || value > highest) fail(`Enter 1 to ${highest}.`)
     const done = { ...state, battle: { ...state.battle, rolls: state.battle.rolls.filter((candidate) => candidate.id !== roll.id) } }
     return ROLL_EFFECTS[roll.kind] ? ROLL_EFFECTS[roll.kind](done, roll, value, action) : done
   },

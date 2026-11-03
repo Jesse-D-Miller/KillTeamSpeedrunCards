@@ -606,6 +606,18 @@ describe('Imperial Navy Breachers', () => {
     expect(find(shoot(first, 'IMP-INB-ARM-NS-0'), 'attack', 'Blitz').text).toMatch(/Severe/)
     expect(find(shoot(game([]), 'IMP-INB-ARM-NS-0'), 'attack', 'Blitz').text).not.toMatch(/Severe/)
   })
+
+  it('Spot: shooting the spotted enemy this turning point, Seek Light and it can’t be obscured', () => {
+    const game = setup({
+      teams: ['IMP-INB', 'CHAOS-LEG'],
+      tokens: [op('s', 'A', 'IMP-INB-ARM-0', 2), op('t', 'B', 'CHAOS-LEG-WAR-0', 5)],
+      units: { A: { 'IMP-INB-ARM-0': { order: 'engage' } }, B: { 'CHAOS-LEG-WAR-0': { order: 'engage' } } },
+    })
+    game.players.A.spot = { tp: 1, by: 'c', targetId: 't' }
+    const shot = shoot(game, 'IMP-INB-ARM-NS-0')
+    expect(find(shot, 'attack', 'Spot')).toMatchObject({ mode: 'default', on: true })
+    expect(shot.rules.seekLight).toBe(true)
+  })
 })
 
 describe('other kill teams (read from their rules text)', () => {

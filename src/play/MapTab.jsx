@@ -206,7 +206,7 @@ function RollPrompt({ roll, mine, token, count, onOpen, onPick }) {
       <div className="move-status glass is-roll" data-roll-prompt={roll.kind}>
         <span className="move-status-label">Roll a D{roll.die}</span>
         <span className="move-status-warning">{what}</span>
-        <DiceButtons die={roll.die} onPick={onPick} />
+        <DiceButtons die={roll.max ?? roll.die} onPick={onPick} />
       </div>
     )
   }
@@ -340,7 +340,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const max = maxWoundsFor(unit.opType)
     const state = game.players[token.seat]?.unitState?.[token.unitKey]
     const wounds = state?.wounds ?? max
-    const move = moveStat(unit.opType.MOVE) + (state?.mark === 'SLAANESH' ? 1 : 0)
+    // Boost (Breacher Gheistskull): this activation's Charge adds 4" instead of 2".
+    const boosted = kind === 'charge' && state?.boostTp === game.battle.tp && state?.activation === 'active' ? 2 : 0
+    const move = moveStat(unit.opType.MOVE) + (state?.mark === 'SLAANESH' ? 1 : 0) + boosted
     // Implacable (Legionary ploy): a Nurgle Legionary ignores being injured.
     const implacable = state?.mark === 'NURGLE' && activePloyIds(game.players[token.seat], game.battle.tp).includes('CHAOS-LEG-S-IMP')
     return moveLimit(fly && kind === 'charge' ? 'reposition' : kind, move, isInjured(max, wounds) && !implacable)
@@ -501,7 +503,8 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
 
   // Open the action ring around an operative (or a marker or token), kept fully on
   // screen and clear of the tool drawer on the left.
-  const openRadial = (token) => {
+  // menu: open straight to a second ring (e.g. 'roll' for a roll just asked for).
+  const openRadial = (token, menu = null) => {
     const svgRect = svgRef.current.getBoundingClientRect()
     const stageRect = stageRef.current.getBoundingClientRect()
     const railRect = stageRef.current.parentElement.querySelector('.tool-drawer')?.getBoundingClientRect()
@@ -512,7 +515,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     setRadial({
       tokenId: token.id,
       // A roll this player owes for it (e.g. Mines) comes first, as dice faces.
-      menu: rollFor(token.id) ? 'roll' : 'main',
+      menu: menu ?? (rollFor(token.id) ? 'roll' : 'main'),
       x: clamp(offX + (token.x - viewRef.current.x) * scale - stageRect.left, railRight + room, stageRect.width - room),
       y: clamp(offY + (toSvgY(token.y) - viewRef.current.y) * scale - stageRect.top, room, stageRect.height - room),
     })
@@ -1297,9 +1300,50 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const caches = (game.markers ?? []).some((marker) => marker.catalogId === AMMO_CACHE_MARKER && marker.seat === seat)
     return [...own, ...onActivation, ...(caches ? [{ abilityName: 'Ammo Resupply', AP: 0 }] : [])]
   }
+  // The player's C.A.T. Unit on the board (Breachers), for Remote Control.
+  const catUnit = () =>
+    tokens.find((token) => token.seat === seat && /-CAT-/.test(token.unitKey ?? '') && !game.players[seat]?.unitState?.[token.unitKey]?.dead) ?? null
   // What the known datacard actions do from the ring (keyed by name, lower case, no '!').
   //   blocked({ inControl, order, unit }): why it can't be done now, or null.
   const DATACARD_ACTIONS = {
+    // Breacher C.A.T. Unit: pick the enemy its Breachers can Spot this turning point.
+    spot: {
+      blocked: ({ inControl }) => (inControl ? 'In control range' : null),
+      run: () => setRadial((current) => current && { ...current, menu: 'spot' }),
+    },
+    // Breacher Gheistskull (once per battle, not in TP1): its Charge this activation adds 4".
+    boost: {
+      blocked: ({ unit }) => (game.battle.tp === 1 ? 'Not in TP1' : unit.boostTp != null ? 'Used this battle' : unit.activation !== 'active' ? 'When activated' : null),
+      run: (token) => {
+        act({ type: 'unit/update', unitKey: token.unitKey, maxWounds: maxWoundsOf(token.id), patch: { boostTp: game.battle.tp } })
+        setRadial(null)
+      },
+    },
+    // Breacher Hatchcutter: a Breach marker to drag against the terrain feature.
+    'breach point': {
+      blocked: ({ inControl }) => (inControl ? 'In control range' : null),
+      run: (token) => {
+        act({ type: 'marker/add', kind: 'marker', catalogId: 'breach', label: 'Breach', short: 'BRCH', radius: MARKER_RADIUS_IN, x: token.x + tokenRadiusIn(token) + 0.5, y: token.y })
+        setRadial(null)
+      },
+    },
+    // Hatchways are only in close quarters killzones, which the app doesn't have yet.
+    'weld shut': { blocked: () => 'Close quarters only', run: () => {} },
+    // Breacher Surveyor: the C.A.T. Unit's ring opens for its free action (no more than 3").
+    'remote control': {
+      blocked: ({ inControl }) => (inControl ? 'In control range' : !catUnit() ? 'No C.A.T. Unit' : null),
+      run: () => openRadial(catUnit()),
+    },
+    // Breacher Surveyor (SUPPORT): +1 APL for a Breacher within 6" of it or of a C.A.T. Unit.
+    wayfind: {
+      blocked: ({ inControl }) => (inControl ? 'In control range' : null),
+      run: () => setRadial((current) => current && { ...current, menu: 'wayfind' }),
+    },
+    // Breacher Void-Jammer: an enemy within 8" of the Gheistskull, then the player's D6.
+    'interference pulse': {
+      blocked: ({ inControl }) => (inControl ? 'In control range' : !tokens.some((token) => token.seat === seat && /-GS-/.test(token.unitKey ?? '')) ? 'No Gheistskull' : null),
+      run: () => setRadial((current) => current && { ...current, menu: 'pulse' }),
+    },
     // Imperial Navy Breachers (once per turning point, when activated): pick the ready
     // Breacher within 3" to activate straight after this one.
     'breach and clear': {
@@ -1565,6 +1609,66 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         back,
       ]
     }
+    if (radial.menu === 'spot' || radial.menu === 'pulse') {
+      // Spot: any enemy (visibility is the players' call). Interference Pulse: within 8" of
+      // your Gheistskull, then the ring turns to the dice.
+      const skull = tokens.find((token) => token.seat === seat && /-GS-/.test(token.unitKey ?? '') && !game.players[seat]?.unitState?.[token.unitKey]?.dead)
+      const enemies = tokens.filter(
+        (token) =>
+          token.unitKey &&
+          token.seat &&
+          token.seat !== seat &&
+          !game.players[token.seat]?.unitState?.[token.unitKey]?.dead &&
+          (radial.menu === 'spot' || (skull && distance(skull, token) - tokenRadiusIn(skull) - tokenRadiusIn(token) <= 8)),
+      )
+      return [
+        ...enemies.map((token) => ({
+          key: `${radial.menu}-${token.id}`,
+          label: token.label || token.unitKey,
+          caption: token.label || token.unitKey,
+          text: radial.menu === 'spot' ? 'Spot' : 'Pulse',
+          selected: radial.menu === 'spot' && game.players[seat]?.spot?.tp === game.battle.tp && game.players[seat].spot.targetId === token.id,
+          run: () => {
+            if (radial.menu === 'spot') {
+              act({ type: 'battle/spot', tokenId: radialToken.id, targetId: token.id })
+              setRadial(null)
+            } else {
+              act({ type: 'battle/interferencePulse', tokenId: radialToken.id, targetId: token.id })
+              // The roll is about the enemy: its ring shows the dice.
+              openRadial(token, 'roll')
+            }
+          },
+        })),
+        { ...back, run: openMenu('actions') },
+      ]
+    }
+    if (radial.menu === 'wayfind') {
+      const origins = [radialToken, ...tokens.filter((token) => token.seat === radialToken.seat && /-CAT-/.test(token.unitKey ?? ''))]
+      const reachIn = 6 + supportBonus(game, radialToken)
+      const choices = tokens.filter(
+        (token) =>
+          token.seat === radialToken.seat &&
+          token.id !== radialToken.id &&
+          token.unitKey &&
+          !/-(CAT|GS)-/.test(token.unitKey) &&
+          !game.players[token.seat]?.unitState?.[token.unitKey]?.dead &&
+          origins.some((origin) => distance(origin, token) - tokenRadiusIn(origin) - tokenRadiusIn(token) <= reachIn),
+      )
+      return [
+        ...choices.map((token) => ({
+          key: `wayfind-${token.id}`,
+          label: token.label || token.unitKey,
+          caption: token.label || token.unitKey,
+          text: '+1',
+          selected: Boolean(game.players[token.seat]?.unitState?.[token.unitKey]?.nextActivationApl),
+          run: () => {
+            act({ type: 'unit/update', unitKey: token.unitKey, maxWounds: maxWoundsOf(token.id), patch: { nextActivationApl: 1 } })
+            setRadial(null)
+          },
+        })),
+        { ...back, run: openMenu('actions') },
+      ]
+    }
     if (radial.menu === 'breach') {
       const ready = tokens.filter(
         (token) =>
@@ -1630,7 +1734,7 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       const roll = rollFor(radialToken.id)
       if (!roll) return [back]
       return [
-        ...Array.from({ length: roll.die }, (_, index) => ({
+        ...Array.from({ length: roll.max ?? roll.die }, (_, index) => ({
           key: `roll-${index + 1}`,
           label: `Rolled ${index + 1}`,
           text: String(index + 1),
