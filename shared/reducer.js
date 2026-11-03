@@ -29,7 +29,6 @@ import {
   BONDS_THAT_BIND,
   FALLEN_KIN,
   FALLEN_KIN_RADIUS_IN,
-  HY_PEX_DAMAGE,
   AMMO_CACHE_MARKER,
   MINES_DAMAGE,
   MINES_MARKER,
@@ -366,14 +365,12 @@ const veteranAdventurer = (state, seat) =>
     : 0
 
 // ---- Yaegir Ironbraek's Minefield ----
-// A Minefield marker is drawn face down from what's left of the five (three HY-Pex mines,
-// two blanks); which it is stays secret (views.js) until it flips.
-const addMinefield = (state, action, actor, random) => {
+// Minefield markers are plain markers (five at most): the physical tokens sit face down on
+// the table, and the players flip them and roll for HY-Pex mines themselves.
+const addMinefield = (state, action, actor) => {
   const seat = isSeat(actor) ? actor : resolveSeat(action, actor)
   const placed = state.markers.filter((marker) => marker.catalogId === MINEFIELD && marker.seat === seat)
-  const mines = MINEFIELD_COUNTS.mines - placed.filter((marker) => marker.minefield?.mine).length
-  const blanks = MINEFIELD_COUNTS.blanks - placed.filter((marker) => !marker.minefield?.mine).length
-  if (mines + blanks <= 0) fail('All five Minefield markers are set up.')
+  if (placed.length >= MINEFIELD_COUNTS.mines + MINEFIELD_COUNTS.blanks) fail('All five Minefield markers are set up.')
   const marker = {
     id: `m${state.nextId}`,
     seat,
@@ -385,63 +382,16 @@ const addMinefield = (state, action, actor, random) => {
     ring: 0,
     attachedTo: null,
     ...sanitizePoint(action),
-    minefield: { mine: random() * (mines + blanks) < mines, flipped: false },
   }
   return { ...state, markers: [...state.markers, marker], nextId: state.nextId + 1 }
 }
 
-// After anything moves: a face-down Minefield marker within an enemy operative's control
-// range and not within a friendly operative's flips. A blank does nothing; a HY-Pex mine
-// inflicts 3 damage, then D6: under the enemy's Save, that much more (its Save comes with
-// its token; without one the roll is only recorded). The marker stays.
 const touchingMarker = (token, marker) => distance(token, marker) - tokenRadiusIn(token) - marker.radius <= CONTROL_RANGE_IN
 // Damage on an operative from a rule (not an attack): a normal hit.
 const hurt = (state, token, damage) => {
   const unit = state.players[token.seat].unitState[token.unitKey] ?? seedUnitState(token.maxWounds)
   const wounds = Math.max(0, (unit.wounds ?? token.maxWounds ?? 0) - damage)
   return patchUnit(state, token.seat, token.unitKey, { wounds, dead: wounds === 0, lastHit: 'normal', damagedTp: state.battle.tp }, token.maxWounds)
-}
-
-const triggerMinefields = (state) => {
-  let next = state
-  state.markers.forEach((marker) => {
-    // (An iPad's copy doesn't know what a face-down marker is, so only the server flips it.)
-    if (marker.catalogId !== MINEFIELD || marker.minefield?.mine == null || marker.minefield.flipped || marker.attachedTo) return
-    const living = (token) => token.unitKey && !next.players[token.seat]?.unitState?.[token.unitKey]?.dead
-    if (next.tokens.some((token) => token.seat === marker.seat && living(token) && touchingMarker(token, marker))) return
-    const enemy = next.tokens.find((token) => token.seat && token.seat !== marker.seat && living(token) && touchingMarker(token, marker))
-    if (!enemy) return
-    let result = { tokenId: enemy.id, damage: 0, roll: null }
-    if (marker.minefield.mine) {
-      // 3 damage now; the mine's owner then rolls the D6 (see ROLL_EFFECTS.hypex).
-      next = hurt(next, enemy, HY_PEX_DAMAGE)
-      result = { tokenId: enemy.id, damage: HY_PEX_DAMAGE, roll: null, saveKnown: Boolean(enemy.save) }
-      if (!next.players[enemy.seat].unitState[enemy.unitKey]?.dead) {
-        next = addRoll(next, {
-          kind: 'hypex',
-          die: 6,
-          seat: marker.seat,
-          tokenId: enemy.id,
-          markerId: marker.id,
-          label: `HY-Pex mine on ${enemy.label || 'the operative'}: under its Save adds that much damage`,
-        })
-      }
-    }
-    next = {
-      ...next,
-      markers: next.markers.map((candidate) =>
-        candidate.id === marker.id
-          ? {
-              ...candidate,
-              label: candidate.minefield.mine ? 'HY-Pex mine' : 'Blank',
-              short: candidate.minefield.mine ? 'HYPX' : 'BLNK',
-              minefield: { ...candidate.minefield, flipped: true, result },
-            }
-          : candidate,
-      ),
-    }
-  })
-  return next
 }
 
 // ---- Rolls the players make ----
@@ -619,21 +569,6 @@ const ROLL_EFFECTS = {
     const victim = state.tokens.find((token) => token.id === roll.tokenId)
     const cleared = { ...state, markers: state.markers.filter((marker) => marker.id !== roll.markerId) }
     return victim?.unitKey ? hurt(cleared, victim, MINES_DAMAGE + value) : cleared
-  },
-  // HY-Pex mine (Yaegirs): under the enemy's Save, that much more damage. Without a known
-  // Save the roll is only recorded on the marker.
-  hypex: (state, roll, value) => {
-    const victim = state.tokens.find((token) => token.id === roll.tokenId)
-    const extra = victim?.save && value < victim.save ? value : 0
-    const noted = {
-      ...state,
-      markers: state.markers.map((marker) =>
-        marker.id === roll.markerId && marker.minefield?.result
-          ? { ...marker, minefield: { ...marker.minefield, result: { ...marker.minefield.result, roll: value, damage: marker.minefield.result.damage + extra } } }
-          : marker,
-      ),
-    }
-    return victim?.unitKey && extra ? hurt(noted, victim, extra) : noted
   },
   helix: (state, roll, value) => {
     const token = state.tokens.find((candidate) => candidate.id === roll.tokenId)
@@ -1400,28 +1335,6 @@ const handlers = {
     return patchUnit(state, seat, unitKey, { weaponUses: { ...unit?.weaponUses, [weapon]: next } }, action.maxWounds)
   },
 
-  // Yaegir Ironbraek: as it's readied, if it's not within enemy control range, it can turn
-  // one flipped Minefield marker within its control range face down again (once per
-  // turning point).
-  'battle/resetMinefield': (state, action, actor) => {
-    requirePhase(state, 'battle')
-    const seat = resolveSeat(action, actor)
-    const marker = state.markers.find((candidate) => candidate.id === String(action.id ?? ''))
-    if (!marker || marker.catalogId !== MINEFIELD || marker.seat !== seat || !marker.minefield?.flipped) fail('Pick one of your flipped Minefield markers.')
-    const player = state.players[seat]
-    if (player.minefieldResetTp === state.battle.tp) fail('Already reset one this turning point.')
-    const ironbraek = state.tokens.find(
-      (token) => token.seat === seat && /^VOT-HKY-IRN-/.test(token.unitKey ?? '') && !player.unitState[token.unitKey]?.dead,
-    )
-    if (!ironbraek || !touchingMarker(ironbraek, marker) || inEnemyControl(state, ironbraek)) {
-      fail('Your Ironbraek must be within its control range, clear of enemy operatives.')
-    }
-    const reset = state.markers.map((candidate) =>
-      candidate.id === marker.id ? { ...candidate, label: 'Minefield', short: 'MINE', minefield: { mine: candidate.minefield.mine, flipped: false } } : candidate,
-    )
-    return updatePlayer({ ...state, markers: reset }, seat, { minefieldResetTp: state.battle.tp })
-  },
-
   // Universal equipment, Ammo Resupply (0AP mission action): one of your Ammo Cache markers
   // the operative controls (within 1") and that hasn't been used this turning point is
   // used; until the next turning point the operative re-rolls one attack die with its
@@ -1734,8 +1647,8 @@ const handlers = {
 
   // Markers sit on the killzone; tokens (kind 'token') can ride on an operative
   // (attachedTo: token id) and follow it around.
-  'marker/add': (state, action, actor, random) => {
-    if (action.catalogId === MINEFIELD) return addMinefield(state, action, actor, random)
+  'marker/add': (state, action, actor) => {
+    if (action.catalogId === MINEFIELD) return addMinefield(state, action, actor)
     const marker = {
       id: `m${state.nextId}`,
       // The projector can place one for a player.
@@ -1788,6 +1701,5 @@ export const applyAction = (state, action, actor, random = Math.random) => {
   if (!handler) fail(`Unknown action: ${action?.type}`)
   const next = dropOrphanRolls(state.phase === 'battle' ? countDownSmoke(state, handler(state, action, actor, random)) : handler(state, action, actor, random))
   if (!MOVING_ACTIONS.has(action.type)) return next
-  const minefields = next.markers?.some((marker) => marker.catalogId === MINEFIELD) ? triggerMinefields(next) : next
-  return minefields.markers?.some((marker) => marker.catalogId === MINES_MARKER) ? triggerMines(minefields) : minefields
+  return next.markers?.some((marker) => marker.catalogId === MINES_MARKER) ? triggerMines(next) : next
 }

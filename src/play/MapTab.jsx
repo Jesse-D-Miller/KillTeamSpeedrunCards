@@ -1906,20 +1906,6 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
               { key: 'span', label: 'Length', text: `${radialToken.span}"`, caption: 'Length', run: openMenu('span') },
             ]
           : []),
-        // Yaegir Ironbraek: turn one of your flipped Minefield markers face down again.
-        ...(radialIsMarker && radialToken.catalogId === MINEFIELD && radialToken.seat === seat && radialToken.minefield?.flipped
-          ? [
-              {
-                key: 'face-down',
-                label: 'Face down',
-                icon: 'back',
-                run: () => {
-                  act({ type: 'battle/resetMinefield', id: radialToken.id })
-                  setRadial(null)
-                },
-              },
-            ]
-          : []),
         { key: 'remove', label: 'Remove', icon: 'remove', run: openMenu('remove') },
         back,
       ]

@@ -1501,23 +1501,21 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await shot(a, '12s-stalwart-defence')
   await stalwart.getByRole('button', { name: 'Not now' }).click()
   await expect(stalwart).toHaveCount(0)
-  // The Ironbraek's Minefield: a face-down marker flips when the Vespid comes within its
-  // control range (no Yaegir near it): a HY-Pex mine or a blank, drawn at random.
+  // The Ironbraek's Minefield: a plain marker over the real face-down token. The players
+  // flip it and roll; the app doesn't, even when the Vespid comes within its control range.
   await tableActions(table, [{ type: 'marker/add', seat: 'A', catalogId: 'vot-hky-minefield', x: 26, y: 16, radius: 0.4 }])
   const minefield = table.locator('.board-marker', { hasText: 'Minefield' })
   await expect(minefield).toHaveCount(1)
   await tableActions(table, [{ type: 'token/update', id: stalwartEnemy.id, x: 26, y: 17 }])
-  await expect(table.locator('.board-marker', { hasText: /^(HY-Pex mine|Blank)$/ })).toHaveCount(1)
-  const flippedState = await tableState(table)
-  const flipped = flippedState.markers.find((marker) => marker.catalogId === 'vot-hky-minefield')
-  expect(flipped.minefield.flipped).toBe(true)
-  // A HY-Pex mine asks Alice for its D6; taking the Vespid off forgets it.
-  expect((flippedState.battle.rolls ?? []).filter((roll) => roll.kind === 'hypex')).toHaveLength(flipped.minefield.mine ? 1 : 0)
+  const minefieldState = await tableState(table)
+  const minefieldMarker = minefieldState.markers.find((marker) => marker.catalogId === 'vot-hky-minefield')
+  expect(minefieldMarker).toMatchObject({ label: 'Minefield' })
+  expect(minefieldMarker.minefield).toBeUndefined()
+  expect((minefieldState.battle.rolls ?? []).filter((roll) => roll.seat === 'A')).toHaveLength(0)
   await tableActions(table, [
-    { type: 'marker/remove', id: flipped.id },
+    { type: 'marker/remove', id: minefieldMarker.id },
     { type: 'token/remove', id: stalwartEnemy.id },
   ])
-  expect((await tableState(table)).battle.rolls ?? []).toHaveLength(0)
   // Ammo Resupply (universal equipment) from the Actions ring: Bladekyn, brought beside
   // Alice's Ammo Cache, resupplies; the marker is used for this turning point.
   const cacheState = await tableState(table)
