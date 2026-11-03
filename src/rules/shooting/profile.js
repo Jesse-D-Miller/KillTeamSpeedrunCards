@@ -225,6 +225,9 @@ export const buildProfile = ({ weapon, base, rules, analysis, effects, state, ta
   if (analysis.smokePiercing && (piercingRaw === 2 || piercingCritsRaw === 2)) diceReasons.push(better('Smoke: Piercing 2 counts as 1'))
   const hadPiercing = base.piercing || base.piercingCrits || traced(effects, 'rule:piercing').length || traced(effects, 'rule:piercingCrits').length
   if (hadPiercing) traced(effects, 'ignorePiercing').forEach(({ name }) => diceReasons.push(better(`Ignores Piercing · ${name}`)))
+  if (piercingCrits && !piercing && (base.piercing ?? 0) === piercingCrits) {
+    traced(effects, 'piercingToCrits').forEach(({ name }) => diceReasons.push(better(`Piercing ${piercingCrits} only on crits · ${name}`)))
+  }
   const autoReasons = []
   if (state.cover && rules.saturate) autoReasons.push(worse(`No cover save: Saturate · ${sourceOf(effects, 'saturate', base) ?? 'weapon'}`))
   else if (state.cover) autoReasons.push(better('Cover save'))

@@ -340,7 +340,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const state = game.players[token.seat]?.unitState?.[token.unitKey]
     const wounds = state?.wounds ?? max
     const move = moveStat(unit.opType.MOVE) + (state?.mark === 'SLAANESH' ? 1 : 0)
-    return moveLimit(fly && kind === 'charge' ? 'reposition' : kind, move, isInjured(max, wounds))
+    // Implacable (Legionary ploy): a Nurgle Legionary ignores being injured.
+    const implacable = state?.mark === 'NURGLE' && activePloyIds(game.players[token.seat], game.battle.tp).includes('CHAOS-LEG-S-IMP')
+    return moveLimit(fly && kind === 'charge' ? 'reposition' : kind, move, isInjured(max, wounds) && !implacable)
   }
   const enemiesOf = (token) =>
     tokens.filter((other) => other.unitKey && other.seat && other.seat !== token.seat && !statusOf(game.players, other).dead)

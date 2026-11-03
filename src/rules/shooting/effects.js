@@ -64,6 +64,10 @@ export const emptyEffects = () => ({
   dmgReduction: null,
   // The same, on the opponent's weapon in a fight (e.g. Hardened Exoskeleton).
   opponentDmgReduction: null,
+  // A change to the opponent's Hit in a fight (+ is worse, e.g. Quicksilver Speed).
+  opponentHit: 0,
+  // Piercing x on the attacker's weapon becomes Piercing Crits x (e.g. Implacable: x 1).
+  piercingToCrits: null,
   // "improve the Hit stat by 1 (to a maximum of 3+)"
   hitMax: null,
   rerolls: { attack: [], defence: [] },
@@ -116,6 +120,14 @@ export const mergeEffects = (modifiers, into = emptyEffects()) =>
     if (effect.skipTargeting) acc.skipTargeting = effect.skipTargeting
     if (effect.dmgReduction) acc.dmgReduction = effect.dmgReduction
     if (effect.opponentDmgReduction) acc.opponentDmgReduction = effect.opponentDmgReduction
+    if (effect.opponentHit) {
+      acc.opponentHit += effect.opponentHit
+      acc.trace.push({ key: 'opponentHit', value: effect.opponentHit, name })
+    }
+    if (effect.piercingToCrits) {
+      acc.piercingToCrits = effect.piercingToCrits
+      acc.trace.push({ key: 'piercingToCrits', value: effect.piercingToCrits, name })
+    }
     if (effect.hitMax) acc.hitMax = Math.max(acc.hitMax ?? 0, effect.hitMax)
     if (effect.reroll) acc.rerolls[effect.reroll].push(modifier.name)
     if (effect.notValid) acc.notValid.push({ code: modifier.id, text: effect.notValid })
@@ -134,6 +146,10 @@ export const applyRuleChanges = (rules, effects) => {
   })
   if (effects.removeRange) delete next.range
   if (effects.ignoreSaturate) next.saturate = false
+  if (effects.piercingToCrits && next.piercing === effects.piercingToCrits) {
+    next.piercingCrits = Math.max(next.piercingCrits ?? 0, next.piercing)
+    next.piercing = 0
+  }
   if (effects.ignorePiercing) {
     next.piercing = 0
     next.piercingCrits = 0

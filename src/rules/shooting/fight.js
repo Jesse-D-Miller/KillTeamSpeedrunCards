@@ -108,8 +108,15 @@ export const computeFight = ({ game, layout, payload }) => {
     }),
   )
   const effects = Object.fromEntries(SIDES.map((side) => [side, mergeEffects(mods[side].filter((modifier) => modifier.on))]))
-  // Some rules change the opponent's dice (e.g. Hardened Exoskeleton: less damage on it).
+  // Some rules change the opponent's dice (e.g. Hardened Exoskeleton: less damage on it;
+  // Quicksilver Speed: a worse Hit for the enemy).
   SIDES.forEach((side) => {
+    const hit = effects[opposite(side)].opponentHit
+    if (hit) {
+      effects[side].hit += hit
+      const source = effects[opposite(side)].trace.find((entry) => entry.key === 'opponentHit')
+      effects[side].trace.push({ key: 'hit', value: hit, name: source?.name ?? 'Enemy rule' })
+    }
     const reduction = effects[opposite(side)].opponentDmgReduction
     if (reduction && !effects[side].dmgReduction) {
       effects[side].dmgReduction = reduction

@@ -484,6 +484,40 @@ describe('Legionaries', () => {
     expect(find(shoot(atNurgle, 'TAU-VESP-WAR-NB-0'), 'defence', 'Disgusting Vigour')).toMatchObject({ mode: 'note' })
   })
 
+  it('strategy ploys: Fickle Fates, Implacable, Blood for the Blood God, Quicksilver Speed', () => {
+    const ploys = (seat, ids) => ({ [seat]: ids })
+    // Fickle Fates: Balanced against a ready enemy.
+    const fickle = setup({
+      teams: ['CHAOS-LEG', 'TAU-VESP'],
+      tokens: [op('s', 'A', WARRIOR_LEG, 2), op('t', 'B', WARRIOR, 8)],
+      units: { A: { [WARRIOR_LEG]: { order: 'engage' } }, B: { [WARRIOR]: { order: 'engage', activation: 'ready' } } },
+      ploys: ploys('A', ['CHAOS-LEG-S-FF']),
+    })
+    expect(rerolls(shoot(fickle, 'CHAOS-LEG-WAR-BG-0'))).toContain('Balanced (1 die)')
+    // Implacable: a plasma gun's Piercing 1 only pierces on crits.
+    const implacable = setup({
+      teams: ['CHAOS-LEG', 'CHAOS-LEG'],
+      tokens: [op('s', 'A', 'CHAOS-LEG-GNR-0', 2), op('t', 'B', WARRIOR_LEG, 6)],
+      units: { A: { 'CHAOS-LEG-GNR-0': { order: 'engage' } }, B: { [WARRIOR_LEG]: { order: 'engage' } } },
+      ploys: ploys('B', ['CHAOS-LEG-S-IMP']),
+    })
+    const shot = shoot(implacable, 'CHAOS-LEG-GNR-PG-0')
+    expect(shot.defence.dice.reasons.map((reason) => reason.text)).toContain('Piercing 1 only on crits · Implacable')
+    expect(shot.rules.piercing).toBe(0)
+    expect(shot.rules.piercingCrits).toBe(1)
+    // Blood for the Blood God: a Khorne chainsword +1 Dmg; Quicksilver Speed after moving.
+    const bloody = setup({
+      teams: ['CHAOS-LEG', 'TAU-VESP'],
+      tokens: [op('s', 'A', WARRIOR_LEG, 2, 5, { lastMove: { from: { x: 0, y: 5 }, path: [], inches: 2 } }), op('t', 'B', WARRIOR, 3.2)],
+      units: { A: { [WARRIOR_LEG]: { order: 'engage', mark: 'KHORNE', activation: 'active' } }, B: engage(WARRIOR) },
+      ploys: ploys('A', ['CHAOS-LEG-S-BFTBG', 'CHAOS-LEG-S-QSS']),
+    })
+    const brawl = fightAt(bloody)
+    expect(brawl.attack.dmg.normal.value).toBe(5)
+    expect(find({ modifiers: brawl.modifiers }, 'attack', 'Quicksilver Speed')).toMatchObject({ mode: 'auto' })
+    expect(brawl.retaliation.hit.value).toBe(5)
+  })
+
   it('Astartes: reminders that it can Shoot or Fight twice', () => {
     expect(find(shoot(legion(null), 'CHAOS-LEG-WAR-BG-0'), 'attack', 'Astartes').text).toMatch(/Shoot twice/)
     expect(find({ modifiers: fightAt(legion(null, 3.2)).modifiers }, 'attack', 'Astartes').text).toMatch(/Fight twice/)
