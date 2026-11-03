@@ -455,6 +455,36 @@ describe('Kommandos', () => {
   })
 })
 
+describe('Legionaries', () => {
+  const WARRIOR_LEG = 'CHAOS-LEG-WAR-0'
+  const legion = (mark, targetX = 8) =>
+    setup({
+      teams: ['CHAOS-LEG', 'TAU-VESP'],
+      tokens: [op('s', 'A', WARRIOR_LEG, 2), op('t', 'B', WARRIOR, targetX)],
+      units: { A: { [WARRIOR_LEG]: { order: 'engage', mark } }, B: engage(WARRIOR) },
+    })
+  const fightAt = (game) => computeAttack({ game, layout: { walls: [], areas: [] }, payload: { mode: 'fight', shooterId: 's', targetId: 't', weaponId: 'CHAOS-LEG-WAR-CS-0' } })
+
+  it('Marks of Chaos: Tzeentch ranged Severe, Khorne melee Severe', () => {
+    expect(find(shoot(legion('TZEENTCH'), 'CHAOS-LEG-WAR-BG-0'), 'attack', 'Empyreal Guidance')).toMatchObject({ mode: 'auto' })
+    expect(ruleState(shoot(legion('TZEENTCH'), 'CHAOS-LEG-WAR-BG-0'), 'severe')).toBe('added')
+    expect(find(shoot(legion('KHORNE'), 'CHAOS-LEG-WAR-BG-0'), 'attack', 'Empyreal Guidance')).toBeUndefined()
+    const khorne = fightAt(legion('KHORNE', 3.2))
+    expect(find({ modifiers: khorne.modifiers }, 'attack', 'Wrathful Onslaught')).toMatchObject({ mode: 'auto' })
+  })
+
+  it('Undivided: Ceaseless against an enemy within 6"; Nurgle: a reminder to roll Disgusting Vigour', () => {
+    expect(find(shoot(legion('UNDIVIDED', 7), 'CHAOS-LEG-WAR-BG-0'), 'attack', 'Vicious Reavers')).toMatchObject({ mode: 'auto' })
+    expect(find(shoot(legion('UNDIVIDED', 10), 'CHAOS-LEG-WAR-BG-0'), 'attack', 'Vicious Reavers')).toMatchObject({ mode: 'inactive' })
+    const atNurgle = setup({
+      teams: ['TAU-VESP', 'CHAOS-LEG'],
+      tokens: [op('s', 'A', WARRIOR, 2), op('t', 'B', WARRIOR_LEG, 8)],
+      units: { A: engage(WARRIOR), B: { [WARRIOR_LEG]: { order: 'engage', mark: 'NURGLE' } } },
+    })
+    expect(find(shoot(atNurgle, 'TAU-VESP-WAR-NB-0'), 'defence', 'Disgusting Vigour')).toMatchObject({ mode: 'note' })
+  })
+})
+
 describe('other kill teams (read from their rules text)', () => {
   it('reads weapon rules, Hit and Dmg changes from attack rules', () => {
     expect(parseAttackText('Friendly DEATH KORPS operatives’ ranged weapons have the Saturate and Accurate 1 weapon rules.').effect).toEqual({

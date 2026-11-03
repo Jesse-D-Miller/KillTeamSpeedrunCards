@@ -46,6 +46,8 @@ export const operativeOf = (game, token) => {
     movedTp: unit.movedTp ?? null,
     // The turning point it performed Ammo Resupply (universal equipment), if any.
     resuppliedTp: unit.resuppliedTp ?? null,
+    // Legionaries: its Mark of Chaos (KHORNE, NURGLE, SLAANESH, TZEENTCH, UNDIVIDED).
+    mark: unit.mark ?? null,
   }
 }
 

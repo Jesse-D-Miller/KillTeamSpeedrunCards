@@ -331,13 +331,16 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
 
   // The living operative whose base is under this point, if any.
   // How far one of my operatives can go with a move action (Infinity for a free move).
-  // FLY gains no extra distance on a Charge: its Move stat.
+  // FLY gains no extra distance on a Charge: its Move stat. A Slaanesh Legionary's
+  // Unnatural Agility adds 1" to its Move stat.
   const moveLimitFor = (token, kind, fly = false) => {
     const unit = roster.find((candidate) => candidate.key === token.unitKey)
     if (!MOVE_KINDS[kind] || !unit) return Infinity
     const max = maxWoundsFor(unit.opType)
-    const wounds = game.players[token.seat]?.unitState?.[token.unitKey]?.wounds ?? max
-    return moveLimit(fly && kind === 'charge' ? 'reposition' : kind, moveStat(unit.opType.MOVE), isInjured(max, wounds))
+    const state = game.players[token.seat]?.unitState?.[token.unitKey]
+    const wounds = state?.wounds ?? max
+    const move = moveStat(unit.opType.MOVE) + (state?.mark === 'SLAANESH' ? 1 : 0)
+    return moveLimit(fly && kind === 'charge' ? 'reposition' : kind, move, isInjured(max, wounds))
   }
   const enemiesOf = (token) =>
     tokens.filter((other) => other.unitKey && other.seat && other.seat !== token.seat && !statusOf(game.players, other).dead)
