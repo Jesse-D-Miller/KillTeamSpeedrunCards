@@ -32,7 +32,15 @@ const disgustingVigour = (owner) =>
     text: 'Nurgle: each time Normal Dmg of 3 or more is inflicted on it, roll a D6: on a 5+, 1 less damage',
   })
 
-export const attack = (ctx) => [...generic.attack(ctx), ...shootingMarks(ctx)]
+// Astartes: two Shoot actions in an activation (one with a bolt pistol, boltgun or tainted
+// bolt pistol), or two Fight actions. The app doesn't count actions, so it's a reminder.
+const astartes = (owner, text) => mod({ id: 'CHAOS-LEG-astartes', owner, source: 'faction', name: 'Astartes', mode: 'note', text })
+
+export const attack = (ctx) => [
+  ...generic.attack(ctx),
+  ...shootingMarks(ctx),
+  ...(ctx.inBattle ? [astartes('attacker', 'It can Shoot twice this activation (one of them with a bolt pistol, boltgun or tainted bolt pistol)')] : []),
+]
 
 export const defence = (ctx) => [...generic.defence(ctx), ...(ctx.target.mark === 'NURGLE' ? [disgustingVigour('defender')] : [])]
 
@@ -47,5 +55,6 @@ export const fight = (ctx, side) => {
   }
   if (weapon && operative.mark === 'UNDIVIDED') mods.push(viciousReavers(side, ctx.gap))
   if (operative.mark === 'NURGLE') mods.push(disgustingVigour(side))
+  if (side === 'attacker' && ctx.inBattle) mods.push(astartes(side, 'It can Fight twice this activation'))
   return mods
 }

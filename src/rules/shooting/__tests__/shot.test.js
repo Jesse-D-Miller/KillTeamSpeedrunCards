@@ -483,6 +483,11 @@ describe('Legionaries', () => {
     })
     expect(find(shoot(atNurgle, 'TAU-VESP-WAR-NB-0'), 'defence', 'Disgusting Vigour')).toMatchObject({ mode: 'note' })
   })
+
+  it('Astartes: reminders that it can Shoot or Fight twice', () => {
+    expect(find(shoot(legion(null), 'CHAOS-LEG-WAR-BG-0'), 'attack', 'Astartes').text).toMatch(/Shoot twice/)
+    expect(find({ modifiers: fightAt(legion(null, 3.2)).modifiers }, 'attack', 'Astartes').text).toMatch(/Fight twice/)
+  })
 })
 
 describe('other kill teams (read from their rules text)', () => {

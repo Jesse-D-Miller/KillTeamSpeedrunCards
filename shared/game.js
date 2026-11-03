@@ -309,6 +309,10 @@ export const activeUnit = (state) => {
 // your operatives are expended while your opponent still has ready ones, an expended
 // Engage operative can perform one 1AP action (moving at most 2"), once per turning
 // point. It isn't an activation.
+// Kill teams whose operatives "can counteract regardless of its order" (Astartes and
+// similar faction rules; from the team data). Single operatives with it aren't listed.
+export const COUNTERACT_ANY_ORDER = new Set(['IMP-AOD', 'IMP-DW', 'CHAOS-LEG', 'CHAOS-MW', 'CHAOS-NC', 'IMP-PHO', 'CHAOS-PM', 'TYR-RAV', 'CHAOS-WC', 'IMP-WS'])
+
 export const canCounteract = (state, seat, unitKey) => {
   const player = state.players[seat]
   const unit = player?.unitState?.[unitKey]
@@ -319,7 +323,7 @@ export const canCounteract = (state, seat, unitKey) => {
     readyUnitKeys(state.players[otherSeat(seat)]).length > 0 &&
     unit?.activation === 'expended' &&
     !unit.dead &&
-    unit.order === 'engage' &&
+    (unit.order === 'engage' || COUNTERACT_ANY_ORDER.has(player.killteamId)) &&
     unit.counteractedTp !== state.battle.tp
   )
 }

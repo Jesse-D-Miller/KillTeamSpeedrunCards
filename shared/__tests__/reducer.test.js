@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { COMMAND_REROLL, aplBonus, canToughOut, clampAplChange, createGame, equipmentOptionCount, grenadeAllowance, musterBlocker, toughSurvivalistsDamage, turnState, vantageFloor } from '../game.js'
+import { COMMAND_REROLL, aplBonus, canCounteract, canToughOut, clampAplChange, createGame, equipmentOptionCount, grenadeAllowance, musterBlocker, toughSurvivalistsDamage, turnState, vantageFloor } from '../game.js'
 import { ActionError, applyAction } from '../reducer.js'
 import { viewFor } from '../views.js'
 
@@ -591,6 +591,23 @@ describe('semi-automatic activations', () => {
     expect(unit(state, 'A', 'a2').activation).toBe('expended')
     expect(unit(state, 'B', 'b1')).toMatchObject({ activation: 'expended', counteractedTp: 1 })
     expect(turnState(state).counteractSeat).toBe(null)
+  })
+
+  it('a Legionary (Astartes) can counteract on a Conceal order', () => {
+    const state = (killteamId) => {
+      const base = createGame()
+      return {
+        ...base,
+        phase: 'battle',
+        battle: { ...base.battle, tp: 1, lastActivatedByTp: { 1: 'A' } },
+        players: {
+          A: { ...base.players.A, units: ['a1'], unitState: { a1: { activation: 'ready', order: 'engage' } } },
+          B: { ...base.players.B, killteamId, units: ['b1'], unitState: { b1: { activation: 'expended', order: 'conceal' } } },
+        },
+      }
+    }
+    expect(canCounteract(state('CHAOS-LEG'), 'B', 'b1')).toBe(true)
+    expect(canCounteract(state('TAU-VESP'), 'B', 'b1')).toBe(false)
   })
 
   it('a Conceal operative cannot counteract, so moving it changes nothing', () => {
