@@ -782,6 +782,9 @@ All of these were replaced in Approved Ops 2025.
   - **Slugs**: the Navis shotgun (long range) also gains **Accurate 1**.
   - **Overwhelm Target**: applies to the operative activated; the old "select one of those operatives" is gone.
   - The Inquisitorial Agents' copy of the Gheistskull (IMP-INQ) still has the old Boost text; not checked yet.
+- **Phobos Strike Team checked (2 Nov 2026)** against Wahapedia's current team page: every datacard's stats and weapons, the abilities, ploys and equipment match, apart from:
+  - **Guerrilla Warfare** was spelled "Guerrila" (ploy name and its action); fixed.
+  - **Incursor Sergeant:** Wahapedia's card is an exact copy of the Infiltrator Sergeant's (marksman bolt carbine, the same rule text, no Multi-Spectrum Array). That looks like a Wahapedia error, so the data's occulus bolt carbine (Saturate) and Multi-Spectrum Array are kept until the official datacard confirms either.
   - **Rules text from the same dataslates (Aug 2026):**
     - **Felltalon's Toxic Lunge:** the target must be visible, and an enemy within control range must be picked first.
     - **Whipcord Emergence:** on your TUNNEL, re-roll only defence dice results of one (was any). Also fixed the data's "f that" typos. The text reader labels it "Re-roll defence dice showing 1".

@@ -105019,8 +105019,8 @@
         "killteamId": "IMP-PHO",
         "ployType": "S",
         "seq": 1,
-        "ployName": "Guerrila Warfare",
-        "description": "Friendly PHOBOS STRIKE TEAM operatives can perform the following unique action:  \n\r **Guerrila Warfare (1 AP):**\r Change this operative’s order.  \n\r An operative cannot perform this action while within control range of an enemy operative."
+        "ployName": "Guerrilla Warfare",
+        "description": "Friendly PHOBOS STRIKE TEAM operatives can perform the following unique action:  \n\r **Guerrilla Warfare (1 AP):**\r Change this operative’s order.  \n\r An operative cannot perform this action while within control range of an enemy operative."
       },
       {
         "ployId": "IMP-PHO-S-LA",
