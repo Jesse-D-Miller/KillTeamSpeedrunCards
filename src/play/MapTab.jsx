@@ -347,7 +347,10 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     // And They Shall Know No Fear (Phobos ploy): the same for every Phobos operative.
     const ploys = activePloyIds(game.players[token.seat], game.battle.tp)
     const implacable = (state?.mark === 'NURGLE' && ploys.includes('CHAOS-LEG-S-IMP')) || ploys.includes('IMP-PHO-S-ATSKNF')
-    return moveLimit(fly && kind === 'charge' ? 'reposition' : kind, move, isInjured(max, wounds) && !implacable)
+    // Accelerant Stimulant (Vespid equipment): Charge and Dash go 1" further (not the drone).
+    const accelerant =
+      (kind === 'charge' || kind === 'dash') && (game.players[token.seat]?.equipment ?? []).includes('TAU-VESP-AS') && !/-OSD-/.test(token.unitKey ?? '') ? 1 : 0
+    return moveLimit(fly && kind === 'charge' ? 'reposition' : kind, move, isInjured(max, wounds) && !implacable) + accelerant
   }
   const enemiesOf = (token) =>
     tokens.filter((other) => other.unitKey && other.seat && other.seat !== token.seat && !statusOf(game.players, other).dead)

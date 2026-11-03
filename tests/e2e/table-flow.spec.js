@@ -1218,6 +1218,29 @@ test('projector + two iPads play through setup into battle', async ({ browser })
   await stingerRing.getByRole('menuitem', { name: 'Move', exact: true }).click()
   await stingerRing.getByRole('menuitem', { name: 'Fly' }).click()
   await expect(stingerRing.getByRole('menuitem', { name: 'Fly' })).toHaveAttribute('aria-pressed', 'true')
+  // Accelerant Stimulant: a Vespid's Dash goes 1" further (3" + 1"). (Bob's muster cleared
+  // his pre-picked faction equipment, so it's switched on just for this; the test Vespid
+  // isn't in his muster roster, so one of his mustered Vespids is brought on.)
+  await tableActions(table, [
+    { type: 'muster/toggleEquipment', seat: 'B', eqId: 'TAU-VESP-AS' },
+    { type: 'token/add', seat: 'B', unitKey: 'TAU-VESP-VSL-0', label: 'Strain Leader', maxWounds: 9, x: 24, y: 18, baseMm: 28.5, baseLocked: true },
+  ])
+  const mustered = (await tableState(table)).tokens.find((token) => token.unitKey === 'TAU-VESP-VSL-0')
+  await stingerRing.getByRole('menuitem', { name: 'Back', exact: true }).click()
+  await b.locator(`.map-stage [data-token-id="${stinger}"] .board-token-base`).click()
+  await expect(stingerRing).toHaveCount(0)
+  await b.locator(`.map-stage [data-token-id="${mustered.id}"] .board-token-base`).click()
+  const musteredRing = b.locator(`.unit-radial[data-ring-for="${mustered.id}"]`)
+  await musteredRing.getByRole('menuitem', { name: 'Move', exact: true }).click()
+  await expect(musteredRing.getByRole('menuitem', { name: 'Dash' })).toContainText('4"')
+  await b.locator(`.map-stage [data-token-id="${mustered.id}"] .board-token-base`).click()
+  await expect(musteredRing).toHaveCount(0)
+  await tableActions(table, [
+    { type: 'token/remove', id: mustered.id },
+    { type: 'muster/toggleEquipment', seat: 'B', eqId: 'TAU-VESP-AS' },
+  ])
+  await b.locator(`.map-stage [data-token-id="${stinger}"] .board-token-base`).click()
+  await stingerRing.getByRole('menuitem', { name: 'Move', exact: true }).click()
   // Darting Flight (1CP) turns the ring to dice for its D3 (given back here, unrolled).
   await stingerRing.getByRole('menuitem', { name: 'Darting Flight' }).click()
   await expect(b.locator(`.unit-radial[data-ring-for="${stinger}"][data-menu="roll"]`).getByRole('menuitem')).toHaveText(['1', '2', '3', 'Back'])
