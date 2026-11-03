@@ -344,7 +344,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const boosted = kind === 'charge' && state?.boostTp === game.battle.tp && state?.activation === 'active' ? 2 : 0
     const move = moveStat(unit.opType.MOVE) + (state?.mark === 'SLAANESH' ? 1 : 0) + boosted
     // Implacable (Legionary ploy): a Nurgle Legionary ignores being injured.
-    const implacable = state?.mark === 'NURGLE' && activePloyIds(game.players[token.seat], game.battle.tp).includes('CHAOS-LEG-S-IMP')
+    // And They Shall Know No Fear (Phobos ploy): the same for every Phobos operative.
+    const ploys = activePloyIds(game.players[token.seat], game.battle.tp)
+    const implacable = (state?.mark === 'NURGLE' && ploys.includes('CHAOS-LEG-S-IMP')) || ploys.includes('IMP-PHO-S-ATSKNF')
     return moveLimit(fly && kind === 'charge' ? 'reposition' : kind, move, isInjured(max, wounds) && !implacable)
   }
   const enemiesOf = (token) =>

@@ -634,6 +634,37 @@ describe('Phobos Strike Team', () => {
     expect(find(shoot(phobos('IMP-PHO-INFWAR-0'), 'IMP-PHO-INFWAR-MBC-0'), 'attack', 'Multi-Spectrum Array')).toBeUndefined()
     expect(find(shot, 'attack', 'Astartes').text).toMatch(/Shoot twice/)
   })
+
+  it('ploys: Deadly Shots, Know No Fear, Lethal Assaults, and the dice switches', () => {
+    const INC = 'IMP-PHO-INCWAR-0'
+    // Not moved this activation: Balanced.
+    expect(find(shoot(phobos(INC, ['IMP-PHO-S-DS']), 'IMP-PHO-INCWAR-OBC-0'), 'attack', 'Deadly Shots').mode).toBe('auto')
+    // Repositioned, target 7" away in the open: still Balanced; at 4" it isn't.
+    const moved = (x) =>
+      setup({
+        teams: ['IMP-PHO', 'CHAOS-LEG'],
+        tokens: [op('s', 'A', INC, 2, 5, { lastMove: { from: { x: 0, y: 5 }, path: [], inches: 2, kinds: ['reposition'] } }), op('t', 'B', 'CHAOS-LEG-WAR-0', x)],
+        units: { A: { [INC]: { order: 'engage', activation: 'active' } }, B: { 'CHAOS-LEG-WAR-0': { order: 'engage' } } },
+        ploys: { A: ['IMP-PHO-S-DS'] },
+      })
+    expect(find(shoot(moved(11), 'IMP-PHO-INCWAR-OBC-0'), 'attack', 'Deadly Shots').mode).toBe('auto')
+    expect(find(shoot(moved(5), 'IMP-PHO-INCWAR-OBC-0'), 'attack', 'Deadly Shots').mode).toBe('inactive')
+    // Know No Fear: an injured operative's Hit stays 3+.
+    const hurt = phobos(INC, ['IMP-PHO-S-ATSKNF'])
+    hurt.players.A.unitState[INC].wounds = 4
+    expect(shoot(hurt, 'IMP-PHO-INCWAR-OBC-0').attack.hit.value).toBe(3)
+    // Critical Shot on a bolt weapon; Transhuman Physiology on the defence.
+    expect(find(shoot(phobos(INC), 'IMP-PHO-INCWAR-OBC-0'), 'attack', 'Critical Shot')).toMatchObject({ mode: 'toggle', cost: 1 })
+    // Lethal Assaults after a Charge: Lethal 5+.
+    const charged = setup({
+      teams: ['IMP-PHO', 'CHAOS-LEG'],
+      tokens: [op('s', 'A', INC, 2, 5, { lastMove: { from: { x: 0, y: 5 }, path: [], inches: 2, kinds: ['charge'] } }), op('t', 'B', 'CHAOS-LEG-WAR-0', 3.3)],
+      units: { A: { [INC]: { order: 'engage', activation: 'active' } }, B: { 'CHAOS-LEG-WAR-0': { order: 'engage' } } },
+      ploys: { A: ['IMP-PHO-S-LA'] },
+    })
+    const knife = computeAttack({ game: charged, layout: { walls: [], areas: [] }, payload: { mode: 'fight', shooterId: 's', targetId: 't', weaponId: 'IMP-PHO-INCWAR-F-0' } })
+    expect(knife.attack.crit.value).toBe(5)
+  })
 })
 
 describe('other kill teams (read from their rules text)', () => {
