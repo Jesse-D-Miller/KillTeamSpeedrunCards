@@ -58,7 +58,7 @@ function UnitCardModal({ token, onClose }) {
               selectedStatuses={unitState.statuses}
               aplAdjustment={unitState.apl}
               aplBonus={aplBonus(unitState)}
-              aplLocked={aplChangesIgnored(unitState, game.battle.tp)}
+              aplLocked={aplChangesIgnored(unitState, game.battle.tp, game.players[token.seat])}
               assignedEquipment={unit.assignedEquipment}
               {...(mine
                 ? {

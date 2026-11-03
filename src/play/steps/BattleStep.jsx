@@ -402,7 +402,7 @@ function BattleStep() {
               selectedStatuses={unitState.statuses}
               aplAdjustment={unitState.apl}
               aplBonus={aplBonus(unitState)}
-              aplLocked={aplChangesIgnored(unitState, game.battle.tp)}
+              aplLocked={aplChangesIgnored(unitState, game.battle.tp, me)}
               onAplAdjustChange={(apl) => update(unit, { apl })}
               legionaryMark={isLegionaryUnit(unit.opType) ? unitState.mark : null}
               onLegionaryMarkChange={isLegionaryUnit(unit.opType) ? (mark) => update(unit, { mark }) : undefined}

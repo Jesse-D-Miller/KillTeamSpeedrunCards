@@ -73,6 +73,15 @@ describe('status rim', () => {
     expect(carrying([{ catalogId: 'guard' }])).toBeNull()
   })
 
+  it('hides the APL tag when the board says APL changes are ignored (e.g. Rebreathers)', () => {
+    const tag = render(
+      <svg>
+        <StatusRim token={{ id: 't1' }} view={view} status={{ wounds: 8, apl: -1 }} maxWounds={8} aplLocked />
+      </svg>,
+    ).container.querySelector('[data-status="apl"]')
+    expect(tag).toBeNull()
+  })
+
   it('marks an operative held by an Omni-Scrambler', () => {
     const held = (scrambled) =>
       render(

@@ -136,7 +136,9 @@ export const canToughOut = (player, unit, tp) =>
 // Kommandos' Shake It Off (firefight ploy): until the start of the next turning point,
 // ignore any changes to that operative's APL.
 export const SHAKE_IT_OFF = 'ORK-KOM-T-SIO'
-export const aplChangesIgnored = (unit, tp) => unit?.shakeItOffTp != null && unit.shakeItOffTp === tp
+// player (optional): Breachers with Rebreathers ignore every APL change.
+export const aplChangesIgnored = (unit, tp, player = null) =>
+  (unit?.shakeItOffTp != null && unit.shakeItOffTp === tp) || (player?.killteamId === 'IMP-INB' && (player.equipment ?? []).includes('IMP-INB-RB'))
 
 // APL an operative has for now from rules that last an activation: spending Resourceful
 // (Yaegirs) this activation, or a SUPPORT action like Get It Dun! / Listen In

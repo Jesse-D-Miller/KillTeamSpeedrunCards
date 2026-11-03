@@ -16,8 +16,9 @@ const PLOYS = {
   braceForCounterattack: 'IMP-INB-S-BFCA',
   blitz: 'IMP-INB-T-BL',
 }
+const EQUIPMENT = { rebreathers: 'IMP-INB-RB', slugs: 'IMP-INB-SL' }
 const HANDLED_NAMES = new Set(['Void Armour'])
-const HANDLED_IDS = new Set(Object.values(PLOYS))
+const HANDLED_IDS = new Set([...Object.values(PLOYS), ...Object.values(EQUIPMENT)])
 const unhandled = (mods) => mods.filter((modifier) => !HANDLED_NAMES.has(modifier.name) && !HANDLED_IDS.has(modifier.id))
 
 // Within 3" of the player's own Attack Order / Defence Order marker (edge to edge).
@@ -142,10 +143,27 @@ const spot = (ctx) => {
   ]
 }
 
+// Slugs: up to three times per turning point, a Navis shotgun's long range profile gets
+// Hit +1, +1 to both Dmg and Accurate 1.
+const slugs = (ctx) =>
+  ctx.inBattle && ctx.hasEquipment('attacker', EQUIPMENT.slugs) && /navis shotgun/i.test(ctx.weapon.name) && /long/i.test(ctx.weapon.profile ?? '')
+    ? [mod({ id: EQUIPMENT.slugs, owner: 'attacker', source: 'equipment', name: 'Slugs', mode: 'toggle', limit: 3, text: 'Hit +1, +1 Dmg, Accurate 1', effect: { hit: -1, normalDmg: 1, critDmg: 1, accurate: 1 }, tone: 'good' })]
+    : []
+
+// Rebreathers: enemy Shock doesn't affect Breachers (their APL changes are ignored too,
+// on the cards and the board). Shown in every fight: Shock can come from the enemy's own
+// rules (e.g. a Vespid's Sting), which aren't known here.
+const rebreathers = (ctx, side) =>
+  ctx.hasEquipment(side, EQUIPMENT.rebreathers)
+    ? [mod({ id: EQUIPMENT.rebreathers, owner: side, source: 'equipment', name: 'Rebreathers', mode: 'note', text: 'Enemy Shock doesn’t affect it' })]
+    : []
+
 export const attack = (ctx) => [
   ...unhandled(generic.attack(ctx)),
   ...(ctx.weapon?.atk != null ? spot(ctx) : []),
-  ...(ctx.weapon?.atk != null ? [...attackOrder(ctx, 'attacker', ctx.shooterToken, ctx.shooter.seat), ...closeAssault(ctx, 'attacker', ctx.weapon), ...blitz(ctx, 'attacker', ctx.shooter)] : []),
+  ...(ctx.weapon?.atk != null
+    ? [...attackOrder(ctx, 'attacker', ctx.shooterToken, ctx.shooter.seat), ...closeAssault(ctx, 'attacker', ctx.weapon), ...blitz(ctx, 'attacker', ctx.shooter), ...slugs(ctx)]
+    : []),
 ]
 export const defence = (ctx) => [...unhandled(generic.defence(ctx)), ...voidArmour(ctx), ...defenceOrder(ctx), ...brace(ctx, 'defender', ctx.target, ctx.targetToken, 'dmgReduction')]
 export const fight = (ctx, side) => {
@@ -155,6 +173,7 @@ export const fight = (ctx, side) => {
     ...(weapon ? attackOrder(ctx, side, token, operative.seat) : []),
     ...(!retaliating ? [...closeAssault(ctx, side, weapon), ...(weapon ? blitz(ctx, side, operative) : [])] : []),
     ...brace(ctx, side, operative, token, 'opponentDmgReduction'),
+    ...rebreathers(ctx, side),
   ]
 }
 

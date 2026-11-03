@@ -346,7 +346,9 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     // Implacable (Legionary ploy): a Nurgle Legionary ignores being injured.
     // And They Shall Know No Fear (Phobos ploy): the same for every Phobos operative.
     const ploys = activePloyIds(game.players[token.seat], game.battle.tp)
-    const implacable = (state?.mark === 'NURGLE' && ploys.includes('CHAOS-LEG-S-IMP')) || ploys.includes('IMP-PHO-S-ATSKNF')
+    // Combat Stimms (Breacher equipment): the same for Move only.
+    const stimms = game.players[token.seat]?.killteamId === 'IMP-INB' && (game.players[token.seat]?.equipment ?? []).includes('IMP-INB-CS')
+    const implacable = (state?.mark === 'NURGLE' && ploys.includes('CHAOS-LEG-S-IMP')) || ploys.includes('IMP-PHO-S-ATSKNF') || stimms
     // Accelerant Stimulant (Vespid equipment): Charge and Dash go 1" further (not the drone).
     const accelerant =
       (kind === 'charge' || kind === 'dash') && (game.players[token.seat]?.equipment ?? []).includes('TAU-VESP-AS') && !/-OSD-/.test(token.unitKey ?? '') ? 1 : 0

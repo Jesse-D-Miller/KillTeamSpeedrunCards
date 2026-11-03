@@ -52,8 +52,8 @@ const CARRY_PATH = 'M0 -0.13L0.095 0L0 0.13L-0.095 0Z'
 // +1 APL as +1 until its activation ends.
 const APL_TAG_ANGLE = 180
 // Shake It Off (Kommandos) ignores every change for the rest of the turning point.
-const aplChange = (status, tp) =>
-  aplChangesIgnored(status, tp)
+const aplChange = (status, tp, locked) =>
+  (locked ?? aplChangesIgnored(status, tp))
     ? 0
     : clampAplChange((Number(status?.apl) || 0) + ((status?.statuses ?? []).includes('stunned') ? -1 : 0) + aplBonus(status))
 
@@ -80,11 +80,12 @@ function AplTag({ view, change }) {
 // be activated.
 const SCRAMBLE_DASH = '0.08 0.12'
 
-function StatusRim({ token, view, status, maxWounds, riders = [], tp = null, scrambled = false }) {
+// aplLocked: APL changes ignored (Shake It Off, Rebreathers), worked out by the board.
+function StatusRim({ token, view, status, maxWounds, riders = [], tp = null, scrambled = false, aplLocked = undefined }) {
   const { x, cy, r } = view
   const injured = maxWounds && status?.wounds != null && isInjured(maxWounds, status.wounds)
   const stunned = (status?.statuses ?? []).includes('stunned')
-  const apl = aplChange(status, tp)
+  const apl = aplChange(status, tp, aplLocked)
   const poisoned = riders.some(isPoison)
   const guarding = riders.some(isGuard)
   const mark = MARK_GLYPHS[status?.mark] ?? null

@@ -633,6 +633,27 @@ describe('Imperial Navy Breachers', () => {
     expect(find(shoot(game([]), 'IMP-INB-ARM-NS-0'), 'attack', 'Blitz').text).not.toMatch(/Severe/)
   })
 
+  it('equipment: Slugs on the long range shotgun; Rebreathers against Shock', () => {
+    const game = setup({
+      teams: ['IMP-INB', 'TAU-VESP'],
+      tokens: [op('s', 'A', 'IMP-INB-ARM-0', 2), op('t', 'B', WARRIOR, 8)],
+      units: { A: { 'IMP-INB-ARM-0': { order: 'engage' } }, B: engage(WARRIOR) },
+      equipment: { A: ['IMP-INB-SL', 'IMP-INB-RB'] },
+    })
+    expect(find(shoot(game, 'IMP-INB-ARM-NS-1'), 'attack', 'Slugs')).toMatchObject({ mode: 'toggle', limit: 3 })
+    expect(find(shoot(game, 'IMP-INB-ARM-NS-0'), 'attack', 'Slugs')).toBeUndefined()
+    // A Vespid with Sting (claws: Shock) fighting a Breacher with Rebreathers.
+    const brawl = setup({
+      teams: ['TAU-VESP', 'IMP-INB'],
+      tokens: [op('s', 'A', WARRIOR, 2), op('t', 'B', 'IMP-INB-ARM-0', 3.2)],
+      units: { A: engage(WARRIOR), B: { 'IMP-INB-ARM-0': { order: 'engage' } } },
+      equipment: { B: ['IMP-INB-RB'] },
+      ploys: { A: ['TAU-VESP-S-ST'] },
+    })
+    const fought = computeAttack({ game: brawl, layout: { walls: [], areas: [] }, payload: { mode: 'fight', shooterId: 's', targetId: 't', weaponId: 'TAU-VESP-WAR-C-0' } })
+    expect(find({ modifiers: fought.modifiers }, 'defence', 'Rebreathers')).toMatchObject({ mode: 'note' })
+  })
+
   it('Spot: shooting the spotted enemy this turning point, Seek Light and it can’t be obscured', () => {
     const game = setup({
       teams: ['IMP-INB', 'CHAOS-LEG'],
