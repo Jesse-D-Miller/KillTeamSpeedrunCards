@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BONDS_RANGE_IN, BONDS_THAT_BIND, COMMAND_REROLL, KRUMP_EM, OVERWHELM_TARGET, SHAKE_IT_OFF, SICKENING_CAPTIVATION, ployUses, tokenRadiusIn, turnState } from '../../shared/game.js'
+import { BONDS_RANGE_IN, BONDS_THAT_BIND, COMMAND_REROLL, KRUMP_EM, LOCK_IT_DOWN, OVERWHELM_TARGET, SHAKE_IT_OFF, SICKENING_CAPTIVATION, ployUses, tokenRadiusIn, turnState } from '../../shared/game.js'
 import { distance } from '../../shared/geometry.js'
 import { isHidden } from '../../shared/views.js'
 import TacOpCard from '../components/TacOpCard.jsx'
@@ -10,6 +10,7 @@ import { formatCostLabel, parseEquipmentWeaponEffects, selectedEquipmentFor, str
 import { RuleText } from './RuleText.jsx'
 import { requestFreeAttack } from './freeAttack.js'
 import { usePlayer } from './usePlayer.js'
+import { getLayout } from '../board/boardData.js'
 
 // The core firefight ploy every kill team has.
 const COMMAND_REROLL_PLOY = {
@@ -235,6 +236,58 @@ function OverwhelmTarget({ ploy }) {
   )
 }
 
+// Lock It Down (Breachers): as a Breacher is activated, pick an objective marker; its APL
+// counts 1 higher for controlling it until the end of the battle (or the next use).
+function LockItDown({ ploy }) {
+  const { state: game, seat, me, act } = usePlayer()
+  const [picking, setPicking] = useState(false)
+  const cost = ploy.CP ?? 1
+  const used = ployUses(me, game.battle.tp, ploy.ployId) > 0
+  const active = game.tokens.find((token) => token.seat === seat && token.unitKey && me.unitState?.[token.unitKey]?.activation === 'active')
+  const objectives = getLayout(game.table.mapId, game.table.arrangementId).objectives
+  const stop = (handler) => (event) => {
+    event.preventDefault()
+    handler()
+  }
+  if (used) {
+    return (
+      <button type="button" className="ploy-use is-used" aria-pressed="true" disabled aria-label={`${ploy.ployName}: used`}>
+        Used ✓
+      </button>
+    )
+  }
+  if (picking && active) {
+    // Nearest first, each named by how far it is from the operative.
+    const byDistance = [...objectives].sort((a, b) => distance(active, a) - distance(active, b))
+    return (
+      <span className="ploy-use-group is-picking" data-lock-pick>
+        {byDistance.map((objective) => (
+          <button
+            key={objective.id}
+            type="button"
+            className="ploy-use"
+            onClick={stop(() => {
+              act({ type: 'battle/lockItDown', tokenId: active.id, objectiveId: objective.id, cost })
+              setPicking(false)
+            })}
+          >
+            Objective {distance(active, objective).toFixed(1)}&quot; away
+          </button>
+        ))}
+        <button type="button" className="ploy-use is-undo" onClick={stop(() => setPicking(false))}>
+          Cancel
+        </button>
+      </span>
+    )
+  }
+  const reason = !active ? 'As a Breacher is activated' : null
+  return (
+    <button type="button" className="ploy-use" disabled={Boolean(reason) || me.cp < cost} title={reason ?? undefined} onClick={stop(() => setPicking(true))} aria-label={`Use ${ploy.ployName}`}>
+      {reason ?? `Use · ${cost}CP`}
+    </button>
+  )
+}
+
 // Play a firefight ploy from here (one used in a shot or fight is switched on in the
 // stats drawer instead; both count the same use). Each is once per turning point,
 // except Command Re-roll.
@@ -244,6 +297,7 @@ export function PloyUse({ ploy }) {
   if (ploy.ployId === SHAKE_IT_OFF) return <ShakeItOff ploy={ploy} />
   if (ploy.ployId === MUTABILITY_AND_CHANGE) return <MutabilityAndChange ploy={ploy} />
   if (ploy.ployId === OVERWHELM_TARGET) return <OverwhelmTarget ploy={ploy} />
+  if (ploy.ployId === LOCK_IT_DOWN) return <LockItDown ploy={ploy} />
   if (ploy.ployId === SICKENING_CAPTIVATION) return <SickeningCaptivation ploy={ploy} />
   return <PlainPloyUse ploy={ploy} />
 }

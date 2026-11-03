@@ -1469,3 +1469,20 @@ describe('Imperial Navy Breachers: Attack Order and Defence Order', () => {
   })
 })
 
+describe('Imperial Navy Breachers: Lock It Down', () => {
+  it('records the activated operative and the objective, replacing an earlier use', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'IMP-INB' }, 'A'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'IMP-INB-ARM-0', maxWounds: 8, x: 5, y: 5, baseMm: 28.5 }, 'A'],
+    ])
+    const id = state.tokens[0].id
+    expect(() => applyAction(state, { type: 'battle/lockItDown', tokenId: id, objectiveId: 'obj_01a' }, 'A')).toThrow(/activated/)
+    state = applyAction(state, { type: 'unit/update', unitKey: 'IMP-INB-ARM-0', maxWounds: 8, patch: { activation: 'active' } }, 'A')
+    state = applyAction(state, { type: 'battle/lockItDown', tokenId: id, objectiveId: 'obj_01a' }, 'A')
+    expect(state.players.A.lockItDown).toEqual({ unitKey: 'IMP-INB-ARM-0', objectiveId: 'obj_01a' })
+    expect(state.players.A.cp).toBe(2)
+  })
+})
+

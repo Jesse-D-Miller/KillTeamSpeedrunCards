@@ -499,6 +499,21 @@ function BoardSvg({
                   className="board-objective-cross"
                   d={`M${objective.x - OBJECTIVE_RADIUS},${cy} H${objective.x + OBJECTIVE_RADIUS} M${objective.x},${cy - OBJECTIVE_RADIUS} V${cy + OBJECTIVE_RADIUS}`}
                 />
+                {/* Lock It Down (Breachers): that operative's APL counts 1 higher for this objective. */}
+                {SEATS.filter((seat) => game.players?.[seat]?.lockItDown?.objectiveId === objective.id && !game.players[seat].unitState?.[game.players[seat].lockItDown.unitKey]?.dead).map((seat, index) => (
+                  <g
+                    key={seat}
+                    className="board-objective-lock"
+                    data-lock-for={seat}
+                    style={{ '--token-color': seatColor(seat) }}
+                    transform={`translate(${objective.x + OBJECTIVE_RADIUS + 0.35} ${cy - OBJECTIVE_RADIUS + index * 0.32}) rotate(${facingOf(seat)})`}
+                  >
+                    <rect x={-0.3} y={-0.13} width={0.6} height={0.26} rx={0.13} />
+                    <text x={0} y={0.005} textAnchor="middle" dominantBaseline="central">
+                      +1 APL
+                    </text>
+                  </g>
+                ))}
               </g>
             )
           })

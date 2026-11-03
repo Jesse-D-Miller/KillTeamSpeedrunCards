@@ -39,6 +39,7 @@ import {
   BREACH_RANGE_IN,
   IMPERIAL_NAVY_BREACHERS,
   ORDER_PLOYS,
+  LOCK_IT_DOWN,
   SICKENING_CAPTIVATION,
   NEUROSTIMULANT,
   CONVERGENCE_STIMULANT,
@@ -1199,6 +1200,21 @@ const handlers = {
     if (distance(first, second) - tokenRadiusIn(first) - tokenRadiusIn(second) > BREACH_RANGE_IN) fail('It must be within 3".')
     const used = updatePlayer(state, seat, { breachClearTp: tp })
     return { ...used, battle: { ...used.battle, chain: { tp, seat, after: active.unitKey, next: second.unitKey } } }
+  },
+
+  // Imperial Navy Breachers' Lock It Down (firefight ploy): as a Breacher is activated, pick
+  // an objective marker; until the end of the battle (or the next use) its APL counts 1
+  // higher for controlling that objective (player.lockItDown, shown on the board).
+  'battle/lockItDown': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const token = state.tokens.find((candidate) => candidate.id === String(action.tokenId ?? ''))
+    if (!token?.unitKey || token.seat !== seat) fail('Pick one of your operatives.')
+    if (state.players[seat].unitState[token.unitKey]?.activation !== 'active') fail('Use it as that operative is activated.')
+    const objectiveId = String(action.objectiveId ?? '').slice(0, 40)
+    if (!objectiveId) fail('Pick an objective marker.')
+    const spent = handlers['battle/firefightPloy'](state, { ployId: LOCK_IT_DOWN, cost: action.cost ?? 1, seat }, actor)
+    return updatePlayer(spent, seat, { lockItDown: { unitKey: token.unitKey, objectiveId } })
   },
 
   // Hernkyn Yaegirs' No Kin Left Behind (firefight ploy, 1CP): one of your Yaegirs was
