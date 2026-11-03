@@ -38,6 +38,7 @@ import {
   DARTING_FLIGHT,
   BREACH_RANGE_IN,
   IMPERIAL_NAVY_BREACHERS,
+  ORDER_PLOYS,
   SICKENING_CAPTIVATION,
   NEUROSTIMULANT,
   CONVERGENCE_STIMULANT,
@@ -496,6 +497,18 @@ const countSmoke = (state, seat, step) => {
   return updatePlayer(state, seat, { teamWeaponUses: { ...uses, battle: { ...uses.battle, [SMOKE_USES_KEY]: Math.max(0, used) } } })
 }
 
+// Breachers' Attack Order / Defence Order marker: placed in the middle of the killzone for
+// the player to drag where they want it (the reducer doesn't know the drop zones), taken
+// away if the ploy is turned off, and removed in the next Ready step.
+const BOARD_CENTRE = { x: 15, y: 11 }
+const placeOrderMarker = (state, seat, catalogId, on) => {
+  const others = state.markers.filter((marker) => !(marker.catalogId === catalogId && marker.seat === seat))
+  if (!on) return { ...state, markers: others }
+  const marker = { id: `m${state.nextId}`, seat, kind: 'marker', catalogId, label: catalogId.includes('attack') ? 'Attack Order' : 'Defence Order', short: '', radius: 20 / 25.4 / 2, ring: 3, attachedTo: null, ...BOARD_CENTRE }
+  return { ...state, markers: [...others, marker], nextId: state.nextId + 1 }
+}
+const ORDER_MARKERS = new Set(Object.values(ORDER_PLOYS))
+
 // Vespid Communion, in each Ready step: the Vespid player rolls a D3 (two, keeping one,
 // with Neurostimulant) and gains that many points (SP), plus 1 while a friendly
 // Oversight Drone is in the killzone. Points carry over (the rule doesn't discard them).
@@ -915,15 +928,20 @@ const handlers = {
     const seat = resolveSeat(action, actor)
     const ployId = String(action.ployId ?? '')
     const { tp } = state.battle
-    return updatePlayer(state, seat, (player) => {
-      const current = player.ploysByTp[tp] ?? []
-      const isActive = current.includes(ployId)
+    const current = state.players[seat].ploysByTp[tp] ?? []
+    const isActive = current.includes(ployId)
+    // Breachers' Attack Order / Defence Order: only one of the two each Strategy phase.
+    if (!isActive && ORDER_PLOYS[ployId] && Object.keys(ORDER_PLOYS).some((other) => other !== ployId && current.includes(other))) {
+      fail('Only one of Attack Order and Defence Order each Strategy phase.')
+    }
+    const next = updatePlayer(state, seat, (player) => {
       if (!isActive && player.cp <= 0) fail('Not enough CP.')
       return {
         cp: isActive ? player.cp + 1 : player.cp - 1,
         ploysByTp: { ...player.ploysByTp, [tp]: toggleInList(current, ployId) },
       }
     })
+    return ORDER_PLOYS[ployId] ? placeOrderMarker(next, seat, ORDER_PLOYS[ployId], !isActive) : next
   },
 
   // A firefight ploy played outside a shot or fight (from the Team tab). on: spend its
@@ -1069,6 +1087,8 @@ const handlers = {
         ),
       }))
     })
+    // Ready step: Breacher order markers come off.
+    next = { ...next, markers: next.markers.filter((marker) => !ORDER_MARKERS.has(marker.catalogId)) }
     return communionReadyStep(smokeReadyStep(next, state.battle.tp))
   },
 

@@ -566,6 +566,23 @@ describe('Imperial Navy Breachers', () => {
     expect(frag.immuneToDevastating({ seat: 'B' })).toBe(true)
     expect(frag.immuneToDevastating({ seat: 'A' })).toBe(false)
   })
+
+  it('Attack Order: Ceaseless within 3" of its marker; Defence Order: a defence re-roll within 3" of its marker', () => {
+    const ARMSMAN = 'IMP-INB-ARM-0'
+    const game = (seat, ployId, catalogId, markerX) =>
+      setup({
+        teams: ['IMP-INB', 'CHAOS-LEG'],
+        tokens: [op('s', 'A', ARMSMAN, 2), op('t', 'B', 'CHAOS-LEG-WAR-0', 9)],
+        units: { A: { [ARMSMAN]: { order: 'engage' } }, B: { 'CHAOS-LEG-WAR-0': { order: 'engage' } } },
+        ploys: { [seat]: [ployId] },
+        markers: [{ id: 'm1', seat: 'A', catalogId, x: markerX, y: 5, radius: 0.4 }],
+      })
+    const shotgun = 'IMP-INB-ARM-NS-0'
+    expect(find(shoot(game('A', 'IMP-INB-S-AO', 'imp-inb-attack-order', 4), shotgun), 'attack', 'Attack Order').mode).toBe('auto')
+    expect(find(shoot(game('A', 'IMP-INB-S-AO', 'imp-inb-attack-order', 8), shotgun), 'attack', 'Attack Order').mode).toBe('inactive')
+    const defended = computeShot({ game: game('A', 'IMP-INB-S-DO', 'imp-inb-defence-order', 4), layout: { walls: [], areas: [] }, payload: { shooterId: 't', targetId: 's', weaponId: 'CHAOS-LEG-WAR-BG-0' } })
+    expect(find(defended, 'defence', 'Defence Order').mode).toBe('auto')
+  })
 })
 
 describe('other kill teams (read from their rules text)', () => {

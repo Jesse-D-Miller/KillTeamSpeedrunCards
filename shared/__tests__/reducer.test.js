@@ -1445,3 +1445,20 @@ describe('Imperial Navy Breachers: Breach and Clear', () => {
   })
 })
 
+describe('Imperial Navy Breachers: Attack Order and Defence Order', () => {
+  it('places the marker (one of the two per Strategy phase) and removes it in the next Ready step', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'IMP-INB' }, 'A'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'battle/togglePloy', ployId: 'IMP-INB-S-AO' }, 'A'],
+    ])
+    expect(state.markers).toEqual([expect.objectContaining({ catalogId: 'imp-inb-attack-order', seat: 'A', ring: 3 })])
+    expect(() => applyAction(state, { type: 'battle/togglePloy', ployId: 'IMP-INB-S-DO' }, 'A')).toThrow(/Only one/)
+    // Turned off: the marker goes; turned on again, then the next Ready step clears it.
+    expect(applyAction(state, { type: 'battle/togglePloy', ployId: 'IMP-INB-S-AO' }, 'A').markers).toHaveLength(0)
+    state = applyAction(state, { type: 'battle/nextTp', fromTp: 1 }, 'table')
+    expect(state.markers).toHaveLength(0)
+  })
+})
+

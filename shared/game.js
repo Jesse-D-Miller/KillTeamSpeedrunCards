@@ -155,6 +155,9 @@ export const VESPID_STINGWINGS = 'TAU-VESP'
 export const IMPERIAL_NAVY_BREACHERS = 'IMP-INB'
 export const BREACH_RANGE_IN = 3
 export const OVERWHELM_TARGET = 'IMP-INB-T-OT'
+// Breacher strategy ploys that place a marker until the next Ready step (only one of the
+// two each Strategy phase): ploy id -> marker catalogue id.
+export const ORDER_PLOYS = { 'IMP-INB-S-AO': 'imp-inb-attack-order', 'IMP-INB-S-DO': 'imp-inb-defence-order' }
 // Legionary firefight ploy: an enemy within 4" of a Slaanesh Legionary gets APL −1 until
 // the end of its next activation.
 export const SICKENING_CAPTIVATION = 'CHAOS-LEG-T-SC'
