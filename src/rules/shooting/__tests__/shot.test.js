@@ -550,6 +550,24 @@ describe('Legionaries', () => {
   })
 })
 
+describe('Imperial Navy Breachers', () => {
+  const HEAVY = 'CHAOS-LEG-HGNR-0'
+  const atBreacher = (unitKey) =>
+    setup({
+      teams: ['CHAOS-LEG', 'IMP-INB'],
+      tokens: [op('s', 'A', HEAVY, 2), op('t', 'B', unitKey, 9)],
+      units: { A: { [HEAVY]: { order: 'engage' } }, B: { [unitKey]: { order: 'engage' } } },
+    })
+  it('Void Armour: a defence re-roll against Blast or Torrent (not sweeping), two for a Grenadier; no x" Devastating splash', () => {
+    const frag = shoot(atBreacher('IMP-INB-ARM-0'), 'CHAOS-LEG-HGNR-ML-0')
+    expect(find(frag, 'defence', 'Void Armour')).toMatchObject({ mode: 'auto', text: expect.stringMatching(/one defence die/) })
+    expect(find(shoot(atBreacher('IMP-INB-ARM-0'), 'CHAOS-LEG-HGNR-HB-1'), 'defence', 'Void Armour')).toBeUndefined()
+    expect(find(shoot(atBreacher('IMP-INB-GRN-0'), 'CHAOS-LEG-HGNR-ML-0'), 'defence', 'Void Armour').text).toMatch(/two/)
+    expect(frag.immuneToDevastating({ seat: 'B' })).toBe(true)
+    expect(frag.immuneToDevastating({ seat: 'A' })).toBe(false)
+  })
+})
+
 describe('other kill teams (read from their rules text)', () => {
   it('reads weapon rules, Hit and Dmg changes from attack rules', () => {
     expect(parseAttackText('Friendly DEATH KORPS operatives’ ranged weapons have the Saturate and Accurate 1 weapon rules.').effect).toEqual({

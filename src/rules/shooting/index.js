@@ -6,6 +6,7 @@ import * as generic from './generic.js'
 import { computeFight } from './fight.js'
 import { buildProfile } from './profile.js'
 import * as hernkynYaegirs from './teams/hernkynYaegirs.js'
+import * as breachers from './teams/breachers.js'
 import * as kommandos from './teams/kommandos.js'
 import * as legionaries from './teams/legionaries.js'
 import * as vespidStingwings from './teams/vespidStingwings.js'
@@ -21,7 +22,7 @@ import { COVER_CHOICE, PORTABLE_BARRICADE, coreModifiers, universalAttack, unive
 //    removed, Ocelli's extra height...), then the core rules read off it.
 // 4. Validity (rules that take precedence over Seek and Vantage), then the numbers.
 
-const CURATED = { 'VOT-HKY': hernkynYaegirs, 'TAU-VESP': vespidStingwings, 'ORK-KOM': kommandos, 'CHAOS-LEG': legionaries }
+const CURATED = { 'VOT-HKY': hernkynYaegirs, 'TAU-VESP': vespidStingwings, 'ORK-KOM': kommandos, 'CHAOS-LEG': legionaries, 'IMP-INB': breachers }
 export const CURATED_TEAMS = Object.keys(CURATED)
 const teamRules = (killteamId) => CURATED[killteamId] ?? generic
 
@@ -120,7 +121,8 @@ export const computeShot = ({ game, layout, payload, samples = 41, glance = fals
     attack: profile?.attack ?? null,
     defence: profile?.defence ?? null,
     modifiers: { attack: listed([...coreAttack, ...attackMods]), defence: listed([...coreDefence, ...defenceMods]) },
-    immuneToDevastating: hernkynYaegirs.immuneToDevastating(game),
+    // x" Devastating splash skips operatives whose rules say so (KV-Ceramide Undersuit, Void Armour).
+    immuneToDevastating: (token) => hernkynYaegirs.immuneToDevastating(game)(token) || breachers.immuneToDevastating(game)(token),
   }
 }
 
