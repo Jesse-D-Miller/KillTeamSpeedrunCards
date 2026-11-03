@@ -150,6 +150,11 @@ export const clampAplChange = (change) => Math.max(-1, Math.min(1, change))
 // Kill teams that keep a tally of special points (Yaegirs' Resourceful points, the
 // Vespids' points) shown beside CP and VP.
 export const VESPID_STINGWINGS = 'TAU-VESP'
+// Imperial Navy Breachers: Breach and Clear chains a second activation (once per turning
+// point, a ready Breacher within 3"); Overwhelm Target gives one of the two +1 APL.
+export const IMPERIAL_NAVY_BREACHERS = 'IMP-INB'
+export const BREACH_RANGE_IN = 3
+export const OVERWHELM_TARGET = 'IMP-INB-T-OT'
 // Legionary firefight ploy: an enemy within 4" of a Slaanesh Legionary gets APL −1 until
 // the end of its next activation.
 export const SICKENING_CAPTIVATION = 'CHAOS-LEG-T-SC'

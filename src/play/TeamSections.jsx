@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BONDS_RANGE_IN, BONDS_THAT_BIND, COMMAND_REROLL, KRUMP_EM, SHAKE_IT_OFF, SICKENING_CAPTIVATION, ployUses, tokenRadiusIn, turnState } from '../../shared/game.js'
+import { BONDS_RANGE_IN, BONDS_THAT_BIND, COMMAND_REROLL, KRUMP_EM, OVERWHELM_TARGET, SHAKE_IT_OFF, SICKENING_CAPTIVATION, ployUses, tokenRadiusIn, turnState } from '../../shared/game.js'
 import { distance } from '../../shared/geometry.js'
 import { isHidden } from '../../shared/views.js'
 import TacOpCard from '../components/TacOpCard.jsx'
@@ -220,6 +220,21 @@ function SickeningCaptivation({ ploy }) {
   )
 }
 
+// Overwhelm Target (Breachers): as either Breacher of a Breach and Clear is activated, +1
+// APL until the end of its activation.
+function OverwhelmTarget({ ploy }) {
+  const { state: game, seat, me, act } = usePlayer()
+  const chain = game.battle.chain?.seat === seat && game.battle.chain.tp === game.battle.tp ? game.battle.chain : null
+  return (
+    <OperativePloy
+      ploy={ploy}
+      eligible={(token) => Boolean(chain) && [chain.after, chain.next].includes(token.unitKey) && me.unitState?.[token.unitKey]?.activation === 'active'}
+      when={() => (chain ? null : 'With Breach and Clear')}
+      onPick={(token) => act({ type: 'unit/update', unitKey: token.unitKey, patch: { nextActivationApl: 1 } })}
+    />
+  )
+}
+
 // Play a firefight ploy from here (one used in a shot or fight is switched on in the
 // stats drawer instead; both count the same use). Each is once per turning point,
 // except Command Re-roll.
@@ -228,6 +243,7 @@ export function PloyUse({ ploy }) {
   if (ploy.ployId === KRUMP_EM) return <KrumpEm ploy={ploy} />
   if (ploy.ployId === SHAKE_IT_OFF) return <ShakeItOff ploy={ploy} />
   if (ploy.ployId === MUTABILITY_AND_CHANGE) return <MutabilityAndChange ploy={ploy} />
+  if (ploy.ployId === OVERWHELM_TARGET) return <OverwhelmTarget ploy={ploy} />
   if (ploy.ployId === SICKENING_CAPTIVATION) return <SickeningCaptivation ploy={ploy} />
   return <PlainPloyUse ploy={ploy} />
 }

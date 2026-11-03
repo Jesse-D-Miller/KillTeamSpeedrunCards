@@ -36,6 +36,8 @@ import {
   SMOKE_MARKER,
   VESPID_STINGWINGS,
   DARTING_FLIGHT,
+  BREACH_RANGE_IN,
+  IMPERIAL_NAVY_BREACHERS,
   SICKENING_CAPTIVATION,
   NEUROSTIMULANT,
   CONVERGENCE_STIMULANT,
@@ -1142,6 +1144,32 @@ const handlers = {
     if (distance(first, second) - tokenRadiusIn(first) - tokenRadiusIn(second) > BONDS_RANGE_IN) fail('It must be within 3".')
     const used = spendPloy(true)
     return { ...used, battle: { ...used.battle, chain: { tp: state.battle.tp, seat, after: active.unitKey, next: second.unitKey } } }
+  },
+
+  // Imperial Navy Breachers' Breach and Clear (faction rule, once per turning point): as a
+  // Breacher is activated, pick another ready Breacher within 3"; once the first is
+  // expended, the second activates before the opponent (battle.chain, as Bonds That Bind).
+  'battle/breachAndClear': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const player = state.players[seat]
+    if (player.killteamId !== IMPERIAL_NAVY_BREACHERS) fail('Only Imperial Navy Breachers have Breach and Clear.')
+    const { tp } = state.battle
+    if (action.on === false) {
+      const cleared = updatePlayer(state, seat, { breachClearTp: null })
+      return state.battle.chain?.seat === seat ? { ...cleared, battle: { ...cleared.battle, chain: null } } : cleared
+    }
+    if (player.breachClearTp === tp) fail('Already used this turning point.')
+    const active = activeUnit(state)
+    if (!active || active.seat !== seat) fail('Use it as one of your Breachers is activated.')
+    const first = state.tokens.find((token) => token.seat === seat && token.unitKey === active.unitKey)
+    const second = state.tokens.find((token) => token.id === String(action.tokenId ?? ''))
+    if (!first || !second || second.seat !== seat || !second.unitKey || second.unitKey === active.unitKey) fail('Pick another of your operatives.')
+    const unit = player.unitState[second.unitKey]
+    if (unit?.dead || (unit?.activation ?? 'ready') !== 'ready') fail('That operative isn’t ready.')
+    if (distance(first, second) - tokenRadiusIn(first) - tokenRadiusIn(second) > BREACH_RANGE_IN) fail('It must be within 3".')
+    const used = updatePlayer(state, seat, { breachClearTp: tp })
+    return { ...used, battle: { ...used.battle, chain: { tp, seat, after: active.unitKey, next: second.unitKey } } }
   },
 
   // Hernkyn Yaegirs' No Kin Left Behind (firefight ploy, 1CP): one of your Yaegirs was

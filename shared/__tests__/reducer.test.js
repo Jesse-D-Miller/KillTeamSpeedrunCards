@@ -1421,3 +1421,27 @@ describe('Legionaries: Sickening Captivation', () => {
   })
 })
 
+describe('Imperial Navy Breachers: Breach and Clear', () => {
+  it('chains a ready Breacher within 3" after the active one, once per turning point', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'IMP-INB' }, 'A'],
+      [{ type: 'setup/killteam', killteamId: 'TAU-VESP' }, 'B'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'IMP-INB-ARM-0', maxWounds: 8, x: 5, y: 5, baseMm: 28.5 }, 'A'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'IMP-INB-ARM-1', maxWounds: 8, x: 7, y: 5, baseMm: 28.5 }, 'A'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'IMP-INB-ARM-2', maxWounds: 8, x: 15, y: 5, baseMm: 28.5 }, 'A'],
+      [{ type: 'unit/update', unitKey: 'IMP-INB-ARM-0', maxWounds: 8, patch: { activation: 'active' } }, 'A'],
+    ])
+    const [, near, far] = state.tokens
+    expect(() => applyAction(state, { type: 'battle/breachAndClear', tokenId: far.id }, 'A')).toThrow(/3"/)
+    state = applyAction(state, { type: 'battle/breachAndClear', tokenId: near.id }, 'A')
+    expect(state.battle.chain).toMatchObject({ seat: 'A', after: 'IMP-INB-ARM-0', next: 'IMP-INB-ARM-1' })
+    expect(state.players.A.cp).toBe(3)
+    expect(() => applyAction(state, { type: 'battle/breachAndClear', tokenId: near.id }, 'A')).toThrow(/Already used/)
+    state = applyAction(state, { type: 'unit/update', unitKey: 'IMP-INB-ARM-0', maxWounds: 8, patch: { activation: 'expended' } }, 'A')
+    // (No muster roster here, so only the chained operative is checked.)
+    expect(turnState(state).chainedUnitKey).toBe('IMP-INB-ARM-1')
+  })
+})
+

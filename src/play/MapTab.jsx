@@ -7,6 +7,7 @@ import {
   HERNKYN_YAEGIRS,
   MARKER_SPANS_IN,
   VESPID_STINGWINGS,
+  BREACH_RANGE_IN,
   DARTING_FLIGHT,
   ployUses,
   MINEFIELD,
@@ -1290,13 +1291,22 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
     const abilities = roster.find((unit) => unit.key === token.unitKey)?.opType?.abilities ?? []
     const own = abilities.filter((ability) => ability.AP != null)
     // Rules used "when this operative is activated" that the app applies (not actions).
-    const onActivation = abilities.filter((ability) => ability.abilityName === 'Unleash Daemon').map((ability) => ({ ...ability, AP: null }))
+    const onActivation = abilities
+      .filter((ability) => ['Unleash Daemon', 'Breach And Clear'].includes(ability.abilityName))
+      .map((ability) => ({ ...ability, AP: null }))
     const caches = (game.markers ?? []).some((marker) => marker.catalogId === AMMO_CACHE_MARKER && marker.seat === seat)
     return [...own, ...onActivation, ...(caches ? [{ abilityName: 'Ammo Resupply', AP: 0 }] : [])]
   }
   // What the known datacard actions do from the ring (keyed by name, lower case, no '!').
   //   blocked({ inControl, order, unit }): why it can't be done now, or null.
   const DATACARD_ACTIONS = {
+    // Imperial Navy Breachers (once per turning point, when activated): pick the ready
+    // Breacher within 3" to activate straight after this one.
+    'breach and clear': {
+      blocked: ({ unit }) =>
+        game.players[seat]?.breachClearTp === game.battle.tp ? 'Used this TP' : unit.activation !== 'active' ? 'When activated' : null,
+      run: () => setRadial((current) => current && { ...current, menu: 'breach' }),
+    },
     // Legionary Shrivetalon (2AP, once per battle): place the Grisly marker beside it.
     'grisly mark': {
       blocked: ({ inControl }) =>
@@ -1553,6 +1563,30 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
           }
         }),
         back,
+      ]
+    }
+    if (radial.menu === 'breach') {
+      const ready = tokens.filter(
+        (token) =>
+          token.seat === radialToken.seat &&
+          token.id !== radialToken.id &&
+          token.unitKey &&
+          (game.players[token.seat]?.unitState?.[token.unitKey]?.activation ?? 'ready') === 'ready' &&
+          !game.players[token.seat]?.unitState?.[token.unitKey]?.dead &&
+          distance(token, radialToken) - tokenRadiusIn(token) - tokenRadiusIn(radialToken) <= BREACH_RANGE_IN,
+      )
+      return [
+        ...ready.map((token) => ({
+          key: `breach-${token.id}`,
+          label: token.label || token.unitKey,
+          caption: token.label || token.unitKey,
+          text: 'Next',
+          run: () => {
+            act({ type: 'battle/breachAndClear', tokenId: token.id })
+            setRadial(null)
+          },
+        })),
+        { ...back, run: openMenu('actions') },
       ]
     }
     if (radial.menu === 'support') {
