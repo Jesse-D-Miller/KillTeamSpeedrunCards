@@ -1545,3 +1545,50 @@ describe('Phobos: Omni-Scrambler', () => {
   })
 })
 
+describe('Phobos: Helix Gauntlet, Auspex Scan and Patient Ambush', () => {
+  const battle = () =>
+    run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'IMP-PHO' }, 'A'],
+      [{ type: 'phase/set', phase: 'battle' }, 'table'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'IMP-PHO-INFHEL-0', maxWounds: 14, x: 5, y: 5, baseMm: 32 }, 'A'],
+      [{ type: 'token/add', seat: 'A', unitKey: 'IMP-PHO-INFWAR-0', maxWounds: 14, x: 6.5, y: 5, baseMm: 32 }, 'A'],
+    ])
+
+  it('Helix Gauntlet asks for the D3 and heals D3+3, up to its starting wounds', () => {
+    let state = battle()
+    const [adept, warrior] = state.tokens
+    state = applyAction(state, { type: 'unit/update', unitKey: 'IMP-PHO-INFWAR-0', maxWounds: 14, patch: { wounds: 6 } }, 'A')
+    state = applyAction(state, { type: 'battle/helixGauntlet', tokenId: adept.id, targetId: warrior.id, maxWounds: 14 }, 'A')
+    const roll = state.battle.rolls.find((candidate) => candidate.kind === 'helix')
+    state = applyAction(state, { type: 'battle/roll', id: roll.id, value: 2 }, 'A')
+    expect(state.players.A.unitState['IMP-PHO-INFWAR-0'].wounds).toBe(11)
+  })
+
+  it('Auspex Scan lasts until the operative’s next activation', () => {
+    let state = battle()
+    const update = (patch) => applyAction(state, { type: 'unit/update', unitKey: 'IMP-PHO-INFHEL-0', maxWounds: 14, patch }, 'A')
+    state = update({ activation: 'active' })
+    state = update({ auspex: true })
+    state = update({ activation: 'expended' })
+    expect(state.players.A.unitState['IMP-PHO-INFHEL-0'].auspex).toBe(true)
+    state = update({ activation: 'ready' })
+    state = update({ activation: 'active' })
+    expect(state.players.A.unitState['IMP-PHO-INFHEL-0'].auspex).toBe(false)
+  })
+
+  it('Patient Ambush passes the turn when it is yours', () => {
+    let state = battle()
+    state = {
+      ...state,
+      battle: { ...state.battle, initiativeByTp: { 1: 'A' } },
+      players: { ...state.players, A: { ...state.players.A, units: ['IMP-PHO-INFHEL-0'] }, B: { ...state.players.B, units: ['TAU-VESP-WAR-0'] } },
+    }
+    expect(turnState(state).nextSeat).toBe('A')
+    expect(() => applyAction(state, { type: 'battle/patientAmbush' }, 'B')).toThrow(/your turn/)
+    state = applyAction(state, { type: 'battle/patientAmbush' }, 'A')
+    expect(turnState(state).nextSeat).toBe('B')
+    expect(state.players.A.cp).toBe(2)
+  })
+})
+

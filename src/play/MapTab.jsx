@@ -1300,7 +1300,14 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
       .filter((ability) => ['Unleash Daemon', 'Breach And Clear'].includes(ability.abilityName))
       .map((ability) => ({ ...ability, AP: null }))
     const caches = (game.markers ?? []).some((marker) => marker.catalogId === AMMO_CACHE_MARKER && marker.seat === seat)
-    return [...own, ...onActivation, ...(caches ? [{ abilityName: 'Ammo Resupply', AP: 0 }] : [])]
+    // Phobos Guerrilla Warfare (strategy ploy) gives every operative an action to change order.
+    const guerrilla = activePloyIds(game.players[seat], game.battle.tp).includes('IMP-PHO-S-GWF')
+    return [
+      ...own,
+      ...onActivation,
+      ...(caches ? [{ abilityName: 'Ammo Resupply', AP: 0 }] : []),
+      ...(guerrilla ? [{ abilityName: 'Guerrilla Warfare', AP: 1 }] : []),
+    ]
   }
   // The player's C.A.T. Unit on the board (Breachers), for Remote Control.
   const catUnit = () =>
@@ -1308,6 +1315,28 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // What the known datacard actions do from the ring (keyed by name, lower case, no '!').
   //   blocked({ inControl, order, unit }): why it can't be done now, or null.
   const DATACARD_ACTIONS = {
+    // Phobos Helix Adept: a friendly operative within 1" regains D3+3 (the player's roll).
+    'helix gauntlet': {
+      blocked: ({ inControl }) => (inControl ? 'In control range' : null),
+      run: () => setRadial((current) => current && { ...current, menu: 'helix' }),
+    },
+    // Phobos Voxbreaker: until its next activation (see the shot engine).
+    'auspex scan': {
+      blocked: ({ inControl, unit }) => (inControl ? 'In control range' : unit.auspex ? 'Scanning' : null),
+      run: (token) => {
+        act({ type: 'unit/update', unitKey: token.unitKey, maxWounds: maxWoundsOf(token.id), patch: { auspex: true } })
+        setRadial(null)
+      },
+    },
+    // Phobos (with the Guerrilla Warfare ploy): change this operative's order.
+    'guerrilla warfare': {
+      blocked: ({ inControl }) => (inControl ? 'In control range' : null),
+      run: (token) => {
+        const order = game.players[token.seat]?.unitState?.[token.unitKey]?.order ?? 'conceal'
+        act({ type: 'unit/update', unitKey: token.unitKey, maxWounds: maxWoundsOf(token.id), patch: { order: order === 'engage' ? 'conceal' : 'engage' } })
+        setRadial(null)
+      },
+    },
     // Breacher C.A.T. Unit: pick the enemy its Breachers can Spot this turning point.
     spot: {
       blocked: ({ inControl }) => (inControl ? 'In control range' : null),
@@ -1639,6 +1668,28 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
               // The roll is about the enemy: its ring shows the dice.
               openRadial(token, 'roll')
             }
+          },
+        })),
+        { ...back, run: openMenu('actions') },
+      ]
+    }
+    if (radial.menu === 'helix') {
+      const near = tokens.filter(
+        (token) =>
+          token.seat === radialToken.seat &&
+          token.unitKey &&
+          !game.players[token.seat]?.unitState?.[token.unitKey]?.dead &&
+          (token.id === radialToken.id || distance(token, radialToken) - tokenRadiusIn(token) - tokenRadiusIn(radialToken) <= 1),
+      )
+      return [
+        ...near.map((token) => ({
+          key: `helix-${token.id}`,
+          label: token.label || token.unitKey,
+          caption: token.label || token.unitKey,
+          text: 'D3+3',
+          run: () => {
+            act({ type: 'battle/helixGauntlet', tokenId: radialToken.id, targetId: token.id, maxWounds: maxWoundsOf(token.id) })
+            openRadial(token, 'roll')
           },
         })),
         { ...back, run: openMenu('actions') },

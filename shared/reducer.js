@@ -41,6 +41,8 @@ import {
   ORDER_PLOYS,
   LOCK_IT_DOWN,
   PHOBOS_STRIKE_TEAM,
+  PATIENT_AMBUSH,
+  turnState,
   scrambledReason,
   SICKENING_CAPTIVATION,
   NEUROSTIMULANT,
@@ -176,6 +178,8 @@ const UNIT_FIELDS = {
   infernalPact: (value) => Boolean(value),
   // Breacher Gheistskull: the turning point it performed Boost (once per battle).
   boostTp: (value) => (value == null ? null : Math.max(1, Math.round(toNumber(value)))),
+  // Phobos Voxbreaker: Auspex Scan in effect (until its next activation).
+  auspex: (value) => Boolean(value),
   // What the latest damage was ('crit' from the stats drawer's Crit button), so the board
   // can play the right effect. Any other change of wounds counts as 'normal'.
   lastHit: (value) => (['crit', 'normal'].includes(value) ? value : null),
@@ -266,7 +270,9 @@ const patchUnit = (state, seat, unitKey, patch, maxWounds) =>
     const boostSpent = ending && current.nextActivationApl ? { nextActivationApl: 0 } : {}
     // Stunned lasts "until the end of its next activation" too.
     const stunOver = ending && !patch.statuses && (current.statuses ?? []).includes('stunned') ? { statuses: current.statuses.filter((status) => status !== 'stunned') } : {}
-    return { unitState: { ...player.unitState, [unitKey]: { ...current, ...patch, ...resourceful, ...boostSpent, ...stunOver, orderFlips } } }
+    // Auspex Scan (Phobos) lasts until the start of the Voxbreaker's next activation.
+    const scanOver = patch.activation === 'active' && current.activation !== 'active' && current.auspex && !('auspex' in patch) ? { auspex: false } : {}
+    return { unitState: { ...player.unitState, [unitKey]: { ...current, ...patch, ...resourceful, ...boostSpent, ...stunOver, ...scanOver, orderFlips } } }
   })
 
 
@@ -628,6 +634,12 @@ const ROLL_EFFECTS = {
       ),
     }
     return victim?.unitKey && extra ? hurt(noted, victim, extra) : noted
+  },
+  helix: (state, roll, value) => {
+    const token = state.tokens.find((candidate) => candidate.id === roll.tokenId)
+    const unit = token?.unitKey ? state.players[token.seat].unitState[token.unitKey] : null
+    if (!unit || unit.dead) return state
+    return patchUnit(state, token.seat, token.unitKey, { wounds: Math.min(roll.maxWounds, unit.wounds + value + 3), lastHit: 'normal' })
   },
   pulse: (state, roll, value) => {
     const target = state.tokens.find((candidate) => candidate.id === roll.tokenId)
@@ -1261,6 +1273,37 @@ const handlers = {
     if (!target?.unitKey || target.seat === seat) fail('Pick an enemy operative.')
     const marked = patchUnit(state, target.seat, target.unitKey, { scrambledTp: tp, scrambledNeeded: infiltrators }, target.maxWounds)
     return updatePlayer(marked, seat, { scramblerTp: tp })
+  },
+
+  // Phobos Helix Adept's Helix Gauntlet (1AP): a friendly operative within its control
+  // range regains D3+3 lost wounds, rolled by the player.
+  'battle/helixGauntlet': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const adept = state.tokens.find((token) => token.id === String(action.tokenId ?? ''))
+    const target = state.tokens.find((token) => token.id === String(action.targetId ?? ''))
+    if (!adept || adept.seat !== seat || !target?.unitKey || target.seat !== seat) fail('Pick one of your operatives.')
+    if (inEnemyControl(state, adept)) fail('Not within control range of enemy operatives.')
+    if (target.id !== adept.id && distance(adept, target) - tokenRadiusIn(adept) - tokenRadiusIn(target) > CONTROL_RANGE_IN) fail('It must be within control range.')
+    return addRoll(state, {
+      kind: 'helix',
+      die: 3,
+      seat,
+      tokenId: target.id,
+      maxWounds: Math.max(1, Math.round(toNumber(action.maxWounds, target.maxWounds ?? 1))),
+      label: `Helix Gauntlet: ${target.label || 'it'} regains D3 + 3 wounds`,
+    })
+  },
+
+  // Phobos Patient Ambush (firefight ploy): when it's your turn to activate, skip it (the
+  // turn passes to the opponent).
+  'battle/patientAmbush': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const turn = turnState(state)
+    if (turn.activeSeat || turn.nextSeat !== seat) fail('Use it when it’s your turn to activate.')
+    const spent = handlers['battle/firefightPloy'](state, { ployId: PATIENT_AMBUSH, cost: action.cost ?? 1, seat }, actor)
+    return { ...spent, battle: { ...spent.battle, lastActivatedByTp: { ...spent.battle.lastActivatedByTp, [state.battle.tp]: seat } } }
   },
 
   // Imperial Navy Breachers' Lock It Down (firefight ploy): as a Breacher is activated, pick

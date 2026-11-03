@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BONDS_RANGE_IN, BONDS_THAT_BIND, COMMAND_REROLL, KRUMP_EM, LOCK_IT_DOWN, OVERWHELM_TARGET, SHAKE_IT_OFF, SICKENING_CAPTIVATION, ployUses, tokenRadiusIn, turnState } from '../../shared/game.js'
+import { BONDS_RANGE_IN, BONDS_THAT_BIND, COMMAND_REROLL, KRUMP_EM, LOCK_IT_DOWN, OVERWHELM_TARGET, PATIENT_AMBUSH, SHAKE_IT_OFF, SICKENING_CAPTIVATION, ployUses, tokenRadiusIn, turnState } from '../../shared/game.js'
 import { distance } from '../../shared/geometry.js'
 import { isHidden } from '../../shared/views.js'
 import TacOpCard from '../components/TacOpCard.jsx'
@@ -288,6 +288,20 @@ function LockItDown({ ploy }) {
   )
 }
 
+// Patient Ambush (Phobos): when it's your turn to activate, skip it.
+function PatientAmbush({ ploy }) {
+  const { state: game, seat, me, act } = usePlayer()
+  const cost = ploy.CP ?? 1
+  const used = ployUses(me, game.battle.tp, ploy.ployId) > 0
+  const turn = turnState(game)
+  const reason = used ? 'Used this TP' : turn.activeSeat || turn.nextSeat !== seat ? 'On your turn to activate' : me.cp < cost ? 'No CP' : null
+  return (
+    <button type="button" className="ploy-use" disabled={Boolean(reason)} onClick={() => act({ type: 'battle/patientAmbush', cost })} aria-label={`Use ${ploy.ployName}`}>
+      {reason ?? `Skip this activation · ${cost}CP`}
+    </button>
+  )
+}
+
 // Play a firefight ploy from here (one used in a shot or fight is switched on in the
 // stats drawer instead; both count the same use). Each is once per turning point,
 // except Command Re-roll.
@@ -298,6 +312,7 @@ export function PloyUse({ ploy }) {
   if (ploy.ployId === MUTABILITY_AND_CHANGE) return <MutabilityAndChange ploy={ploy} />
   if (ploy.ployId === OVERWHELM_TARGET) return <OverwhelmTarget ploy={ploy} />
   if (ploy.ployId === LOCK_IT_DOWN) return <LockItDown ploy={ploy} />
+  if (ploy.ployId === PATIENT_AMBUSH) return <PatientAmbush ploy={ploy} />
   if (ploy.ployId === SICKENING_CAPTIVATION) return <SickeningCaptivation ploy={ploy} />
   return <PlainPloyUse ploy={ploy} />
 }

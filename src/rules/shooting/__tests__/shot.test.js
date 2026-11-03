@@ -635,6 +635,17 @@ describe('Phobos Strike Team', () => {
     expect(find(shot, 'attack', 'Astartes').text).toMatch(/Shoot twice/)
   })
 
+  it('Auspex Scan: within 8" of the scanning Voxbreaker, no obscuring; Seek Light for an Incursor', () => {
+    const game = setup({
+      teams: ['IMP-PHO', 'CHAOS-LEG'],
+      tokens: [op('s', 'A', 'IMP-PHO-INCWAR-0', 2), op('v', 'A', 'IMP-PHO-INFVOX-0', 8, 8), op('t', 'B', 'CHAOS-LEG-WAR-0', 9)],
+      units: { A: { 'IMP-PHO-INCWAR-0': { order: 'engage' }, 'IMP-PHO-INFVOX-0': { auspex: true } }, B: { 'CHAOS-LEG-WAR-0': { order: 'engage' } } },
+    })
+    const shot = shoot(game, 'IMP-PHO-INCWAR-OBC-0')
+    expect(find(shot, 'attack', 'Auspex Scan').text).toMatch(/Seek Light/)
+    expect(shot.rules.seekLight).toBe(true)
+  })
+
   it('ploys: Deadly Shots, Know No Fear, Lethal Assaults, and the dice switches', () => {
     const INC = 'IMP-PHO-INCWAR-0'
     // Not moved this activation: Balanced.

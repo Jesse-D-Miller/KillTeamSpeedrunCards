@@ -1,3 +1,5 @@
+import { tokenRadiusIn } from '../../../../shared/game.js'
+import { distance } from '../../../../shared/geometry.js'
 import * as generic from '../generic.js'
 import { mod } from '../effects.js'
 
@@ -42,6 +44,33 @@ const deadlyShots = (ctx) => {
   return [mod({ ...base, mode: 'inactive', text: 'It moved this activation, and the target is in cover or within 6"' })]
 }
 
+// Auspex Scan (Voxbreaker): until its next activation, Phobos operatives shooting an enemy
+// within 8" of it: the target can't be obscured, and an Incursor's weapons get Seek Light.
+const auspexScan = (ctx) => {
+  const seat = ctx.shooter.seat
+  const unitState = ctx.game.players[seat]?.unitState ?? {}
+  const scanning = ctx.tokens.find(
+    (token) =>
+      token.seat === seat &&
+      unitState[token.unitKey]?.auspex &&
+      !unitState[token.unitKey]?.dead &&
+      distance(token, ctx.targetToken) - tokenRadiusIn(token) - tokenRadiusIn(ctx.targetToken) <= 8,
+  )
+  if (!scanning) return []
+  const incursor = ctx.shooter.keywords.has('INCURSOR')
+  return [
+    mod({
+      id: 'IMP-PHO-auspex-scan',
+      owner: 'attacker',
+      source: 'ability',
+      name: 'Auspex Scan',
+      text: incursor ? 'Within 8" of the scanning Voxbreaker: can’t be obscured; Seek Light' : 'Within 8" of the scanning Voxbreaker: can’t be obscured',
+      effect: { cannotBeObscured: true, ...(incursor ? { addRules: { seekLight: true } } : {}) },
+      tone: 'good',
+    }),
+  ]
+}
+
 // Firefight ploys whose effect is on the dice as they're resolved: a switch with the rule.
 const dicePloy = (owner, id, name, text) => mod({ id, owner, source: 'firefight', name, mode: 'toggle', cost: 1, limit: 1, text, tone: 'good' })
 
@@ -58,7 +87,7 @@ const multiSpectrum = (ctx) =>
 
 export const attack = (ctx) => [
   ...unhandled(generic.attack(ctx)),
-  ...(ctx.weapon?.atk != null ? [...multiSpectrum(ctx), ...deadlyShots(ctx), ...knowNoFear(ctx, 'attacker', ctx.shooter)] : []),
+  ...(ctx.weapon?.atk != null ? [...multiSpectrum(ctx), ...auspexScan(ctx), ...deadlyShots(ctx), ...knowNoFear(ctx, 'attacker', ctx.shooter)] : []),
   // Critical Shot: a crit with a bolt weapon deals D3 more (the player rolls it).
   ...(ctx.inBattle && /\bbolt\b/i.test(ctx.weapon?.name ?? '') ? [dicePloy('attacker', PLOYS.criticalShot, 'Critical Shot', 'When a crit is resolved with this bolt weapon: D3 more damage')] : []),
   ...(ctx.inBattle ? [astartes('attacker', 'It can Shoot twice this activation (one of them with a bolt weapon)')] : []),

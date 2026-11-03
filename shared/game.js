@@ -157,6 +157,7 @@ export const BREACH_RANGE_IN = 3
 export const OVERWHELM_TARGET = 'IMP-INB-T-OT'
 export const LOCK_IT_DOWN = 'IMP-INB-T-LID'
 export const PHOBOS_STRIKE_TEAM = 'IMP-PHO'
+export const PATIENT_AMBUSH = 'IMP-PHO-T-PA'
 // Phobos Terror: enemies within 3" of friendly Reivers count 1 APL lower for controlling
 // markers. Which Phobos players' Terror touches this objective (an enemy contesting it,
 // within 1", is within 3" of one of their Reivers).
