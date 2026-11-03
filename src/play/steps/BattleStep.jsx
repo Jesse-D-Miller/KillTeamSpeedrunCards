@@ -97,6 +97,65 @@ function OmniScramblerGambit() {
   )
 }
 
+// Legionary equipment gambits: Warded Armour (one Legionary's Save is 2+ until the next
+// Ready step) and Chaos Talismans (a Mark of Chaos for this turning point).
+const LEGIONARY_MARK_NAMES = ['KHORNE', 'NURGLE', 'SLAANESH', 'TZEENTCH', 'UNDIVIDED']
+function LegionaryGambits() {
+  const { state: game, seat, me, act } = usePlayer()
+  const { tp } = game.battle
+  const equipment = me.equipment ?? []
+  const legionaries = game.tokens.filter((token) => token.seat === seat && token.unitKey && !me.unitState?.[token.unitKey]?.dead)
+  const title = (key) => (key.charAt(0) + key.slice(1).toLowerCase())
+  return (
+    <>
+      {equipment.includes('CHAOS-LEG-WA') ? (
+        <section className="strategy-step strategy-gambit" data-gambit="warded-armour">
+          <h4>
+            <span className="step-number">◆</span> Strategic gambit · Warded Armour
+          </h4>
+          <p className="muted">One friendly Legionary&apos;s Save is 2+ until the Ready step of the next Strategy phase.</p>
+          <div className="row">
+            {legionaries.map((token) => (
+              <button
+                key={token.id}
+                type="button"
+                className="btn"
+                aria-pressed={me.wardedArmour?.tp === tp && me.wardedArmour.unitKey === token.unitKey}
+                onClick={() => act({ type: 'battle/legionaryGambit', gambit: 'wardedArmour', unitKey: token.unitKey })}
+              >
+                {token.label || token.unitKey}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      {equipment.includes('CHAOS-LEG-CT') ? (
+        <section className="strategy-step strategy-gambit" data-gambit="chaos-talismans">
+          <h4>
+            <span className="step-number">◆</span> Strategic gambit · Chaos Talismans
+          </h4>
+          <p className="muted">
+            Pick a mark: once per activation, a Legionary with it that rolls two or more fails can take D3 damage to keep one as a normal success.
+          </p>
+          <div className="row">
+            {LEGIONARY_MARK_NAMES.map((mark) => (
+              <button
+                key={mark}
+                type="button"
+                className="btn"
+                aria-pressed={me.chaosTalismans?.tp === tp && me.chaosTalismans.mark === mark}
+                onClick={() => act({ type: 'battle/legionaryGambit', gambit: 'chaosTalismans', mark })}
+              >
+                {title(mark)}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </>
+  )
+}
+
 // Kommandos' SSSSHHHH! once picked (from TP2): the Kommandos it lets Dash right away, and
 // the sheet can be put aside to Dash them on the map.
 function SsssshhhhDashes({ onAside }) {
@@ -243,6 +302,7 @@ export function StrategySheet({ onAside }) {
 
           {tp === 1 && me.killteamId === HERNKYN_YAEGIRS ? <DauntlessGambit onAside={onAside} /> : null}
           {me.killteamId === PHOBOS_STRIKE_TEAM ? <OmniScramblerGambit /> : null}
+          {me.killteamId === 'CHAOS-LEG' ? <LegionaryGambits /> : null}
           {tp > 1 && me.killteamId === KOMMANDOS && active.includes(SSSSHHHH) ? <SsssshhhhDashes onAside={onAside} /> : null}
 
           <section className={`strategy-step${initiative ? '' : ' is-locked'}`}>

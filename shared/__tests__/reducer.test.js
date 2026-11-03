@@ -1592,3 +1592,19 @@ describe('Phobos: Helix Gauntlet, Auspex Scan and Patient Ambush', () => {
   })
 })
 
+describe('Legionaries: equipment gambits', () => {
+  it('records Warded Armour and Chaos Talismans in the Strategy phase, with the equipment', () => {
+    let state = run(createGame(), [
+      [{ type: 'phase/set', phase: 'setup' }, 'table'],
+      [{ type: 'setup/killteam', killteamId: 'CHAOS-LEG' }, 'A'],
+      [{ type: 'phase/set', phase: 'muster' }, 'table'],
+    ])
+    state = { ...state, players: { ...state.players, A: { ...state.players.A, equipment: ['CHAOS-LEG-WA'] } } }
+    state = applyAction(state, { type: 'phase/set', phase: 'battle' }, 'table')
+    state = applyAction(state, { type: 'token/add', seat: 'A', unitKey: 'CHAOS-LEG-WAR-0', maxWounds: 14, x: 5, y: 5, baseMm: 32 }, 'A')
+    state = applyAction(state, { type: 'battle/legionaryGambit', gambit: 'wardedArmour', unitKey: 'CHAOS-LEG-WAR-0' }, 'A')
+    expect(state.players.A.wardedArmour).toEqual({ tp: 1, unitKey: 'CHAOS-LEG-WAR-0' })
+    expect(() => applyAction(state, { type: 'battle/legionaryGambit', gambit: 'chaosTalismans', mark: 'KHORNE' }, 'A')).toThrow(/Chaos Talismans/)
+  })
+})
+

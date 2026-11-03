@@ -18,8 +18,27 @@ const PLOYS = {
   mutabilityAndChange: 'CHAOS-LEG-T-MAC',
 }
 const HANDLED = new Set(Object.values(PLOYS))
-const unhandled = (mods) => mods.filter((modifier) => !HANDLED.has(modifier.id))
+const unhandled = (mods) => mods.filter((modifier) => !HANDLED.has(modifier.id) && !Object.values(EQUIPMENT).includes(modifier.id))
 const DMG_MAX = 7
+
+// Faction equipment.
+const EQUIPMENT = { wardedArmour: 'CHAOS-LEG-WA', taintedRounds: 'CHAOS-LEG-TR', chaosTalismans: 'CHAOS-LEG-CT' }
+
+// Warded Armour (strategic gambit): the operative picked this turning point has Save 2+.
+const wardedArmour = (ctx) => {
+  const warded = ctx.target.player?.wardedArmour
+  if (!ctx.target.save || warded?.tp !== ctx.game.battle.tp || warded.unitKey !== ctx.target.unitKey || ctx.target.save <= 2) return []
+  return [mod({ id: EQUIPMENT.wardedArmour, owner: 'defender', source: 'equipment', name: 'Warded Armour', text: 'Save 2+ until the next Ready step', effect: { save: 2 - ctx.target.save }, tone: 'good' })]
+}
+
+// Chaos Talismans (strategic gambit): once per activation, an operative with the chosen
+// mark rolling two or more fails can take D3 damage (the player rolls it and takes it off
+// in the drawer) to keep one as a normal success.
+const chaosTalismans = (ctx, owner, operative) => {
+  const pick = operative.player?.chaosTalismans
+  if (!operative.mark || pick?.tp !== ctx.game.battle.tp || pick.mark !== operative.mark) return []
+  return [mod({ id: EQUIPMENT.chaosTalismans, owner, source: 'equipment', name: 'Chaos Talismans', mode: 'note', text: 'Two or more fails: take D3 damage to keep one as a normal success (once per activation)' })]
+}
 
 // Moved during this turning point (an action in which it moved).
 const movedThisTp = (ctx, operative, token) => operative.movedTp === ctx.game.battle.tp || Boolean(token?.lastMove)
@@ -79,6 +98,11 @@ const shootingPloys = (ctx) => {
         : mod({ ...base, mode: 'inactive', text: 'Nurgle: the enemy is more than 3" away' }),
     )
   }
+  // Tainted Rounds: once per turning point, a bolt pistol or boltgun has Rending.
+  if (ctx.inBattle && ctx.hasEquipment(owner, EQUIPMENT.taintedRounds) && /^(bolt pistol|boltgun)$/i.test(ctx.weapon.name)) {
+    mods.push(mod({ id: EQUIPMENT.taintedRounds, owner, source: 'equipment', name: 'Tainted Rounds', mode: 'toggle', limit: 1, text: 'Once per turning point: Rending', effect: { addRules: { rending: true } }, tone: 'good' }))
+  }
+  mods.push(...chaosTalismans(ctx, owner, ctx.shooter))
   // Implacable: an injured Nurgle Legionary ignores being injured (its Hit too).
   if (ctx.stratActive(owner, PLOYS.implacable) && ctx.shooter.mark === 'NURGLE' && ctx.shooter.injured) {
     mods.push(mod({ id: PLOYS.implacable, owner, source: 'strat', name: 'Implacable', text: 'Nurgle: ignores being injured', effect: { hit: -1 }, tone: 'good' }))
@@ -129,7 +153,8 @@ const daemonDefence = (owner, key) =>
   mod({ id: 'CHAOS-LEG-unleash-daemon', owner, source: 'ability', name: 'Unleash Daemon', text: 'Dmg of 4 or more deals 1 less to it', effect: { [key]: DAEMON_REDUCTION }, tone: 'good' })
 
 export const defence = (ctx) => [
-  ...(ctx.target.daemon ? [daemonDefence('defender', 'dmgReduction')] : []),...unhandled(generic.defence(ctx)), ...(ctx.target.mark === 'NURGLE' ? [disgustingVigour('defender')] : []), ...defencePloys(ctx)]
+  ...(ctx.target.daemon ? [daemonDefence('defender', 'dmgReduction')] : []),
+  ...wardedArmour(ctx),...unhandled(generic.defence(ctx)), ...(ctx.target.mark === 'NURGLE' ? [disgustingVigour('defender')] : []), ...defencePloys(ctx)]
 
 // Fighting (side 'attacker') or retaliating ('defender'): Khorne's melee weapons are
 // Severe, Undivided gets Ceaseless (the enemy is always within 6" in a fight), and
@@ -182,6 +207,7 @@ export const fight = (ctx, side) => {
   }
   if (weapon && operative.mark === 'UNDIVIDED') mods.push(viciousReavers(side, ctx.gap))
   if (operative.mark === 'NURGLE') mods.push(disgustingVigour(side))
+  if (weapon) mods.push(...chaosTalismans(ctx, side, operative))
   if (side === 'attacker' && ctx.inBattle) mods.push(astartes(side, 'It can Fight twice this activation'))
   return mods
 }

@@ -1275,6 +1275,30 @@ const handlers = {
     return updatePlayer(marked, seat, { scramblerTp: tp })
   },
 
+  // Legionary faction equipment gambits, in the Strategy phase (once each per turning
+  // point, with that equipment): Warded Armour picks a Legionary whose Save is 2+ until the
+  // next Ready step; Chaos Talismans picks a Mark of Chaos for this turning point.
+  'battle/legionaryGambit': (state, action, actor) => {
+    requirePhase(state, 'battle')
+    const seat = resolveSeat(action, actor)
+    const player = state.players[seat]
+    const { tp } = state.battle
+    if (state.battle.firefightTp === tp) fail('It’s a strategic gambit: use it in the Strategy phase.')
+    if (action.gambit === 'wardedArmour') {
+      if (!(player.equipment ?? []).includes('CHAOS-LEG-WA')) fail('Take Warded Armour first.')
+      const unitKey = String(action.unitKey ?? '')
+      if (!player.unitState[unitKey] && !state.tokens.some((token) => token.seat === seat && token.unitKey === unitKey)) fail('Pick one of your operatives.')
+      return updatePlayer(state, seat, { wardedArmour: { tp, unitKey } })
+    }
+    if (action.gambit === 'chaosTalismans') {
+      if (!(player.equipment ?? []).includes('CHAOS-LEG-CT')) fail('Take Chaos Talismans first.')
+      const mark = String(action.mark ?? '').toUpperCase()
+      if (!['KHORNE', 'NURGLE', 'SLAANESH', 'TZEENTCH', 'UNDIVIDED'].includes(mark)) fail('Pick a Mark of Chaos.')
+      return updatePlayer(state, seat, { chaosTalismans: { tp, mark } })
+    }
+    return fail('Unknown gambit.')
+  },
+
   // Phobos Helix Adept's Helix Gauntlet (1AP): a friendly operative within its control
   // range regains D3+3 lost wounds, rolled by the player.
   'battle/helixGauntlet': (state, action, actor) => {

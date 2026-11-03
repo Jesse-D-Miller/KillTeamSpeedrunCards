@@ -544,6 +544,32 @@ describe('Legionaries', () => {
     expect(brawl.attack.crit.value).toBe(5)
   })
 
+  it('equipment: Warded Armour Save 2+, Tainted Rounds Rending once per TP, Chaos Talismans reminder', () => {
+    const game = setup({
+      teams: ['TAU-VESP', 'CHAOS-LEG'],
+      tokens: [op('s', 'A', WARRIOR, 2), op('t', 'B', WARRIOR_LEG, 8)],
+      units: { A: engage(WARRIOR), B: { [WARRIOR_LEG]: { order: 'engage', mark: 'KHORNE' } } },
+      equipment: { B: ['CHAOS-LEG-WA', 'CHAOS-LEG-CT'] },
+    })
+    game.players.B.wardedArmour = { tp: 1, unitKey: WARRIOR_LEG }
+    game.players.B.chaosTalismans = { tp: 1, mark: 'KHORNE' }
+    const shot = shoot(game, 'TAU-VESP-WAR-NB-0')
+    expect(shot.defence.save.value).toBe(2)
+    const tainted = setup({
+      teams: ['CHAOS-LEG', 'TAU-VESP'],
+      tokens: [op('s', 'A', WARRIOR_LEG, 2), op('t', 'B', WARRIOR, 8)],
+      units: { A: { [WARRIOR_LEG]: { order: 'engage', mark: 'KHORNE' } }, B: engage(WARRIOR) },
+      equipment: { A: ['CHAOS-LEG-TR', 'CHAOS-LEG-CT'] },
+    })
+    tainted.players.A.chaosTalismans = { tp: 1, mark: 'KHORNE' }
+    const bolt = shoot(tainted, 'CHAOS-LEG-WAR-BG-0')
+    expect(find(bolt, 'attack', 'Tainted Rounds')).toMatchObject({ mode: 'toggle', limit: 1 })
+    expect(find(bolt, 'attack', 'Chaos Talismans').mode).toBe('note')
+    expect(meleeWeaponsFor(tainted, { seat: 'A', unitKey: WARRIOR_LEG }).map((weapon) => weapon.name)).not.toContain('Malefic Blade')
+    const blades = { ...tainted, players: { ...tainted.players, A: { ...tainted.players.A, equipment: ['CHAOS-LEG-MB'] } } }
+    expect(meleeWeaponsFor(blades, { seat: 'A', unitKey: WARRIOR_LEG }).find((weapon) => /malefic/i.test(weapon.name))).toMatchObject({ atk: 5, hit: 3, dmg: { normal: 3, crit: 4 } })
+  })
+
   it('Astartes: reminders that it can Shoot or Fight twice', () => {
     expect(find(shoot(legion(null), 'CHAOS-LEG-WAR-BG-0'), 'attack', 'Astartes').text).toMatch(/Shoot twice/)
     expect(find({ modifiers: fightAt(legion(null, 3.2)).modifiers }, 'attack', 'Astartes').text).toMatch(/Fight twice/)
