@@ -48,6 +48,8 @@ export const operativeOf = (game, token) => {
     resuppliedTp: unit.resuppliedTp ?? null,
     // Legionaries: its Mark of Chaos (KHORNE, NURGLE, SLAANESH, TZEENTCH, UNDIVIDED).
     mark: unit.mark ?? null,
+    // Legionary Anointed: Unleash Daemon used (for the rest of the battle).
+    daemon: Boolean(unit.daemon),
   }
 }
 

@@ -164,11 +164,15 @@ const UNIT_FIELDS = {
   statuses: (value) => (Array.isArray(value) ? value.map(String) : null),
   apl: (value) => clamp(Math.round(toNumber(value)), -3, 3),
   mark: (value) => (value == null ? null : String(value)),
+  // Legionaries: the Anointed's Unleash Daemon (for the rest of the battle), and the
+  // once-per-battle Infernal Pact having been used on this Warrior.
+  daemon: (value) => Boolean(value),
+  infernalPact: (value) => Boolean(value),
   // What the latest damage was ('crit' from the stats drawer's Crit button), so the board
   // can play the right effect. Any other change of wounds counts as 'normal'.
   lastHit: (value) => (['crit', 'normal'].includes(value) ? value : null),
   // +1 APL until the end of its next activation (Kommandos' Get It Dun! / Listen In).
-  nextActivationApl: (value) => (value ? 1 : 0),
+  nextActivationApl: (value) => clamp(Math.round(toNumber(value)), -1, 1),
   // The turning point Shake It Off (Kommandos) was used on it: APL changes ignored then.
   shakeItOffTp: (value) => (value == null ? null : Math.max(1, Math.round(toNumber(value)))),
   // Height on Vantage terrain (0 = killzone floor), used by the Sightline tool.

@@ -26,7 +26,7 @@ import BoardSvg from '../board/BoardSvg.jsx'
 import { dragOverlays } from '../board/dragOverlays.js'
 import { baseSizeMm } from '../data/baseSizes.js'
 import { BOARD, getLayout, toSvgY } from '../board/boardData.js'
-import { MARKER_SIZES_MM, categoriesFor, radiusFor } from '../data/tokenCatalog.js'
+import { MARKER_RADIUS_IN, MARKER_SIZES_MM, TOKEN_RADIUS_IN, categoriesFor, radiusFor } from '../data/tokenCatalog.js'
 import { maxWoundsFor, saveFor, tokenLabelFor } from '../rules/roster.js'
 import { isLegionaryUnit } from '../rules/equipment.js'
 import { LEGIONARY_MARKS } from '../rules/legionary.js'
@@ -43,7 +43,7 @@ import BoardArranger from './BoardArranger.jsx'
 import WeaponChooser from './WeaponChooser.jsx'
 import StalwartPrompt from './StalwartPrompt.jsx'
 import { FREE_ATTACK_EVENT } from './freeAttack.js'
-import { meleeWeaponsFor, rangedWeaponsFor } from '../rules/weaponRules.js'
+import { keywordsOf, meleeWeaponsFor, rangedWeaponsFor } from '../rules/weaponRules.js'
 import AttackDrawer from './AttackDrawer.jsx'
 import ToolIcon from './ToolIcon.jsx'
 import { usePlayer } from './usePlayer.js'
@@ -1287,13 +1287,35 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   // your kill team has Ammo Cache markers set up.
   const datacardActionsOf = (token) => {
     if (!token?.unitKey || token.seat !== seat) return []
-    const own = (roster.find((unit) => unit.key === token.unitKey)?.opType?.abilities ?? []).filter((ability) => ability.AP != null)
+    const abilities = roster.find((unit) => unit.key === token.unitKey)?.opType?.abilities ?? []
+    const own = abilities.filter((ability) => ability.AP != null)
+    // Rules used "when this operative is activated" that the app applies (not actions).
+    const onActivation = abilities.filter((ability) => ability.abilityName === 'Unleash Daemon').map((ability) => ({ ...ability, AP: null }))
     const caches = (game.markers ?? []).some((marker) => marker.catalogId === AMMO_CACHE_MARKER && marker.seat === seat)
-    return caches ? [...own, { abilityName: 'Ammo Resupply', AP: 0 }] : own
+    return [...own, ...onActivation, ...(caches ? [{ abilityName: 'Ammo Resupply', AP: 0 }] : [])]
   }
   // What the known datacard actions do from the ring (keyed by name, lower case, no '!').
-  //   blocked({ inControl, order }): why it can't be done now, or null.
+  //   blocked({ inControl, order, unit }): why it can't be done now, or null.
   const DATACARD_ACTIONS = {
+    // Legionary Shrivetalon (2AP, once per battle): place the Grisly marker beside it.
+    'grisly mark': {
+      blocked: ({ inControl }) =>
+        inControl ? 'In control range' : game.markers.some((marker) => marker.catalogId === 'chaos-leg-grisly' && marker.seat === seat) ? 'Used this battle' : null,
+      run: (token) => {
+        act({ type: 'marker/add', kind: 'marker', catalogId: 'chaos-leg-grisly', label: 'Grisly', short: 'GRIS', radius: MARKER_RADIUS_IN, x: token.x + tokenRadiusIn(token) + 0.5, y: token.y })
+        setRadial(null)
+      },
+    },
+    // Legionary Anointed (once per battle, when activated): for the rest of the battle,
+    // less damage from Dmg 4+ and a deadlier claw; a token rides on it to show it.
+    'unleash daemon': {
+      blocked: ({ unit }) => (unit.daemon ? 'Unleashed' : unit.activation !== 'active' ? 'When activated' : null),
+      run: (token) => {
+        act({ type: 'unit/update', unitKey: token.unitKey, maxWounds: maxWoundsOf(token.id), patch: { daemon: true } })
+        act({ type: 'marker/add', kind: 'token', catalogId: 'chaos-leg-daemon', label: 'Daemon', short: 'DMN', radius: TOKEN_RADIUS_IN, attachedTo: token.id, x: token.x, y: token.y })
+        setRadial(null)
+      },
+    },
     // Kommando Breacha Boy: place a Breach marker; drag it against the terrain feature.
     breach: {
       blocked: ({ inControl }) => (inControl ? 'In control range' : null),
@@ -1407,16 +1429,34 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
   const ringItems = () => {
     if (!radialToken) return []
     if (radial.menu === 'mark') {
-      const current = game.players[radialToken.seat]?.unitState?.[radialToken.unitKey]?.mark ?? null
+      const unitState = game.players[radialToken.seat]?.unitState ?? {}
+      const current = unitState[radialToken.unitKey]?.mark ?? null
+      // Picked before the battle. In it, only Infernal Pact changes a mark: once per battle,
+      // a Warrior, as it's activated. (A Balefire Acolyte can't be Khorne.)
+      const opType = roster.find((unit) => unit.key === radialToken.unitKey)?.opType
+      const pactUsed = Object.values(unitState).some((unit) => unit.infernalPact)
+      const inBattle = game.phase === 'battle'
+      const why = !inBattle || !current
+        ? null
+        : !keywordsOf(opType).has('WARRIOR')
+          ? 'Set for the battle'
+          : pactUsed
+            ? 'Infernal Pact used'
+            : unitState[radialToken.unitKey]?.activation !== 'active'
+              ? 'When activated'
+              : null
+      const acolyte = keywordsOf(opType).has('BALEFIRE ACOLYTE')
       return [
         ...LEGIONARY_MARKS.map((mark) => ({
           key: `mark-${mark.id}`,
           label: mark.dataLabel,
           text: mark.dataLabel.slice(0, 2),
-          caption: mark.dataLabel,
+          caption: mark.id === 'KHORNE' && acolyte ? 'Not an Acolyte' : current !== mark.id && why ? why : mark.dataLabel,
           selected: current === mark.id,
+          disabled: (mark.id === 'KHORNE' && acolyte) || (current !== mark.id && Boolean(why)),
           run: () => {
-            act({ type: 'unit/update', unitKey: radialToken.unitKey, maxWounds: maxWoundsOf(radialToken.id), patch: { mark: mark.id } })
+            const pact = inBattle && current && current !== mark.id
+            act({ type: 'unit/update', unitKey: radialToken.unitKey, maxWounds: maxWoundsOf(radialToken.id), patch: { mark: mark.id, ...(pact ? { infernalPact: true } : {}) } })
             setRadial(null)
           },
         })),
@@ -1502,11 +1542,11 @@ function MapTab({ tabs = [], tabLabel = (id) => id, onSelectTab = () => {} }) {
         ...datacardActionsOf(radialToken).map((ability) => {
           const name = ability.abilityName
           const known = DATACARD_ACTIONS[name.toLowerCase().replace(/[!’']/g, '')]
-          const blocked = known?.blocked?.({ inControl, order }) ?? null
+          const blocked = known?.blocked?.({ inControl, order, unit: game.players[radialToken.seat]?.unitState?.[radialToken.unitKey] ?? {} }) ?? null
           return {
             key: `action-${name}`,
             label: name,
-            text: `${ability.AP}AP`,
+            text: ability.AP == null ? 'Rule' : `${ability.AP}AP`,
             caption: blocked ?? name,
             disabled: Boolean(blocked),
             run: () => (known ? known.run(radialToken) : (setRadial(null), setCardFor(radialToken.id))),

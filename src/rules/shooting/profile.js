@@ -94,7 +94,9 @@ export const attackProfile = ({ weapon, base, rules, effects, obscured = false }
   const reduced = Boolean(reduction) && normalDmg >= reduction.atLeast
   const normalHit = reduced ? Math.max(0, normalDmg - reduction.by) : normalDmg
   const crits = obscured ? 'none' : effects.critsToNormal ? 'normal' : 'yes'
-  const dmgCrit = crits === 'normal' ? normalHit : critDmg
+  // Some reductions cover Critical Dmg too (reduction.crit, e.g. Unleash Daemon).
+  const critReduced = Boolean(reduction?.crit) && critDmg >= reduction.atLeast
+  const dmgCrit = crits === 'normal' ? normalHit : critReduced ? Math.max(0, critDmg - reduction.by) : critDmg
 
   // ---- reasons ----
   const diceReasons = byName(traced(effects, 'atk')).map(({ value, name }) =>
@@ -125,9 +127,10 @@ export const attackProfile = ({ weapon, base, rules, effects, obscured = false }
     const text = normal === crit ? `Dmg ${signed(normal)}/${signed(crit)}` : normal ? `Normal Dmg ${signed(normal)}` : `Crit Dmg ${signed(crit)}`
     return normal + crit >= 0 ? better(`${text} · ${name}`) : worse(`${text} · ${name}`)
   })
-  if (reduced) {
+  if (reduced || critReduced) {
     const by = traced(effects, 'dmgReduction')[0]?.name ?? 'Enemy rule'
-    dmgReasons.push(worse(`−${reduction.by} Normal Dmg (${reduction.atLeast}+) · ${by}`))
+    const which = reduced && critReduced ? 'Dmg' : reduced ? 'Normal Dmg' : 'Crit Dmg'
+    dmgReasons.push(worse(`−${reduction.by} ${which} (${reduction.atLeast}+) · ${by}`))
   }
   if (crits === 'normal') dmgReasons.push(worse('Crits deal Normal Dmg'))
   if (rules.devastating?.damage && crits !== 'none') {

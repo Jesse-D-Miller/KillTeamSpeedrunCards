@@ -285,6 +285,12 @@
       "name": "Grisly",
       "short": "GRIS",
       "kind": "marker"
+    },
+    {
+      "id": "chaos-leg-daemon",
+      "name": "Unleash Daemon",
+      "short": "DMN",
+      "kind": "token"
     }
   ],
   "AEL-MND": [

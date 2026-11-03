@@ -527,6 +527,23 @@ describe('Legionaries', () => {
     expect(find({ modifiers: fightAt(legion('KHORNE', 3.2)).modifiers }, 'attack', 'Unending Bloodshed')).toMatchObject({ mode: 'toggle' })
   })
 
+  it('Unleash Daemon: Dmg of 4 or more deals 1 less (crits too); its claw is Ceaseless, Lethal 5+', () => {
+    const ANOINTED = 'CHAOS-LEG-ANO-0'
+    const daemon = (targetX) =>
+      setup({
+        teams: ['CHAOS-LEG', 'VOT-HKY'],
+        tokens: [op('s', 'A', ANOINTED, 2), op('t', 'B', THEYN, targetX)],
+        units: { A: { [ANOINTED]: { order: 'engage', daemon: true } }, B: engage(THEYN) },
+      })
+    // The Theyn's bolt revolver (3/5) shooting it: crits 5 → 4, normals stay 3.
+    const shotAt = computeShot({ game: daemon(8), layout: { walls: [], areas: [] }, payload: { shooterId: 't', targetId: 's', weaponId: 'VOT-HKY-THEYN-BR-0' } })
+    expect(shotAt.attack.dmg.normal.value).toBe(3)
+    expect(shotAt.attack.dmg.crit.value).toBe(4)
+    const brawl = computeAttack({ game: daemon(3.3), layout: { walls: [], areas: [] }, payload: { mode: 'fight', shooterId: 's', targetId: 't', weaponId: 'CHAOS-LEG-ANO-DC-0' } })
+    expect(brawl.attack.rerolls.map((entry) => entry.text).join(' ')).toMatch(/Ceaseless/)
+    expect(brawl.attack.crit.value).toBe(5)
+  })
+
   it('Astartes: reminders that it can Shoot or Fight twice', () => {
     expect(find(shoot(legion(null), 'CHAOS-LEG-WAR-BG-0'), 'attack', 'Astartes').text).toMatch(/Shoot twice/)
     expect(find({ modifiers: fightAt(legion(null, 3.2)).modifiers }, 'attack', 'Astartes').text).toMatch(/Fight twice/)

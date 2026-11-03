@@ -122,7 +122,14 @@ const defencePloys = (ctx) => {
   return mods
 }
 
-export const defence = (ctx) => [...unhandled(generic.defence(ctx)), ...(ctx.target.mark === 'NURGLE' ? [disgustingVigour('defender')] : []), ...defencePloys(ctx)]
+// Unleash Daemon (Anointed): Normal and Critical Dmg of 4 or more deals 1 less to it,
+// and its daemonic claw has Ceaseless and Lethal 5+.
+const DAEMON_REDUCTION = { atLeast: 4, by: 1, crit: true }
+const daemonDefence = (owner, key) =>
+  mod({ id: 'CHAOS-LEG-unleash-daemon', owner, source: 'ability', name: 'Unleash Daemon', text: 'Dmg of 4 or more deals 1 less to it', effect: { [key]: DAEMON_REDUCTION }, tone: 'good' })
+
+export const defence = (ctx) => [
+  ...(ctx.target.daemon ? [daemonDefence('defender', 'dmgReduction')] : []),...unhandled(generic.defence(ctx)), ...(ctx.target.mark === 'NURGLE' ? [disgustingVigour('defender')] : []), ...defencePloys(ctx)]
 
 // Fighting (side 'attacker') or retaliating ('defender'): Khorne's melee weapons are
 // Severe, Undivided gets Ceaseless (the enemy is always within 6" in a fight), and
@@ -130,6 +137,12 @@ export const defence = (ctx) => [...unhandled(generic.defence(ctx)), ...(ctx.tar
 export const fight = (ctx, side) => {
   const { operative, weapon, token, enemy, retaliating } = ctx.fighter(side)
   const mods = [...unhandled(generic.fight(ctx, side))]
+  if (operative.daemon) {
+    mods.push(daemonDefence(side, 'opponentDmgReduction'))
+    if (weapon && /daemonic claw/i.test(weapon.name)) {
+      mods.push(mod({ id: 'CHAOS-LEG-daemon-claw', owner: side, source: 'ability', name: 'Unleash Daemon', text: 'Daemonic claw: Ceaseless, Lethal 5+', effect: { addRules: { ceaseless: true, lethal: 5 } }, tone: 'good' }))
+    }
+  }
   // Blood for the Blood God: Khorne melee weapons +1 to both Dmg stats (max 7); others,
   // fighting, add 1 damage to their first strike.
   if (weapon && ctx.stratActive(side, PLOYS.bloodForTheBloodGod)) {
